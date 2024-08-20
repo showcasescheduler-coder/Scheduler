@@ -1,0 +1,14 @@
+import mongoose from "mongoose";
+
+const RoutineSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    description: { type: String },
+    days: [{ type: String }],
+    tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Task" }],
+  },
+  { timestamps: true }
+);
+
+export default mongoose.models.Routine ||
+  mongoose.model("Routine", RoutineSchema);
