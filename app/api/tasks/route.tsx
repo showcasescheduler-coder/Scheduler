@@ -2,26 +2,42 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongo";
 import Task from "@/models/Task";
 import Project from "@/models/Project";
+import Block from "@/models/Block";
 
 export async function POST(request: NextRequest) {
   await dbConnect();
   try {
     // Parse the incoming JSON data
     const body = await request.json();
-    const { projectId, ...taskData } = body;
+    const { projectId, blockId, ...taskData } = body;
 
     // Log the received data
     console.log("Received task data:", body);
-    console.log(projectId, taskData);
 
-    // // Create the new task
-    const task = new Task({ ...taskData, project: projectId });
+    // Create the task object, only including blockId if it's provided
+    const taskToCreate = {
+      ...taskData,
+      project: projectId || undefined,
+      block: blockId || undefined,
+    };
+
+    // Create the new task
+    const task = new Task(taskToCreate);
     await task.save();
 
-    // Add the task to the project's tasks array
-    await Project.findByIdAndUpdate(projectId, { $push: { tasks: task._id } });
+    // If a project is specified, add the task to the project's tasks array
+    if (projectId) {
+      await Project.findByIdAndUpdate(projectId, {
+        $push: { tasks: task._id },
+      });
+    }
 
-    // Return a success message along with the received data
+    // If a block is specified, add the task to the block's tasks array
+    if (blockId) {
+      await Block.findByIdAndUpdate(blockId, { $push: { tasks: task._id } });
+    }
+
+    // Return a success message along with the created task
     return NextResponse.json(
       {
         message: "Task created successfully",

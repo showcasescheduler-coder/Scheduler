@@ -18,7 +18,8 @@ export async function POST(
       return NextResponse.json({ error: "Routine not found" }, { status: 404 });
     }
 
-    const newTask = new Task({ ...taskData, routineId });
+    // Change here: use 'routine' instead of 'routineId'
+    const newTask = new Task({ ...taskData, routine: routineId });
     await newTask.save();
 
     routine.tasks.push(newTask._id);

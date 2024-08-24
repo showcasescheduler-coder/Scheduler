@@ -120,7 +120,8 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
     duration: newTask.duration,
     deadline: newTask.deadline,
     projectId: project?._id,
-    status: "todo" as const,
+    status: "Todo" as const,
+    block: null,
   } as ProjectTask;
 
   // const handleAddTask = async () => {

@@ -18,8 +18,10 @@ export interface Event {
   name: string;
   description: string;
   date: string;
-  time: string;
-  duration: string;
+  startTime: string;
+  endTime: string;
+  block: string | null;
+  priority: string;
 }
 
 export interface Project {
@@ -57,14 +59,16 @@ export interface Block {
   _id: string;
   date: string;
   name: string;
+  description: string;
   status: "Todo" | "InProgress" | "Completed";
   startTime: string;
   endTime: string;
   tasks: Task[];
+  event: Event[];
 }
 
 export interface Day {
-  id: string;
+  _id: string;
   date: string;
   completed: boolean;
   blocks: (Block | string)[];

@@ -4,6 +4,7 @@ import { useAppContext } from "@/app/context/AppContext";
 import { Block, Task, Day } from "@/app/context/models";
 import { UserData } from "@/app/context/models";
 import { AddTaskModal } from "@/dialog/addTaskModal";
+import { AddEventModal } from "@/dialog/addEventModal";
 import {
   ChevronLeft,
   ChevronRight,
@@ -88,6 +89,7 @@ const DashboardPage = () => {
   const [aiResponse, setAiResponse] = useState<ScheduleResponse | null>(null);
   const { day, isLoading, isError, mutate } = useTodayDay();
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
+  const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newBlock, setNewBlock] = useState({
@@ -246,6 +248,9 @@ const DashboardPage = () => {
     setSelectedBlockId(blockId);
     setIsAddTaskModalOpen(true);
   };
+  const handleAddEvent = () => {
+    setIsAddEventModalOpen(true);
+  };
 
   const updateDay = () => {
     mutate();
@@ -257,6 +262,8 @@ const DashboardPage = () => {
   const tags = Array.from({ length: 50 }).map(
     (_, i, a) => `v1.2.0-beta.${a.length - i}`
   );
+
+  console.log("Day data:", day);
 
   return (
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
@@ -346,7 +353,12 @@ const DashboardPage = () => {
                 <DropdownMenuCheckboxItem>Archived</DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button size="sm" variant="outline" className="h-7 gap-1">
+            <Button
+              onClick={handleAddEvent}
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1"
+            >
               <File className="h-3.5 w-3.5" />
               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Add Event
@@ -424,75 +436,111 @@ const DashboardPage = () => {
         <TabsContent value="today" className="space-y-4">
           {day &&
             day.blocks.map((blockOrString: Block | string, index: number) => {
-              // Check if the block is a string (ID) or a Block object
               const block =
                 typeof blockOrString === "string"
-                  ? ({ _id: blockOrString } as Block) // Treat string as Block with only _id
+                  ? ({ _id: blockOrString } as Block)
                   : (blockOrString as Block);
 
+              const isEventBlock = !!block.event;
+
               return (
-                <Card key={block._id || index}>
+                <Card
+                  key={block._id || index}
+                  className={
+                    isEventBlock ? "border-orange-200 bg-orange-50" : ""
+                  }
+                >
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <div>
-                      <CardTitle>{block.name}</CardTitle>
+                      <CardTitle>
+                        {isEventBlock ? `Event: ${block.name}` : block.name}
+                      </CardTitle>
                       <CardDescription>{`${block.startTime} - ${block.endTime}`}</CardDescription>
                     </div>
-                    {block.tasks && block.tasks.length > 0 && (
-                      <Badge>{block.tasks[0].status}</Badge>
+                    {isEventBlock ? (
+                      <Badge
+                        variant="secondary"
+                        className="bg-orange-100 text-orange-800"
+                      >
+                        Event
+                      </Badge>
+                    ) : (
+                      block.tasks &&
+                      block.tasks.length > 0 && (
+                        <Badge>{block.tasks[0].status}</Badge>
+                      )
                     )}
                   </CardHeader>
                   <CardContent>
-                    <Progress value={50} className="h-2 mt-2 mb-4" />
-                    <div className="space-y-2">
-                      {block.tasks &&
-                        block.tasks.map((task: Task, taskIndex: number) => (
-                          <Card
-                            key={task._id || taskIndex}
-                            className="bg-muted relative"
-                          >
-                            <CardContent className="p-3 flex items-center justify-between">
-                              <div className="flex items-center space-x-3">
-                                <div className="flex-shrink-0">
-                                  <Checkbox
-                                    id={`task-${task._id || taskIndex}`}
-                                  />
-                                </div>
-                                <div>
-                                  <label
-                                    htmlFor={`task-${task._id || taskIndex}`}
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                  >
-                                    {task.name}
-                                  </label>
-                                </div>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Badge variant="secondary" className="text-xs">
-                                  {task.priority}
-                                </Badge>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                >
-                                  <GripVertical className="h-4 w-4" />
-                                  <span className="sr-only">Drag handle</span>
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                    </div>
+                    {isEventBlock ? (
+                      <div className="text-sm text-gray-600">
+                        <Clock className="inline-block mr-2 h-4 w-4" />
+                        {block.description || "No description available"}
+                      </div>
+                    ) : (
+                      <>
+                        <Progress value={50} className="h-2 mt-2 mb-4" />
+                        <div className="space-y-2">
+                          {block.tasks &&
+                            block.tasks.map((task: Task, taskIndex: number) => (
+                              <Card
+                                key={task._id || taskIndex}
+                                className="bg-muted relative"
+                              >
+                                <CardContent className="p-3 flex items-center justify-between">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="flex-shrink-0">
+                                      <Checkbox
+                                        id={`task-${task._id || taskIndex}`}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label
+                                        htmlFor={`task-${
+                                          task._id || taskIndex
+                                        }`}
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                      >
+                                        {task.name}
+                                      </label>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs"
+                                    >
+                                      {task.priority}
+                                    </Badge>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                    >
+                                      <GripVertical className="h-4 w-4" />
+                                      <span className="sr-only">
+                                        Drag handle
+                                      </span>
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                        </div>
+                      </>
+                    )}
                     <div className="flex justify-end mt-4 space-x-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="bg-white"
-                        onClick={() => handleAddTask(block._id)}
-                      >
-                        <PlusCircle className="h-4 w-4" />
-                        <span className="sr-only">Add Task</span>
-                      </Button>
+                      {!isEventBlock && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="bg-white"
+                          onClick={() => handleAddTask(block._id)}
+                        >
+                          <PlusCircle className="h-4 w-4" />
+                          <span className="sr-only">Add Task</span>
+                        </Button>
+                      )}
                       <Button
                         variant="default"
                         size="icon"
@@ -500,37 +548,42 @@ const DashboardPage = () => {
                         // onClick={() => handleCompleteBlock(block._id)}
                       >
                         <CheckCircle className="h-4 w-4" />
-                        <span className="sr-only">Complete Block</span>
+                        <span className="sr-only">
+                          Complete {isEventBlock ? "Event" : "Block"}
+                        </span>
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
               );
             })}
-          <ScrollArea className="h-72 w-48 rounded-md border">
-            <div className="p-4">
-              <h4 className="mb-4 text-sm font-medium leading-none">Tags</h4>
-              {tags.map((tag) => (
-                <>
-                  <div key={tag} className="text-sm">
-                    {tag}
-                  </div>
-                  <Separator className="my-2" />
-                </>
-              ))}
-            </div>
-          </ScrollArea>
         </TabsContent>
       </Tabs>
+      {/* <ScrollArea className="h-72 w-48 rounded-md border">
+        <div className="p-4">
+          <h4 className="mb-4 text-sm font-medium leading-none">Tags</h4>
+          {tags.map((tag) => (
+            <>
+              <div key={tag} className="text-sm">
+                {tag}
+              </div>
+              <Separator className="my-2" />
+            </>
+          ))}
+        </div>
+      </ScrollArea> */}
       <AddTaskModal
         isOpen={isAddTaskModalOpen}
         onClose={() => setIsAddTaskModalOpen(false)}
         onAddTask={handleAddTaskToBlock}
         blockId={selectedBlockId && selectedBlockId}
         updateDay={updateDay}
-        // blockName={
-        //   day?.blocks.find((b) => b._id === selectedBlockId)?.name || ""
-        // }
+      />
+      <AddEventModal
+        isOpen={isAddEventModalOpen}
+        onClose={() => setIsAddEventModalOpen(false)}
+        blockId={selectedBlockId && selectedBlockId}
+        updateDay={updateDay}
       />
     </main>
   );

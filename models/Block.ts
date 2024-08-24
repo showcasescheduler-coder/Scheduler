@@ -7,6 +7,7 @@ export interface IBlock extends Document {
   startTime: string;
   endTime: string;
   tasks: mongoose.Types.ObjectId[];
+  event?: mongoose.Types.ObjectId;
 }
 
 const BlockSchema: Schema = new Schema(
@@ -39,9 +40,16 @@ const BlockSchema: Schema = new Schema(
         ref: "Task",
       },
     ],
+    event: {
+      type: Schema.Types.ObjectId,
+      ref: "Event",
+      default: null,
+    },
   },
   { timestamps: true }
 );
 
-export default mongoose.models.Block ||
-  mongoose.model<IBlock>("Block", BlockSchema);
+const Block =
+  mongoose.models.Block || mongoose.model<IBlock>("Block", BlockSchema);
+
+export default Block;

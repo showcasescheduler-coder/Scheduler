@@ -118,6 +118,12 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [selectedProject, setSelectedProject] = useState(projectsData[0].id);
   const [activeTab, setActiveTab] = useState<string>("newTask");
   const { tasks, projects, setProjects, setTasks, setBlocks } = useAppContext();
+  const [newTask, setNewTask] = useState({
+    name: "",
+    description: "",
+    priority: "",
+  });
+
   const fetchTasks = async () => {
     try {
       const res = await fetch("/api/tasks");
@@ -197,7 +203,48 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     }
   };
 
-  console.log("tasks", projects);
+  const handleNewTaskSubmit = async () => {
+    console.log("Creating new task:");
+    try {
+      const taskData = {
+        ...newTask,
+        blockId: blockId, // Always include the blockId
+      };
+
+      const response = await fetch("/api/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(taskData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create task");
+      }
+
+      const data = await response.json();
+      console.log("New task created:", data.task);
+
+      // Update local state
+      setTasks((prevTasks) => [...prevTasks, data.task]);
+
+      // Clear the form
+      setNewTask({ name: "", description: "", priority: "" });
+
+      // Close the modal
+      onClose();
+
+      // Update the day view
+      updateDay();
+    } catch (error) {
+      console.error("Error creating new task:", error);
+    }
+  };
+
+  const tags = Array.from({ length: 50 }).map(
+    (_, i, a) => `v1.2.0-beta.${a.length - i}`
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -218,20 +265,38 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           <TabsContent value="newTask">
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Input id="task-name" placeholder="Task name" />
+                <Input
+                  id="task-name"
+                  placeholder="Task name"
+                  value={newTask.name}
+                  onChange={(e) =>
+                    setNewTask({ ...newTask, name: e.target.value })
+                  }
+                />
               </div>
               <div className="space-y-2">
-                <Textarea placeholder="Task description" />
+                <Textarea
+                  placeholder="Task description"
+                  value={newTask.description}
+                  onChange={(e) =>
+                    setNewTask({ ...newTask, description: e.target.value })
+                  }
+                />
               </div>
               <div className="space-y-2">
-                <Select>
+                <Select
+                  value={newTask.priority}
+                  onValueChange={(value) =>
+                    setNewTask({ ...newTask, priority: value })
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="High">High</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -332,7 +397,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                   ))}
                 </SelectContent>
               </Select>
-              <ScrollArea className="h-72 w-full rounded-md border">
+              <ScrollArea className="h-72 w-100 rounded-md border">
                 <div className="p-4 space-y-4">
                   {projects
                     .find((p) => p._id === selectedProject)
@@ -385,7 +450,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button>
+          <Button onClick={handleNewTaskSubmit}>
             <CheckCircle className="mr-2 h-4 w-4" />
             Add Task
           </Button>

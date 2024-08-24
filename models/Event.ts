@@ -1,14 +1,37 @@
-import mongoose from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
-const EventSchema = new mongoose.Schema(
+export interface IEvent extends Document {
+  name: string;
+  description: string;
+  date: Date;
+  startTime: string;
+  endTime: string;
+  block: mongoose.Types.ObjectId;
+  priority?: string;
+}
+
+const EventSchema: Schema = new Schema(
   {
     name: { type: String, required: true },
     description: { type: String, required: true },
     date: { type: Date, required: true },
-    time: { type: String, required: true },
-    duration: { type: String, required: true },
+    startTime: { type: String, required: true },
+    endTime: { type: String, required: true },
+    block: {
+      type: Schema.Types.ObjectId,
+      ref: "Block",
+      required: true,
+    },
+    priority: { type: String, enum: ["Low", "Medium", "High"] },
   },
   { timestamps: true }
 );
 
-export default mongoose.models.Event || mongoose.model("Event", EventSchema);
+// Delete the model if it exists to force a reload
+if (mongoose.models.Event) {
+  delete mongoose.models.Event;
+}
+
+const Event = mongoose.model<IEvent>("Event", EventSchema);
+
+export default Event;
