@@ -1,5 +1,18 @@
 import mongoose from "mongoose";
 
+export interface ITask {
+  _id?: string;
+  name: string;
+  description?: string;
+  priority?: "Low" | "Medium" | "High";
+  deadline?: Date;
+  duration?: string;
+  status?: "Todo" | "In Progress" | "Completed";
+  project?: mongoose.Types.ObjectId;
+  routine?: mongoose.Types.ObjectId;
+  block?: mongoose.Types.ObjectId;
+}
+
 const TaskSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },

@@ -5,6 +5,7 @@ import { Block, Task, Day } from "@/app/context/models";
 import { UserData } from "@/app/context/models";
 import { AddTaskModal } from "@/dialog/addTaskModal";
 import { AddEventModal } from "@/dialog/addEventModal";
+import { AddRoutineModal } from "@/dialog/addRoutineModal";
 import {
   ChevronLeft,
   ChevronRight,
@@ -92,6 +93,7 @@ const DashboardPage = () => {
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAddRoutineModalOpen, setIsAddRoutineModalOpen] = useState(false);
   const [newBlock, setNewBlock] = useState({
     name: "",
     startTime: "",
@@ -243,6 +245,10 @@ const DashboardPage = () => {
     setIsAddTaskModalOpen(false);
   };
 
+  const handleAddRoutine = () => {
+    setIsAddRoutineModalOpen(true);
+  };
+
   const handleAddTask = (blockId: string) => {
     console.log("Adding task to block:", blockId);
     setSelectedBlockId(blockId);
@@ -334,25 +340,17 @@ const DashboardPage = () => {
             <TabsTrigger value="month">All</TabsTrigger>
           </TabsList>
           <div className="ml-auto flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 gap-1">
-                  <ListFilter className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Add Routine
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Filter by</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuCheckboxItem checked>
-                  Active
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>Draft</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>Archived</DropdownMenuCheckboxItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              onClick={handleAddRoutine}
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1"
+            >
+              <ListFilter className="h-3.5 w-3.5" />
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                Add Routine
+              </span>
+            </Button>
             <Button
               onClick={handleAddEvent}
               size="sm"
@@ -444,12 +442,7 @@ const DashboardPage = () => {
               const isEventBlock = !!block.event;
 
               return (
-                <Card
-                  key={block._id || index}
-                  className={
-                    isEventBlock ? "border-orange-200 bg-orange-50" : ""
-                  }
-                >
+                <Card key={block._id || index}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <div>
                       <CardTitle>
@@ -582,6 +575,12 @@ const DashboardPage = () => {
       <AddEventModal
         isOpen={isAddEventModalOpen}
         onClose={() => setIsAddEventModalOpen(false)}
+        blockId={selectedBlockId && selectedBlockId}
+        updateDay={updateDay}
+      />
+      <AddRoutineModal
+        isOpen={isAddRoutineModalOpen}
+        onClose={() => setIsAddRoutineModalOpen(false)}
         blockId={selectedBlockId && selectedBlockId}
         updateDay={updateDay}
       />
