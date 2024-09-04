@@ -102,7 +102,7 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
           <DialogTitle>Add Routine to Schedule</DialogTitle>
         </DialogHeader>
         {!selectedRoutine ? (
-          <ScrollArea className="h-[300px] w-full rounded-md border">
+          <ScrollArea className="h-72 w-100 rounded-md border">
             <div className="p-4 space-y-4">
               {routines.map((routine) => (
                 <Card

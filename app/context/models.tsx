@@ -3,7 +3,7 @@ export interface Task {
   name: string;
   description: string;
   priority: string;
-  duration: string;
+  duration: number;
   deadline: string;
   status: "Todo" | "InProgress" | "Completed";
   block: string | null; // Allow block to be null
@@ -36,7 +36,6 @@ export interface Project {
 
 export interface RoutineTask extends Task {
   routineId: string;
-  time: string;
 }
 
 export interface Routine {

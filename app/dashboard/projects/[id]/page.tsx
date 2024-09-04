@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { format, parseISO } from "date-fns";
 import { useAppContext } from "@/app/context/AppContext";
 import { Project, ProjectTask, Task } from "@/app/context/models";
 import { ChevronLeft, PlusCircle } from "lucide-react";
@@ -32,7 +33,6 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { CalendarIcon } from "@radix-ui/react-icons";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -58,7 +58,9 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
   const { projects, updateProject, addTaskToProject, setProjects } =
     useAppContext();
   const [project, setProject] = useState<Project | null>(null);
-  const [newTask, setNewTask] = useState<Partial<Task>>({});
+  const [newTask, setNewTask] = useState<Partial<Task>>({
+    duration: 5, // Set a default minimum duration
+  });
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -173,6 +175,15 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
   //   // }
   // };
 
+  // Helper function to format dates for display
+  const formatDate = (date: string | Date | undefined) => {
+    if (!date) return "";
+    if (typeof date === "string") {
+      return format(parseISO(date), "PPP");
+    }
+    return format(date, "PPP");
+  };
+
   const handleAddTask = async () => {
     if (project && newTask.name) {
       try {
@@ -180,7 +191,7 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
           name: newTask.name,
           description: newTask.description || "",
           priority: newTask.priority || "Medium",
-          duration: newTask.duration || "",
+          duration: Number(newTask.duration) || 5, // Ensure duration is a number
           deadline: newTask.deadline || new Date(),
           projectId: project._id,
           status: "Todo",
@@ -221,7 +232,7 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
         );
 
         // Clear the form and close the dialog
-        setNewTask({});
+        setNewTask({ duration: 5 }); // Reset with default duration
         setIsTaskDialogOpen(false);
       } catch (error) {
         console.error("Error sending task data:", error);
@@ -339,6 +350,7 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                       <TableHead>Description</TableHead>
                       <TableHead>Duration</TableHead>
                       <TableHead>Priority</TableHead>
+                      <TableHead>Deadline</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -348,6 +360,7 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                         <TableCell>{task.description}</TableCell>
                         <TableCell>{task.duration}</TableCell>
                         <TableCell>{task.priority}</TableCell>
+                        <TableCell>{formatDate(task.deadline)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -405,14 +418,35 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                         />
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="deadline" className="text-right">
+                          Deadline
+                        </Label>
+                        <Input
+                          id="deadline"
+                          name="deadline"
+                          type="date"
+                          value={newTask.deadline || ""}
+                          onChange={(e) =>
+                            setNewTask({ ...newTask, deadline: e.target.value })
+                          }
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="task-duration" className="text-right">
-                          Duration
+                          Duration (minutes)
                         </Label>
                         <Input
                           id="task-duration"
+                          type="number"
+                          min="5"
+                          max="240"
                           value={newTask.duration || ""}
                           onChange={(e) =>
-                            setNewTask({ ...newTask, duration: e.target.value })
+                            setNewTask({
+                              ...newTask,
+                              duration: Number(e.target.value),
+                            })
                           }
                           className="col-span-3"
                         />

@@ -49,7 +49,10 @@ interface Props {
 const RoutineDetailsPage = ({ params: { id } }: Props) => {
   const { routines, updateRoutine, addTaskToRoutine } = useAppContext();
   const [routine, setRoutine] = useState<Routine | null>(null);
-  const [newTask, setNewTask] = useState<Partial<RoutineTask>>({});
+  const [newTask, setNewTask] = useState<Partial<RoutineTask>>({
+    duration: 5, // Set a default minimum duration
+  });
+
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -95,8 +98,6 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
     });
   };
 
-  console.log("routine", routine);
-
   const handleSave = async () => {
     if (routine) {
       try {
@@ -121,15 +122,21 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
       }
     }
   };
+
   const handleAddTask = async () => {
-    if (routine && newTask.name) {
+    if (routine && newTask.name && newTask.duration) {
       try {
+        const taskToAdd = {
+          ...newTask,
+          duration: Math.max(5, Math.min(240, Number(newTask.duration))),
+        };
+
         const response = await fetch(`/api/routines/${id}/tasks`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(newTask),
+          body: JSON.stringify(taskToAdd),
         });
 
         if (!response.ok) {
@@ -138,7 +145,7 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
 
         const updatedRoutine = await response.json();
         setRoutine(updatedRoutine);
-        setNewTask({});
+        setNewTask({ duration: 5 }); // Reset with default duration
         setIsTaskDialogOpen(false);
       } catch (error) {
         console.error("Error adding task:", error);
@@ -237,7 +244,7 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Time</TableHead>
+                      <TableHead>Description</TableHead>
                       <TableHead>Duration</TableHead>
                       <TableHead>Priority</TableHead>
                     </TableRow>
@@ -246,7 +253,7 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
                     {routine.tasks.map((task) => (
                       <TableRow key={task._id}>
                         <TableCell>{task.name}</TableCell>
-                        <TableCell>{task.time}</TableCell>
+                        <TableCell>{task.description}</TableCell>
                         <TableCell>{task.duration}</TableCell>
                         <TableCell>{task.priority}</TableCell>
                       </TableRow>
@@ -287,28 +294,39 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
                         />
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="task-time" className="text-right">
-                          Time
+                        <Label
+                          htmlFor="task-description"
+                          className="text-right"
+                        >
+                          Description
                         </Label>
                         <Input
-                          id="task-time"
-                          type="time"
-                          value={newTask.time || ""}
+                          id="task-description"
+                          value={newTask.description || ""}
                           onChange={(e) =>
-                            setNewTask({ ...newTask, time: e.target.value })
+                            setNewTask({
+                              ...newTask,
+                              description: e.target.value,
+                            })
                           }
                           className="col-span-3"
                         />
                       </div>
                       <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="task-duration" className="text-right">
-                          Duration
+                          Duration (minutes)
                         </Label>
                         <Input
                           id="task-duration"
+                          type="number"
+                          min="5"
+                          max="240"
                           value={newTask.duration || ""}
                           onChange={(e) =>
-                            setNewTask({ ...newTask, duration: e.target.value })
+                            setNewTask({
+                              ...newTask,
+                              duration: Number(e.target.value),
+                            })
                           }
                           className="col-span-3"
                         />

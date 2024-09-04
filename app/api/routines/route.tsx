@@ -7,14 +7,33 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const routine = new Routine(body);
-    await routine.save();
+    console.log("Received routine data:", body);
 
-    return NextResponse.json(routine, { status: 201 });
+    // Extract only the fields we need for creating a new routine
+    const { name, description, days, block } = body;
+
+    const newRoutine = new Routine({
+      name,
+      description,
+      days,
+      block,
+    });
+
+    await newRoutine.save();
+
+    console.log("Created routine:", newRoutine);
+
+    return NextResponse.json(newRoutine, { status: 201 });
   } catch (error) {
     console.error("Error creating routine:", error);
+
+    let errorMessage = "Error creating routine";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
     return NextResponse.json(
-      { error: "Error creating routine" },
+      { error: "Error creating routine", details: errorMessage },
       { status: 500 }
     );
   }

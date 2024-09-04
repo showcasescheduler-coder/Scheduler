@@ -60,7 +60,7 @@ const Page = () => {
     name: "",
     description: "",
     priority: "Medium", // Set a default value
-    duration: "",
+    duration: 5,
     deadline: "",
     status: "Todo",
     block: null,
@@ -133,7 +133,7 @@ const Page = () => {
         name: "",
         description: "",
         priority: "",
-        duration: "",
+        duration: 5,
         deadline: "",
         status: "Todo",
         block: null,
@@ -266,12 +266,15 @@ const Page = () => {
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="duration" className="text-right">
-                      Duration
+                      Duration (minutes)
                     </Label>
                     <Input
                       id="duration"
                       name="duration"
-                      value={newTask.duration || ""}
+                      type="number"
+                      min="5"
+                      max="240"
+                      value={newTask.duration}
                       onChange={handleInputChange}
                       className="col-span-3"
                     />

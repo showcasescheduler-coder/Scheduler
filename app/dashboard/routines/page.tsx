@@ -57,6 +57,7 @@ const RoutinePage = () => {
     name: "",
     description: "",
     days: [],
+    block: "",
   });
 
   useEffect(() => {
@@ -113,7 +114,13 @@ const RoutinePage = () => {
       addRoutine(createdRoutine);
 
       setIsDialogOpen(false);
-      setNewRoutine({ _id: "", name: "", description: "", days: [] });
+      setNewRoutine({
+        _id: "",
+        name: "",
+        description: "",
+        days: [],
+        block: "",
+      });
 
       // Optionally, show a success message
       alert("Routine created successfully!");

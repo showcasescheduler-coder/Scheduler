@@ -20,6 +20,8 @@ import {
   Clock,
   Star,
   GripVertical,
+  CalendarClock,
+  CalendarPlus,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -85,8 +87,19 @@ interface ScheduleResponse {
   Blocks: TimeBlock[];
 }
 const DashboardPage = () => {
-  const { projects, events, routines, tasks, blocks, setBlocks, setDay } =
-    useAppContext();
+  const {
+    projects,
+    events,
+    routines,
+    tasks,
+    setEvents,
+    setProjects,
+    setRoutines,
+    setTasks,
+    blocks,
+    setBlocks,
+    setDay,
+  } = useAppContext();
   const [aiResponse, setAiResponse] = useState<ScheduleResponse | null>(null);
   const { day, isLoading, isError, mutate } = useTodayDay();
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
@@ -100,7 +113,80 @@ const DashboardPage = () => {
     endTime: "",
   });
 
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch("/api/events");
+        if (!response.ok) {
+          throw new Error("Failed to fetch events");
+        }
+        const data = await response.json();
+        setEvents(data);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+        // Optionally, set an error state here to show an error message to the user
+      }
+    };
+
+    fetchEvents();
+  }, [setEvents]);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch("/api/projects");
+        if (!response.ok) {
+          throw new Error("Failed to fetch projects");
+        }
+        const data = await response.json();
+        setProjects(data.projects);
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+      }
+    };
+
+    fetchProjects();
+  }, [setProjects]);
+
+  useEffect(() => {
+    const fetchRoutines = async () => {
+      try {
+        const response = await fetch("/api/routines");
+        if (!response.ok) {
+          throw new Error("Failed to fetch routines");
+        }
+        const data = await response.json();
+        setRoutines(data);
+      } catch (error) {
+        console.error("Error fetching routines:", error);
+        alert("Failed to fetch routines. Please try again.");
+      }
+    };
+
+    fetchRoutines();
+  }, [setRoutines]);
+
+  useEffect(() => {
+    // Fetch tasks from the API
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch("/api/tasks");
+        if (!response.ok) {
+          throw new Error("Failed to fetch tasks");
+        }
+        const data = await response.json();
+        setTasks(data);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        alert("Failed to fetch tasks. Please try again.");
+      }
+    };
+
+    fetchTasks();
+  }, [setTasks]);
+
   const generateSchedule = async () => {
+    console.log("Generating schedule...");
     const userInformation = {
       name: "John Doe", // You might want to get this from your user context
       projects: projects,
@@ -109,6 +195,8 @@ const DashboardPage = () => {
       events: events,
       // You might need to add historical_data if you have it in your app context
     };
+
+    console.log("User information:", userInformation);
 
     const rules = `
       My main goal should be a task that belongs to a project that has the highest priority
@@ -154,34 +242,39 @@ const DashboardPage = () => {
 
     try {
       const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) {
-        throw new Error("Missing OPENAI_API_KEY in environment variables");
-      }
+      console.log(process.env);
 
-      const response = await fetch(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4",
-            messages: [{ role: "user", content: prompt }],
-          }),
-        }
-      );
+      // if (!apiKey) {
+      //   throw new Error("Missing OPENAI_API_KEY in environment variables");
+      // }
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      // console.log(apiKey);
 
-      const data = await response.json();
-      const parsedResponse: ScheduleResponse = JSON.parse(
-        data.choices[0].message.content
-      );
-      setAiResponse(parsedResponse);
+      // const response = await fetch(
+      //   "https://api.openai.com/v1/chat/completions",
+      //   {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //       Authorization: `Bearer ${apiKey}`,
+      //     },
+      //     body: JSON.stringify({
+      //       model: "gpt-4",
+      //       messages: [{ role: "user", content: prompt }],
+      //     }),
+      //   }
+      // );
+
+      // if (!response.ok) {
+      //   throw new Error(`HTTP error! status: ${response.status}`);
+      // }
+
+      // const data = await response.json();
+      // const parsedResponse: ScheduleResponse = JSON.parse(
+      //   data.choices[0].message.content
+      // );
+      // console.log("AI response:", parsedResponse);
+      // setAiResponse(parsedResponse);
     } catch (error) {
       console.error("An error occurred:", error);
     }
@@ -269,8 +362,6 @@ const DashboardPage = () => {
     (_, i, a) => `v1.2.0-beta.${a.length - i}`
   );
 
-  console.log("Day data:", day);
-
   return (
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
       <div className="grid gap-4 md:grid-cols-4">
@@ -346,7 +437,7 @@ const DashboardPage = () => {
               size="sm"
               className="h-7 gap-1"
             >
-              <ListFilter className="h-3.5 w-3.5" />
+              <CalendarClock className="h-3.5 w-3.5" />
               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Add Routine
               </span>
@@ -357,11 +448,12 @@ const DashboardPage = () => {
               variant="outline"
               className="h-7 gap-1"
             >
-              <File className="h-3.5 w-3.5" />
+              <CalendarPlus className="h-3.5 w-3.5" />
               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Add Event
               </span>
             </Button>
+
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" className="h-7 gap-1">

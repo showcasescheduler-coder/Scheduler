@@ -6,7 +6,7 @@ export interface IEvent extends Document {
   date: Date;
   startTime: string;
   endTime: string;
-  block: mongoose.Types.ObjectId;
+  block?: mongoose.Types.ObjectId; // Make block optional
   priority?: string;
 }
 
@@ -20,7 +20,7 @@ const EventSchema: Schema = new Schema(
     block: {
       type: Schema.Types.ObjectId,
       ref: "Block",
-      required: true,
+      required: false, // Make block not required
     },
     priority: { type: String, enum: ["Low", "Medium", "High"] },
   },

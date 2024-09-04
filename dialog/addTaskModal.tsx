@@ -25,6 +25,7 @@ import { Task, Project, Block } from "@/app/context/models";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
+import { Label } from "@/components/ui/label";
 
 interface AddTaskModalProps {
   isOpen: boolean;
@@ -122,6 +123,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     name: "",
     description: "",
     priority: "",
+    duration: 5, // Default duration of 5 minutes
   });
 
   const fetchTasks = async () => {
@@ -208,7 +210,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     try {
       const taskData = {
         ...newTask,
-        blockId: blockId, // Always include the blockId
+        blockId: blockId,
+        duration: Math.max(5, Math.min(240, newTask.duration)), // Ensure duration is between 5 and 240 minutes
       };
 
       const response = await fetch("/api/tasks", {
@@ -230,7 +233,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       setTasks((prevTasks) => [...prevTasks, data.task]);
 
       // Clear the form
-      setNewTask({ name: "", description: "", priority: "" });
+      setNewTask({ name: "", description: "", priority: "", duration: 5 });
 
       // Close the modal
       onClose();
@@ -280,6 +283,25 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                   value={newTask.description}
                   onChange={(e) =>
                     setNewTask({ ...newTask, description: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="task-duration">Duration (minutes)</Label>
+                <Input
+                  id="task-duration"
+                  type="number"
+                  min="5"
+                  max="240"
+                  value={newTask.duration}
+                  onChange={(e) =>
+                    setNewTask({
+                      ...newTask,
+                      duration: Math.max(
+                        5,
+                        Math.min(240, Number(e.target.value))
+                      ),
+                    })
                   }
                 />
               </div>

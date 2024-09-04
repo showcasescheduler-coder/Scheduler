@@ -48,10 +48,11 @@ const EventsPage = () => {
   const { events, addEvent, userData, setEvents } = useAppContext();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newEvent, setNewEvent] = useState({
+    name: "",
     description: "",
     date: "",
-    time: "",
-    duration: "",
+    startTime: "",
+    endTime: "",
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -75,8 +76,6 @@ const EventsPage = () => {
     fetchEvents();
   }, [setEvents]);
 
-  console.log(userData);
-
   const handleInputChange = (e: { target: { name: any; value: any } }) => {
     const { name, value } = e.target;
     setNewEvent((prev) => ({ ...prev, [name]: value }));
@@ -85,11 +84,11 @@ const EventsPage = () => {
   const handleAddEvent = async () => {
     try {
       const newEventData = {
-        name: newEvent.description,
+        name: newEvent.name,
         description: newEvent.description,
         date: format(new Date(`${newEvent.date}T00:00:00Z`), "yyyy-MM-dd"),
-        time: newEvent.time,
-        duration: newEvent.duration,
+        startTime: newEvent.startTime,
+        endTime: newEvent.endTime,
       };
 
       const response = await fetch("/api/events", {
@@ -110,7 +109,13 @@ const EventsPage = () => {
       addEvent(createdEvent);
 
       // Reset form and close dialog
-      setNewEvent({ description: "", date: "", time: "", duration: "" });
+      setNewEvent({
+        name: "",
+        description: "",
+        date: "",
+        startTime: "",
+        endTime: "",
+      });
       setIsDialogOpen(false);
 
       // Optionally, show a success message
@@ -182,6 +187,18 @@ const EventsPage = () => {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">
+                      Name
+                    </Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={newEvent.name}
+                      onChange={handleInputChange}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="description" className="text-right">
                       Description
                     </Label>
@@ -207,29 +224,29 @@ const EventsPage = () => {
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="time" className="text-right">
-                      Time
+                    <Label htmlFor="startTime" className="text-right">
+                      Start Time
                     </Label>
                     <Input
-                      id="time"
-                      name="time"
+                      id="startTime"
+                      name="startTime"
                       type="time"
-                      value={newEvent.time}
+                      value={newEvent.startTime}
                       onChange={handleInputChange}
                       className="col-span-3"
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="duration" className="text-right">
-                      Duration
+                    <Label htmlFor="endTime" className="text-right">
+                      End Time
                     </Label>
                     <Input
-                      id="duration"
-                      name="duration"
-                      value={newEvent.duration}
+                      id="endTime"
+                      name="endTime"
+                      type="time"
+                      value={newEvent.endTime}
                       onChange={handleInputChange}
                       className="col-span-3"
-                      placeholder="e.g., 1 hour"
                     />
                   </div>
                 </div>
@@ -252,6 +269,7 @@ const EventsPage = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Name</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Time</TableHead>
@@ -268,15 +286,18 @@ const EventsPage = () => {
                     <TableRow key={event._id}>
                       <TableCell className="font-medium">
                         <Link href={`/dashboard/events/${event._id}`}>
-                          {event.description}
+                          {event.name}
                         </Link>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {event.description}
                       </TableCell>
                       <TableCell>
                         {format(parseISO(event.date), "yyyy-MM-dd")}
                       </TableCell>
-                      <TableCell>{event.time}</TableCell>
+                      <TableCell>{event.startTime}</TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {event.duration}
+                        {event.endTime}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
