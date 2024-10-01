@@ -5,6 +5,7 @@ import { Event } from "@/app/context/models";
 import { ChevronLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -31,6 +32,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { set } from "mongoose";
+import { start } from "repl";
 
 interface Props {
   params: { id: string };
@@ -42,10 +45,12 @@ const EventDetailsPage = ({ params: { id } }: Props) => {
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [time, setTime] = React.useState("");
+  const [endTime, setEndTime] = React.useState("");
   const [duration, setDuration] = React.useState("");
   const [status, setStatus] = React.useState<"draft" | "active" | "archived">(
     "draft"
   );
+  const router = useRouter();
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -58,7 +63,8 @@ const EventDetailsPage = ({ params: { id } }: Props) => {
         setDate(new Date(event.date));
         setName(event.name);
         setDescription(event.description);
-        setTime(event.time);
+        setTime(event.startTime);
+        setEndTime(event.endTime);
         setDuration(event.duration);
         setStatus(event.status || "draft");
       } catch (error) {
@@ -78,7 +84,8 @@ const EventDetailsPage = ({ params: { id } }: Props) => {
       name,
       description,
       date: format(date, "yyyy-MM-dd"),
-      time,
+      startTime: time,
+      endTime,
       duration,
       status,
     };
@@ -113,9 +120,14 @@ const EventDetailsPage = ({ params: { id } }: Props) => {
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
       <div className="mx-auto grid max-w-[59rem] flex-1 auto-rows-max gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" className="h-7 w-7">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => router.push("/dashboard/events")}
+          >
             <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Back</span>
+            <span className="sr-only">Back to Projects</span>
           </Button>
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             Event Details
@@ -192,7 +204,7 @@ const EventDetailsPage = ({ params: { id } }: Props) => {
                     </Popover>
                   </div>
                   <div className="grid gap-3">
-                    <Label htmlFor="time">Event Time</Label>
+                    <Label htmlFor="time">Event Start Time</Label>
                     <Input
                       id="time"
                       type="time"
@@ -201,12 +213,12 @@ const EventDetailsPage = ({ params: { id } }: Props) => {
                     />
                   </div>
                   <div className="grid gap-3">
-                    <Label htmlFor="duration">Event Duration</Label>
+                    <Label htmlFor="duration">End Time</Label>
                     <Input
                       id="duration"
                       type="text"
-                      value={duration}
-                      onChange={(e) => setDuration(e.target.value)}
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
                     />
                   </div>
                 </div>

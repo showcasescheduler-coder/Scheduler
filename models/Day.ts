@@ -1,17 +1,24 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IDay extends Document {
+  user: mongoose.Types.ObjectId;
   date: string;
   completed: boolean;
   blocks: mongoose.Types.ObjectId[];
+  completedTasksCount: number;
+  performanceRating: {
+    level: string;
+    score: number;
+    comment: string;
+  };
 }
 
 const DaySchema: Schema = new Schema(
   {
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
     date: {
       type: String,
       required: true,
-      unique: true,
     },
     completed: {
       type: Boolean,
@@ -23,6 +30,15 @@ const DaySchema: Schema = new Schema(
         ref: "Block",
       },
     ],
+    completedTasksCount: {
+      type: Number,
+      default: 0,
+    },
+    performanceRating: {
+      level: String,
+      score: Number,
+      comment: String,
+    },
   },
   { timestamps: true }
 );

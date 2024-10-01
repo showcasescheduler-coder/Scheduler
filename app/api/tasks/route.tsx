@@ -59,14 +59,16 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   await dbConnect();
-
+  const userId = request.nextUrl.searchParams.get("userId");
+  console.log("Fetching tasks for user:", userId);
   try {
     console.log("Fetching standalone tasks...");
     // Find all tasks where project and routine fields are null or undefined
     const standaloneTasks = await Task.find({
+      userId: userId,
       $and: [
-        { project: { $in: [null, undefined] } },
-        { routine: { $in: [null, undefined] } },
+        { projectId: { $in: [null, undefined] } },
+        { isRoutineTask: { $in: [false, undefined] } },
       ],
     }).sort({ createdAt: -1 }); // Sort by creation date, newest first
 

@@ -5,8 +5,12 @@ export interface Task {
   priority: string;
   duration: number;
   deadline: string;
-  status: "Todo" | "InProgress" | "Completed";
+  isRoutineTask: boolean;
+  completed: boolean;
   block: string | null; // Allow block to be null
+  project: string | null; // Allow project to be null
+  routine: string | null; // Allow routine to be
+  projectId: string | null;
 }
 
 export interface ProjectTask extends Task {
@@ -60,7 +64,7 @@ export interface Block {
   date: string;
   name: string;
   description: string;
-  status: "Todo" | "InProgress" | "Completed";
+  status: "pending" | "complete" | "incomplete";
   startTime: string;
   endTime: string;
   tasks: Task[];
@@ -71,5 +75,13 @@ export interface Day {
   _id: string;
   date: string;
   completed: boolean;
+  completedTasksCount: number;
   blocks: (Block | string)[];
+}
+
+export interface User {
+  _id: string;
+  email: string;
+  name: string;
+  days: Day[];
 }

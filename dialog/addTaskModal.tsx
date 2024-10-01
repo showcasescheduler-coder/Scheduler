@@ -26,6 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@clerk/nextjs";
 
 interface AddTaskModalProps {
   isOpen: boolean;
@@ -125,10 +126,11 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     priority: "",
     duration: 5, // Default duration of 5 minutes
   });
+  const { userId } = useAuth();
 
   const fetchTasks = async () => {
     try {
-      const res = await fetch("/api/tasks");
+      const res = await fetch(`/api/tasks?userId=${userId}`);
       if (!res.ok) {
         throw new Error("Failed to fetch tasks");
       }
@@ -142,7 +144,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch("/api/projects");
+      const res = await fetch(`/api/projects?userId=${userId}`);
       if (!res.ok) {
         throw new Error("Failed to fetch projects");
       }
@@ -339,7 +341,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                           {task.description}
                         </p>
                         <div className="flex items-center space-x-2">
-                          <Badge
+                          {/* <Badge
                             variant={
                               task.priority.toLowerCase() as
                                 | "default"
@@ -348,7 +350,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                             }
                           >
                             {task.priority}
-                          </Badge>
+                          </Badge> */}
                           {task.block && (
                             <Badge variant="outline">Assigned</Badge>
                           )}

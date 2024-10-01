@@ -7,7 +7,16 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const event = new Event(body);
+    const { userId, ...eventData } = body;
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const event = new Event({ ...eventData, userId });
     await event.save();
 
     return NextResponse.json(event, { status: 201 });
@@ -20,11 +29,20 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   await dbConnect();
 
   try {
-    const events = await Event.find({}).sort({ date: 1 }); // Sort by date ascending
+    const userId = request.nextUrl.searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const events = await Event.find({ userId }).sort({ date: 1 }); // Sort by date ascending
     return NextResponse.json(events);
   } catch (error) {
     console.error("Error fetching events:", error);

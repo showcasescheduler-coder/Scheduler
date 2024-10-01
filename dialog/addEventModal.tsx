@@ -24,6 +24,7 @@ import { PlusCircle, CheckCircle } from "lucide-react";
 import { Event } from "@/app/context/models";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
+import { useAuth } from "@clerk/nextjs";
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -48,10 +49,11 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
     startTime: "",
     endTime: "",
   });
+  const { userId } = useAuth();
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch("/api/events");
+      const res = await fetch(`/api/events?userId=${userId}`);
       if (!res.ok) {
         throw new Error("Failed to fetch events");
       }

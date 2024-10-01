@@ -1,7 +1,14 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { File, ListFilter, MoreHorizontal, PlusCircle } from "lucide-react";
+import {
+  File,
+  ListFilter,
+  MoreHorizontal,
+  PlusCircle,
+  Calendar,
+  Trash2,
+} from "lucide-react";
 import { useAppContext } from "@/app/context/AppContext";
 import { Project } from "@/app/context/models";
 import { format } from "date-fns";
@@ -41,19 +48,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@clerk/nextjs";
 
 const Projects = () => {
   const { projects, setProjects, addProject } = useAppContext();
+  const { userId } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newProject, setNewProject] = useState({
     name: "",
@@ -65,8 +67,9 @@ const Projects = () => {
 
   useEffect(() => {
     const fetchProjects = async () => {
+      if (!userId) return;
       try {
-        const response = await fetch("/api/projects");
+        const response = await fetch(`/api/projects?userId=${userId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch projects");
         }
@@ -78,7 +81,7 @@ const Projects = () => {
     };
 
     fetchProjects();
-  }, [setProjects]);
+  }, [userId, setProjects]);
 
   const handleInputChange = (e: { target: { name: any; value: any } }) => {
     const { name, value } = e.target;
@@ -90,14 +93,14 @@ const Projects = () => {
   };
 
   const handleAddProject = async () => {
-    console.log("Hello");
+    if (!userId) return;
     try {
       const response = await fetch("/api/projects", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(newProject),
+        body: JSON.stringify({ ...newProject, userId }),
       });
 
       if (!response.ok) {
@@ -107,10 +110,8 @@ const Projects = () => {
       const data = await response.json();
       console.log("Project created:", data);
 
-      // Add the new project to the AppContext
       addProject(data.project);
 
-      // Reset form and close dialog
       setNewProject({
         name: "",
         description: "",
@@ -124,10 +125,41 @@ const Projects = () => {
     }
   };
 
+  const handleDeleteProject = async (projectId: string) => {
+    if (!confirm("Are you sure you want to delete this project?")) return;
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete project");
+      }
+
+      setProjects(projects.filter((project) => project._id !== projectId));
+    } catch (error) {
+      console.error("Error deleting project:", error);
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case "high":
+        return "bg-red-100 text-red-800";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800";
+      case "low":
+        return "bg-green-100 text-green-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
   return (
-    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-      <Tabs defaultValue="all">
-        <div className="flex items-center">
+    <main className="p-4 sm:px-6 sm:py-0">
+      <Tabs defaultValue="all" className="mb-4">
+        <div className="flex items-center justify-between mb-4">
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="active">Active</TabsTrigger>
@@ -136,10 +168,10 @@ const Projects = () => {
               Archived
             </TabsTrigger>
           </TabsList>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 gap-1">
+                <Button variant="outline" size="sm" className="h-8 gap-1">
                   <ListFilter className="h-3.5 w-3.5" />
                   <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                     Filter
@@ -156,7 +188,7 @@ const Projects = () => {
                 <DropdownMenuCheckboxItem>Archived</DropdownMenuCheckboxItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button size="sm" variant="outline" className="h-7 gap-1">
+            <Button size="sm" variant="outline" className="h-8 gap-1">
               <File className="h-3.5 w-3.5" />
               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Export
@@ -164,7 +196,7 @@ const Projects = () => {
             </Button>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" className="h-7 gap-1">
+                <Button size="sm" className="h-8 gap-1">
                   <PlusCircle className="h-3.5 w-3.5" />
                   <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                     Add Project
@@ -256,75 +288,61 @@ const Projects = () => {
           </div>
         </div>
         <TabsContent value="all">
-          <Card>
-            <CardHeader>
-              <CardTitle>Projects</CardTitle>
-              <CardDescription>
-                Manage your projects and view their performance.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="hidden md:table-cell">
-                      Priority
-                    </TableHead>
-                    <TableHead>Project Name</TableHead>
-                    <TableHead>Deadline</TableHead>
-                    <TableHead>
-                      <span className="sr-only">Actions</span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {projects.map((project) => (
-                    <TableRow key={project._id}>
-                      <TableCell className="hidden md:table-cell">
-                        {project.priority}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <Link href={`/dashboard/projects/${project._id}`}>
-                          {project.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        {project.deadline &&
-                        !isNaN(new Date(project.deadline).getTime())
-                          ? format(new Date(project.deadline), "yyyy-MM-dd")
-                          : "No deadline set"}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              aria-haspopup="true"
-                              size="icon"
-                              variant="ghost"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Toggle menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem>Delete</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-            <CardFooter>
-              <div className="text-xs text-muted-foreground">
-                Showing <strong>1-{projects.length}</strong> of{" "}
-                <strong>{projects.length}</strong> projects
-              </div>
-            </CardFooter>
-          </Card>
+          <div className="grid gap-4 md:grid-cols-2">
+            {projects.map((project) => (
+              <Card key={project._id} className="flex flex-col">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>{project.name}</CardTitle>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="icon" variant="ghost">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>Edit</DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteProject(project._id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <CardDescription
+                    className="line-clamp-2 text-sm text-muted-foreground"
+                    title={project.description} // This will show the full description on hover
+                  >
+                    {project.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Calendar className="h-4 w-4" />
+                    <span>
+                      {project.deadline &&
+                      !isNaN(new Date(project.deadline).getTime())
+                        ? format(new Date(project.deadline), "MMMM d, yyyy")
+                        : "No deadline set"}
+                    </span>
+                  </div>
+                  <Badge className={getPriorityColor(project.priority)}>
+                    {project.priority}
+                  </Badge>
+                </CardContent>
+                <CardFooter className="mt-auto">
+                  <Link
+                    href={`/dashboard/projects/${project._id}`}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    View Details
+                  </Link>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
         </TabsContent>
       </Tabs>
     </main>

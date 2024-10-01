@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongo";
 import Routine from "@/models/Routine";
+import Task from "@/models/Task"; // Import the Task model
 
 export async function POST(request: NextRequest) {
   await dbConnect();
@@ -39,15 +40,25 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   await dbConnect();
 
   try {
-    const routines = await Routine.find({}).sort({ createdAt: -1 }).populate({
-      path: "tasks",
-      model: "Task",
-      select: "name time duration priority", // Add or remove fields as needed
-    });
+    const userId = request.nextUrl.searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const routines = await Routine.find({ userId })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "tasks",
+        model: Task,
+      });
 
     return NextResponse.json(routines);
   } catch (error) {

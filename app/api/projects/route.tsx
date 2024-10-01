@@ -9,6 +9,14 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    // Ensure userId is included in the body
+    if (!body.userId) {
+      return NextResponse.json(
+        { error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
     const newProject: IProject = new Project(body);
     await newProject.save();
 
@@ -32,9 +40,18 @@ export async function GET(request: NextRequest) {
   try {
     await dbConnect();
 
-    const projects = await Project.find({})
+    const userId = request.nextUrl.searchParams.get("userId");
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const projects = await Project.find({ userId })
       .sort({ createdAt: -1 })
-      .populate("tasks") // This line populates the tasks
+      .populate("tasks")
       .exec();
 
     return NextResponse.json({ projects });

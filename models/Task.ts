@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 export interface ITask {
   _id?: string;
+  userId: string;
   name: string;
   description?: string;
   priority?: "Low" | "Medium" | "High";
@@ -15,6 +16,7 @@ export interface ITask {
 
 const TaskSchema = new mongoose.Schema(
   {
+    userId: { type: String },
     name: { type: String, required: true },
     description: { type: String },
     priority: {
@@ -24,14 +26,14 @@ const TaskSchema = new mongoose.Schema(
     },
     deadline: { type: Date },
     duration: { type: String },
-    status: {
-      type: String,
-      enum: ["Todo", "In Progress", "Completed"],
-      default: "Todo",
+    completed: {
+      type: Boolean,
+      default: false,
     },
     project: { type: mongoose.Schema.Types.ObjectId, ref: "Project" },
     routine: { type: mongoose.Schema.Types.ObjectId, ref: "Routine" },
     block: { type: mongoose.Schema.Types.ObjectId, ref: "Block" },
+    isRoutineTask: { type: Boolean, default: false },
   },
   { timestamps: true, strict: false }
 );

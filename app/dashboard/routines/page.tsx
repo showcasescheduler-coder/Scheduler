@@ -45,6 +45,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@clerk/nextjs";
 
 type NewRoutineForm = Omit<Routine, "id" | "tasks">;
 
@@ -52,6 +53,7 @@ const RoutinePage = () => {
   const { setRoutines, routines, addRoutine } = useAppContext();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { userId } = useAuth();
   const [newRoutine, setNewRoutine] = useState<NewRoutineForm>({
     _id: "",
     name: "",
@@ -62,8 +64,9 @@ const RoutinePage = () => {
 
   useEffect(() => {
     const fetchRoutines = async () => {
+      if (!userId) return;
       try {
-        const response = await fetch("/api/routines");
+        const response = await fetch(`/api/routines?userId=${userId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch routines");
         }
@@ -78,7 +81,7 @@ const RoutinePage = () => {
     };
 
     fetchRoutines();
-  }, [setRoutines]);
+  }, [userId, setRoutines]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -95,13 +98,14 @@ const RoutinePage = () => {
   };
 
   const handleAddRoutine = async () => {
+    if (!userId) return;
     try {
       const response = await fetch("/api/routines", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(newRoutine),
+        body: JSON.stringify({ ...newRoutine, userId }),
       });
 
       if (!response.ok) {

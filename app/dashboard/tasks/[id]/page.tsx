@@ -33,6 +33,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useRouter } from "next/navigation";
 
 interface Props {
   params: { id: string };
@@ -41,13 +42,29 @@ interface Props {
 const TaskDetailsPage = ({ params: { id } }: Props) => {
   const { tasks, updateTask } = useAppContext();
   const [task, setTask] = useState<Task | null>(null);
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const foundTask = tasks.find((t) => t._id === id);
-    if (foundTask) {
-      setTask(foundTask);
-    }
-  }, [id, tasks]);
+    const fetchTaskDetails = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/tasks/${id}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch task details");
+        }
+        const data = await response.json();
+        setTask(data);
+      } catch (error) {
+        console.error("Error fetching task details:", error);
+        // Handle error (e.g., show error message to user)
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTaskDetails();
+  }, [id]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -73,7 +90,7 @@ const TaskDetailsPage = ({ params: { id } }: Props) => {
   const handleSave = async () => {
     if (task) {
       try {
-        const response = await fetch(`/api/tasks/${id}`, {
+        const response = await fetch(`/api/tasks/stand-alone-tasks`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -85,10 +102,13 @@ const TaskDetailsPage = ({ params: { id } }: Props) => {
           throw new Error("Failed to update task");
         }
 
-        const updatedTask = await response.json();
+        const { task: updatedTask } = await response.json();
 
         // Update the task in the global state
         updateTask(id, updatedTask);
+
+        // Optionally, show a success message
+        alert("Task updated successfully!");
       } catch (error) {
         console.error("Error updating task:", error);
         alert("Failed to update task. Please try again.");
@@ -102,15 +122,20 @@ const TaskDetailsPage = ({ params: { id } }: Props) => {
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
       <div className="mx-auto grid max-w-[59rem] flex-1 auto-rows-max gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" className="h-7 w-7">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => router.push("/dashboard/tasks")}
+          >
             <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Back</span>
+            <span className="sr-only">Back to Projects</span>
           </Button>
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             {task.name}
           </h1>
           <Badge variant="outline" className="ml-auto sm:ml-0">
-            {task.status}
+            {/* {task.status} */}
           </Badge>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
             <Button variant="outline" size="sm">
@@ -211,24 +236,6 @@ const TaskDetailsPage = ({ params: { id } }: Props) => {
                         />
                       </PopoverContent>
                     </Popover>
-                  </div>
-                  <div className="grid gap-3">
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={task.status}
-                      onValueChange={(value) =>
-                        handleSelectChange("status", value)
-                      }
-                    >
-                      <SelectTrigger id="status">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Todo">To Do</SelectItem>
-                        <SelectItem value="InProgress">In Progress</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
               </CardContent>

@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 const RoutineSchema = new mongoose.Schema(
   {
+    userId: { type: String, required: true },
     name: { type: String, required: true },
     description: { type: String },
     days: [{ type: String }],

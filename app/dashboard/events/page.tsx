@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { File, ListFilter, MoreHorizontal, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
-
+import { useAuth } from "@clerk/nextjs";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +46,7 @@ import { useAppContext } from "@/app/context/AppContext";
 
 const EventsPage = () => {
   const { events, addEvent, userData, setEvents } = useAppContext();
+  const { userId } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newEvent, setNewEvent] = useState({
     name: "",
@@ -58,8 +59,9 @@ const EventsPage = () => {
 
   useEffect(() => {
     const fetchEvents = async () => {
+      if (!userId) return;
       try {
-        const response = await fetch("/api/events");
+        const response = await fetch(`/api/events?userId=${userId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch events");
         }
@@ -74,7 +76,7 @@ const EventsPage = () => {
     };
 
     fetchEvents();
-  }, [setEvents]);
+  }, [userId, setEvents]);
 
   const handleInputChange = (e: { target: { name: any; value: any } }) => {
     const { name, value } = e.target;
@@ -82,6 +84,7 @@ const EventsPage = () => {
   };
 
   const handleAddEvent = async () => {
+    if (!userId) return;
     try {
       const newEventData = {
         name: newEvent.name,
@@ -89,6 +92,7 @@ const EventsPage = () => {
         date: format(new Date(`${newEvent.date}T00:00:00Z`), "yyyy-MM-dd"),
         startTime: newEvent.startTime,
         endTime: newEvent.endTime,
+        userId: userId,
       };
 
       const response = await fetch("/api/events", {
@@ -262,7 +266,7 @@ const EventsPage = () => {
             <CardHeader>
               <CardTitle>Events</CardTitle>
               <CardDescription>
-                Manage your products and view their sales performance.
+                Manage your Meetings and Appointments
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -270,7 +274,9 @@ const EventsPage = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      Description
+                    </TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Time</TableHead>
                     <TableHead className="hidden md:table-cell">
@@ -289,7 +295,7 @@ const EventsPage = () => {
                           {event.name}
                         </Link>
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell className="hidden sm:table-cell font-medium">
                         {event.description}
                       </TableCell>
                       <TableCell>

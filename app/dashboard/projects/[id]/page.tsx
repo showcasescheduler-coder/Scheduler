@@ -1,9 +1,16 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isBefore } from "date-fns";
 import { useAppContext } from "@/app/context/AppContext";
 import { Project, ProjectTask, Task } from "@/app/context/models";
-import { ChevronLeft, PlusCircle } from "lucide-react";
+import {
+  ChevronLeft,
+  PlusCircle,
+  Loader2,
+  Sparkles,
+  Edit,
+  MoreVertical,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +56,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useRouter } from "next/navigation";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Props {
   params: { id: string };
@@ -62,13 +79,41 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
     duration: 5, // Set a default minimum duration
   });
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [generatingTasks, setGeneratingTasks] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const foundProject = projects.find((p) => p._id === id);
-    if (foundProject) {
-      setProject(foundProject);
-    }
-  }, [id, projects]);
+    const fetchProjectDetails = async () => {
+      setLoading(true);
+      try {
+        // First, check if the project is in the global state
+        const projectFromState = projects.find((p) => p._id === id);
+        if (projectFromState) {
+          setProject(projectFromState);
+        } else {
+          // If not in global state, fetch from the server
+          const response = await fetch(`/api/projects/${id}`);
+          if (!response.ok) {
+            throw new Error("Failed to fetch project details");
+          }
+          const data = await response.json();
+          setProject(data);
+          // Optionally update the global state
+          setProjects((prevProjects) => [...prevProjects, data]);
+        }
+      } catch (error) {
+        console.error("Error fetching project details:", error);
+        // Handle error (e.g., show error message to user)
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjectDetails();
+  }, [id, projects, setProjects]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -114,17 +159,17 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
     }
   };
 
-  const task = {
-    _id: Date.now().toString(),
-    name: newTask.name,
-    description: newTask.description,
-    priority: newTask.priority,
-    duration: newTask.duration,
-    deadline: newTask.deadline,
-    projectId: project?._id,
-    status: "Todo" as const,
-    block: null,
-  } as ProjectTask;
+  // const task = {
+  //   _id: Date.now().toString(),
+  //   name: newTask.name,
+  //   description: newTask.description,
+  //   priority: newTask.priority,
+  //   duration: newTask.duration,
+  //   deadline: newTask.deadline,
+  //   projectId: project?._id,
+  //   status: "Todo" as const,
+  //   block: null,
+  // } as ProjectTask;
 
   // const handleAddTask = async () => {
   //   fetch("/api/tasks").then;
@@ -174,6 +219,85 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
   //   //   }
   //   // }
   // };
+
+  const handleGenerateTasks = async () => {
+    if (!project) return;
+
+    // Check if there are existing tasks
+    if (project.tasks.length > 0) {
+      alert("Tasks can only be generated for projects with no existing tasks.");
+      return;
+    }
+
+    setGeneratingTasks(true);
+    console.log("Generating tasks for project:", project);
+    try {
+      const response = await fetch("/api/generateTasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          project: {
+            name: project.name,
+            description: project.description,
+            deadline: format(new Date(project.deadline), "yyyy-MM-dd"),
+          },
+          today: new Date().toISOString().split("T")[0],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const tasksData = await response.json();
+
+      // Create tasks and add them to the project
+      const newTasks = tasksData.map((task: any) => ({
+        ...task,
+        projectId: project._id,
+      }));
+
+      // Send the new tasks to your API to be saved
+      const saveResponse = await fetch("/api/tasks/bulk", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tasks: newTasks, projectId: project._id }),
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error("Failed to save generated tasks");
+      }
+
+      const savedTasks = await saveResponse.json();
+
+      // Update the project with new tasks
+      setProject((prevProject) => {
+        if (!prevProject) return null;
+        return {
+          ...prevProject,
+          tasks: [...prevProject.tasks, ...savedTasks.tasks],
+        };
+      });
+
+      // Update the global projects state
+      setProjects((prevProjects) =>
+        prevProjects.map((p) =>
+          p._id === project._id
+            ? { ...p, tasks: [...p.tasks, ...savedTasks.tasks] }
+            : p
+        )
+      );
+    } catch (error) {
+      console.error("Error generating tasks:", error);
+      alert("Failed to generate tasks. Please try again.");
+    } finally {
+      setGeneratingTasks(false);
+    }
+  };
 
   // Helper function to format dates for display
   const formatDate = (date: string | Date | undefined) => {
@@ -244,15 +368,110 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
       }
     }
   };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setIsEditTaskDialogOpen(true);
+  };
+
+  // Function to sort tasks by deadline
+  const sortTasksByDeadline = (tasks: Task[]) => {
+    return [...tasks].sort((a, b) => {
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return isBefore(parseISO(a.deadline), parseISO(b.deadline)) ? -1 : 1;
+    });
+  };
+
+  const handleUpdateTask = async () => {
+    if (!editingTask || !project) return;
+
+    try {
+      const response = await fetch(`/api/projects/tasks/${editingTask._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...editingTask,
+          dayId: project._id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Update local state
+      setProject((prevProject) => {
+        if (!prevProject) return null;
+        return {
+          ...prevProject,
+          tasks: prevProject.tasks.map((task) =>
+            task._id === editingTask._id ? result.updatedTask : task
+          ),
+        };
+      });
+
+      // Update global state
+      setProjects((prevProjects) =>
+        prevProjects.map((p) =>
+          p._id === project._id
+            ? {
+                ...p,
+                tasks: p.tasks.map((task) =>
+                  task._id === editingTask._id ? result.updatedTask : task
+                ),
+              }
+            : p
+        )
+      );
+
+      setIsEditTaskDialogOpen(false);
+      setEditingTask(null);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      alert("Failed to update task. Please try again.");
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!project) return;
+    if (!confirm("Are you sure you want to delete this task?")) return;
+
+    try {
+      const response = await fetch(`/api/projects/tasks/${taskId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Update local and global state
+      // ...
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      alert("Failed to delete task. Please try again.");
+    }
+  };
+
   if (!project) return <div>Loading...</div>;
 
   return (
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
       <div className="mx-auto grid max-w-[59rem] flex-1 auto-rows-max gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" className="h-7 w-7">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => router.push("/dashboard/projects")}
+          >
             <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Back</span>
+            <span className="sr-only">Back to Projects</span>
           </Button>
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             {project.name}
@@ -277,6 +496,21 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                 <CardDescription>
                   Update the details of your project
                 </CardDescription>
+                {/* 
+                When we have the ability to generate tasks events and routines , we can uncomment this button
+                
+                <Button
+            size="sm"
+            onClick={handleGenerateTasks}
+            disabled={generatingTasks}
+          >
+            {generatingTasks ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-2 h-4 w-4" />
+            )}
+            Generate Tasks
+          </Button> */}
               </CardHeader>
               <CardContent>
                 <div className="grid gap-6">
@@ -341,6 +575,18 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                 <CardDescription>
                   Manage tasks associated with this project
                 </CardDescription>
+                <Button
+                  size="sm"
+                  onClick={handleGenerateTasks}
+                  disabled={generatingTasks}
+                >
+                  {generatingTasks ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-2 h-4 w-4" />
+                  )}
+                  Generate Tasks
+                </Button>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -351,16 +597,38 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                       <TableHead>Duration</TableHead>
                       <TableHead>Priority</TableHead>
                       <TableHead>Deadline</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {project.tasks.map((task) => (
+                    {sortTasksByDeadline(project.tasks).map((task) => (
                       <TableRow key={task._id}>
                         <TableCell>{task.name}</TableCell>
                         <TableCell>{task.description}</TableCell>
-                        <TableCell>{task.duration}</TableCell>
+                        <TableCell>{task.duration} minutes</TableCell>
                         <TableCell>{task.priority}</TableCell>
                         <TableCell>{formatDate(task.deadline)}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onSelect={() => handleEditTask(task)}
+                              >
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() => handleDeleteTask(task._id)}
+                              >
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -514,6 +782,114 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
           </Button>
         </div>
       </div>
+
+      {/* Edit Task Dialog */}
+      <Dialog
+        open={isEditTaskDialogOpen}
+        onOpenChange={setIsEditTaskDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+            <DialogDescription>
+              Update the details of the task.
+            </DialogDescription>
+          </DialogHeader>
+          {editingTask && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-task-name" className="text-right">
+                  Name
+                </Label>
+                <Input
+                  id="edit-task-name"
+                  value={editingTask.name}
+                  onChange={(e) =>
+                    setEditingTask({ ...editingTask, name: e.target.value })
+                  }
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-task-description" className="text-right">
+                  Description
+                </Label>
+                <Textarea
+                  id="edit-task-description"
+                  value={editingTask.description}
+                  onChange={(e) =>
+                    setEditingTask({
+                      ...editingTask,
+                      description: e.target.value,
+                    })
+                  }
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-task-deadline" className="text-right">
+                  Deadline
+                </Label>
+                <Input
+                  id="edit-task-deadline"
+                  type="date"
+                  value={
+                    editingTask.deadline
+                      ? format(new Date(editingTask.deadline), "yyyy-MM-dd")
+                      : ""
+                  }
+                  onChange={(e) =>
+                    setEditingTask({ ...editingTask, deadline: e.target.value })
+                  }
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-task-duration" className="text-right">
+                  Duration (minutes)
+                </Label>
+                <Input
+                  id="edit-task-duration"
+                  type="number"
+                  min="5"
+                  max="240"
+                  value={editingTask.duration}
+                  onChange={(e) =>
+                    setEditingTask({
+                      ...editingTask,
+                      duration: Number(e.target.value),
+                    })
+                  }
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-task-priority" className="text-right">
+                  Priority
+                </Label>
+                <Select
+                  value={editingTask.priority}
+                  onValueChange={(value) =>
+                    setEditingTask({ ...editingTask, priority: value })
+                  }
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="High">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={handleUpdateTask}>Update Task</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 };

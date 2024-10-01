@@ -41,6 +41,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useRouter } from "next/navigation";
 
 interface Props {
   params: { id: string };
@@ -52,9 +53,9 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
   const [newTask, setNewTask] = useState<Partial<RoutineTask>>({
     duration: 5, // Set a default minimum duration
   });
-
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   const days = [
     "Monday",
@@ -67,19 +68,25 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
   ];
 
   useEffect(() => {
-    const findRoutine = () => {
-      const foundRoutine = routines.find((r) => r._id === id);
-      if (foundRoutine) {
-        setRoutine(foundRoutine);
-      } else {
-        console.error("Routine not found");
-        // You might want to handle this case, perhaps by redirecting to a 404 page
+    const fetchRoutine = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(`/api/routines/${id}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch routine");
+        }
+        const data = await response.json();
+        setRoutine(data);
+      } catch (error) {
+        console.error("Error fetching routine:", error);
+        // Handle error (e.g., show error message to user)
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
-    findRoutine();
-  }, [id, routines]);
+    fetchRoutine();
+  }, [id]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -161,9 +168,14 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
       <div className="mx-auto grid max-w-[59rem] flex-1 auto-rows-max gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" className="h-7 w-7">
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => router.push("/dashboard/routines")}
+          >
             <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Back</span>
+            <span className="sr-only">Back to Projects</span>
           </Button>
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             {routine.name}

@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from "mongoose";
 
 // Interface for the Project, extending Document
 export interface IProject extends Document {
+  userId: string;
   name: string;
   description: string;
   deadline: Date;
@@ -12,6 +13,7 @@ export interface IProject extends Document {
 // Schema for the Project
 const ProjectSchema: Schema = new Schema(
   {
+    userId: { type: String, required: true },
     name: { type: String, required: true },
     description: { type: String, required: true },
     deadline: { type: Date, required: true },

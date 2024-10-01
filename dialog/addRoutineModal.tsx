@@ -24,6 +24,7 @@ import { PlusCircle, CheckCircle, Circle } from "lucide-react";
 import { Routine, Task } from "@/app/context/models";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
+import { useAuth } from "@clerk/nextjs";
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -42,6 +43,7 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
   const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const { isLoaded, userId } = useAuth();
 
   useEffect(() => {
     fetchRoutines();
@@ -49,7 +51,7 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
 
   const fetchRoutines = async () => {
     try {
-      const res = await fetch("/api/routines");
+      const res = await fetch(`/api/routines?userId=${userId}`);
       if (!res.ok) {
         throw new Error("Failed to fetch routines");
       }

@@ -2,8 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongo";
 import Routine from "@/models/Routine";
 
-export async function GET() {
-  return NextResponse.json({ message: "Test route works" });
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  await dbConnect();
+
+  try {
+    const routine = await Routine.findById(params.id).populate("tasks");
+    if (!routine) {
+      return NextResponse.json(
+        { success: false, error: "Routine not found" },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json(routine);
+  } catch (error) {
+    console.error("Error fetching routine:", error);
+    return NextResponse.json(
+      { success: false, error: "Error fetching routine" },
+      { status: 400 }
+    );
+  }
 }
 
 // export async function GET(

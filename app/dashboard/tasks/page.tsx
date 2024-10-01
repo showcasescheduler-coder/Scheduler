@@ -1,10 +1,11 @@
 "use client";
-import React, { use, useEffect, useState } from "react";
+import React, { use, useEffect, useState, useMemo } from "react";
 import { File, ListFilter, MoreHorizontal, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { Task } from "@/app/context/models";
 import { useAppContext } from "@/app/context/AppContext";
 import { Button } from "@/components/ui/button";
+import { format, parseISO } from "date-fns";
 import {
   Card,
   CardContent,
@@ -50,9 +51,11 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { set } from "mongoose";
+import { useAuth } from "@clerk/nextjs";
 type NewTaskForm = Omit<Task, "id" | "status">;
 
 const Page = () => {
+  const { userId } = useAuth();
   const { tasks, addTask, setTasks } = useAppContext();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newTask, setNewTask] = useState<Task>({
@@ -62,16 +65,20 @@ const Page = () => {
     priority: "Medium", // Set a default value
     duration: 5,
     deadline: "",
-    status: "Todo",
+    completed: false,
     block: null,
+    routine: null,
+    isRoutineTask: false,
+    project: null,
+    projectId: null,
   });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch tasks from the API
     const fetchTasks = async () => {
+      if (!userId) return;
       try {
-        const response = await fetch("/api/tasks");
+        const response = await fetch(`/api/tasks?userId=${userId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch tasks");
         }
@@ -86,9 +93,7 @@ const Page = () => {
     };
 
     fetchTasks();
-  }, [setTasks]);
-
-  console.log(tasks);
+  }, [userId, setTasks]);
 
   const handlePriorityChange = (value: string) => {
     setNewTask((prev) => ({ ...prev, priority: value }));
@@ -101,19 +106,16 @@ const Page = () => {
 
   // To add a new task
   const handleAddTask = async () => {
+    if (!userId) return;
     try {
-      const response = await fetch("/api/tasks", {
+      const response = await fetch("/api/tasks/stand-alone-tasks", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: newTask.name,
-          description: newTask.description,
-          priority: newTask.priority,
-          duration: newTask.duration,
-          deadline: newTask.deadline,
-          // We don't include project or routine IDs for standalone tasks
+          ...newTask,
+          userId,
         }),
       });
 
@@ -128,15 +130,18 @@ const Page = () => {
 
       setIsDialogOpen(false); // Close the dialog after adding
       setNewTask({
-        // Reset the form
         _id: "",
         name: "",
         description: "",
-        priority: "",
+        priority: "Medium", // Set a default value
         duration: 5,
         deadline: "",
-        status: "Todo",
+        completed: false,
         block: null,
+        routine: null,
+        isRoutineTask: false,
+        project: null,
+        projectId: null,
       });
 
       alert("Task created successfully!");
@@ -145,6 +150,17 @@ const Page = () => {
       alert("Failed to create task. Please try again.");
     }
   };
+
+  const standaloneTasks = useMemo(() => {
+    return tasks.filter(
+      (task) =>
+        !task.projectId && !task.isRoutineTask && task.completed !== true
+    );
+  }, [tasks]);
+
+  console.log("All tasks:", tasks);
+
+  console.log("Standalone tasks:", standaloneTasks);
 
   if (isLoading) {
     return (
@@ -298,29 +314,37 @@ const Page = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      Description
+                    </TableHead>
                     <TableHead>Deadline</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead className="hidden md:table-cell">
+                    <TableHead className="hidden sm:table-cell">
+                      Priority
+                    </TableHead>
+                    <TableHead className="hidden sm:table-cell">
                       Duration
                     </TableHead>
-                    <TableHead>
-                      <span className="sr-only">Actions</span>
-                    </TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tasks.map((task) => (
+                  {standaloneTasks.map((task) => (
                     <TableRow key={task._id}>
                       <TableCell className="font-medium">
                         <Link href={`/dashboard/tasks/${task._id}`}>
                           {task.name}
                         </Link>
                       </TableCell>
-                      <TableCell>{task.description}</TableCell>
-                      <TableCell>{task.deadline}</TableCell>
-                      <TableCell>{task.priority}</TableCell>
-                      <TableCell className="hidden md:table-cell">
+                      <TableCell className="hidden sm:table-cell">
+                        {task.description}
+                      </TableCell>
+                      <TableCell>
+                        {format(parseISO(task.deadline), "yyyy-MM-dd")}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {task.priority}
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {task.duration}
                       </TableCell>
                       <TableCell>
