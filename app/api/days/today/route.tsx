@@ -3,6 +3,8 @@ import dbConnect from "@/lib/mongo";
 import Day from "@/models/Day";
 import User from "@/models/User";
 import { Types } from "mongoose";
+import Block from "@/models/Block"; // Import the Block model
+import Task from "@/models/Task"; // Import the Task model if necessary
 
 export async function GET(request: NextRequest) {
   await dbConnect();
