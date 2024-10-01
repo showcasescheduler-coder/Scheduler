@@ -161,12 +161,12 @@ const Projects = () => {
       <Tabs defaultValue="all" className="mb-4">
         <div className="flex items-center justify-between mb-4">
           <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="draft">Draft</TabsTrigger>
+            <TabsTrigger value="all">Active</TabsTrigger>
+            <TabsTrigger value="active">Completed</TabsTrigger>
+            {/* <TabsTrigger value="draft">Draft</TabsTrigger>
             <TabsTrigger value="archived" className="hidden sm:flex">
               Archived
-            </TabsTrigger>
+            </TabsTrigger> */}
           </TabsList>
           <div className="flex items-center gap-2">
             <DropdownMenu>

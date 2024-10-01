@@ -90,7 +90,7 @@ const Aside = () => {
           </TooltipTrigger>
           <TooltipContent side="right">Routines</TooltipContent>
         </Tooltip>
-        <Tooltip>
+        {/* <Tooltip>
           <TooltipTrigger asChild>
             <Link
               href="/dashboard/analytics"
@@ -151,7 +151,7 @@ const Aside = () => {
             </Link>
           </TooltipTrigger>
           <TooltipContent side="right">Settings</TooltipContent>
-        </Tooltip>
+        </Tooltip> */}
       </nav>
     </aside>
   );

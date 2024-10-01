@@ -138,9 +138,9 @@ const TaskDetailsPage = ({ params: { id } }: Props) => {
             {/* {task.status} */}
           </Badge>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Button variant="outline" size="sm">
+            {/* <Button variant="outline" size="sm">
               Discard
-            </Button>
+            </Button> */}
             <Button size="sm" onClick={handleSave}>
               Save Task
             </Button>
@@ -243,9 +243,9 @@ const TaskDetailsPage = ({ params: { id } }: Props) => {
           </div>
         </div>
         <div className="flex items-center justify-center gap-2 md:hidden">
-          <Button variant="outline" size="sm">
+          {/* <Button variant="outline" size="sm">
             Discard
-          </Button>
+          </Button> */}
           <Button size="sm" onClick={handleSave}>
             Save Task
           </Button>

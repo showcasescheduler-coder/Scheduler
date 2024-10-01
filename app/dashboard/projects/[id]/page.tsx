@@ -476,13 +476,13 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             {project.name}
           </h1>
-          <Badge variant="outline" className="ml-auto sm:ml-0">
+          {/* <Badge variant="outline" className="ml-auto sm:ml-0">
             In stock
-          </Badge>
+          </Badge> */}
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Button variant="outline" size="sm">
+            {/* <Button variant="outline" size="sm">
               Discard
-            </Button>
+            </Button> */}
             <Button size="sm" onClick={handleSave}>
               Save Project
             </Button>
