@@ -60,10 +60,11 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<Event[]>([]);
   const [day, setDay] = useState<Day>({
-    id: "",
+    _id: "",
     date: "",
     completed: false,
     blocks: [],
+    completedTasksCount: 0,
   });
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);

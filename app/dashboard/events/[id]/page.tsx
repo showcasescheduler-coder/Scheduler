@@ -252,7 +252,7 @@ const EventDetailsPage = ({ params: { id } }: Props) => {
               <CardHeader>
                 <CardTitle>Archive Event</CardTitle>
                 <CardDescription>
-                  Archive this event if it's no longer needed.
+                  {"Archive this event if it's no longer needed."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
