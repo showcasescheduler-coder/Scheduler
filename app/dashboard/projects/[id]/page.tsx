@@ -66,6 +66,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import GeneratingTasksMessages from "@/app/components/GeneratingTaskSpinner";
 
 interface Props {
   params: { id: string };
@@ -589,6 +590,9 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                 </Button>
               </CardHeader>
               <CardContent>
+                {generatingTasks && (
+                  <GeneratingTasksMessages isGenerating={generatingTasks} />
+                )}
                 <Table>
                   <TableHeader>
                     <TableRow>

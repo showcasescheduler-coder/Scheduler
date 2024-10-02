@@ -38,6 +38,8 @@ export async function POST(request: Request) {
       priority: task.priority,
       duration: task.duration,
       blockId: block._id,
+      routineId,
+      isRoutineTask: true,
       // Add any other relevant fields, but exclude _id
     }));
 

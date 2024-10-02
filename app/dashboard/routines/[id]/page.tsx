@@ -184,9 +184,9 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
             {routine.tasks.length} tasks
           </Badge>
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Button variant="outline" size="sm">
+            {/* <Button variant="outline" size="sm">
               Discard
-            </Button>
+            </Button> */}
             <Button size="sm" onClick={handleSave}>
               Save Routine
             </Button>
@@ -374,7 +374,7 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
               </CardFooter>
             </Card>
           </div>
-          <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
+          {/* <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
             <Card>
               <CardHeader>
                 <CardTitle>Routine Status</CardTitle>
@@ -396,12 +396,12 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
                 </div>
               </CardContent>
             </Card>
-          </div>
+          </div> */}
         </div>
         <div className="flex items-center justify-center gap-2 md:hidden">
-          <Button variant="outline" size="sm">
+          {/* <Button variant="outline" size="sm">
             Discard
-          </Button>
+          </Button> */}
           <Button size="sm" onClick={handleSave}>
             Save Routine
           </Button>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongo";
 import Routine from "@/models/Routine";
+import Task from "@/models/Task";
 
 export async function GET(
   request: NextRequest,
@@ -77,6 +78,48 @@ export async function PUT(
     console.error("Error updating routine:", error);
     return NextResponse.json(
       { error: "Error updating routine" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  await dbConnect();
+
+  try {
+    const { id } = params;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Routine ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // First, delete all tasks associated with this routine
+    await Task.deleteMany({ routine: id });
+
+    // Then, delete the routine
+    const deletedRoutine = await Routine.findByIdAndDelete(id);
+
+    if (!deletedRoutine) {
+      return NextResponse.json({ error: "Routine not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      message: "Routine and associated tasks deleted successfully",
+      routine: deletedRoutine,
+    });
+  } catch (error) {
+    console.error("Error deleting routine:", error);
+    return NextResponse.json(
+      {
+        error: "Error deleting routine",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 }
     );
   }

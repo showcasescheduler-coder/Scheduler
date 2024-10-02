@@ -1,12 +1,19 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { File, ListFilter, MoreHorizontal, PlusCircle } from "lucide-react";
+import {
+  File,
+  ListFilter,
+  MoreHorizontal,
+  PlusCircle,
+  Calendar,
+  CheckCircle,
+} from "lucide-react";
 import Link from "next/link";
-import { Routine } from "@/app/context/models";
+import { Routine, Task } from "@/app/context/models";
 import { useAppContext } from "@/app/context/AppContext";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -26,24 +33,14 @@ import {
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@clerk/nextjs";
 
@@ -54,6 +51,7 @@ const RoutinePage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { userId } = useAuth();
+  const router = useRouter();
   const [newRoutine, setNewRoutine] = useState<NewRoutineForm>({
     _id: "",
     name: "",
@@ -113,10 +111,7 @@ const RoutinePage = () => {
       }
 
       const createdRoutine = await response.json();
-
-      // Add the new routine to the local state
       addRoutine(createdRoutine);
-
       setIsDialogOpen(false);
       setNewRoutine({
         _id: "",
@@ -125,12 +120,36 @@ const RoutinePage = () => {
         days: [],
         block: "",
       });
-
-      // Optionally, show a success message
       alert("Routine created successfully!");
     } catch (error) {
       console.error("Error creating routine:", error);
       alert("Failed to create routine. Please try again.");
+    }
+  };
+
+  const handleEdit = (routineId: string) => {
+    router.push(`/dashboard/routines/${routineId}`);
+  };
+
+  const handleDelete = async (routineId: string) => {
+    if (!confirm("Are you sure you want to delete this routine?")) return;
+
+    try {
+      const response = await fetch(`/api/routines/${routineId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete routine");
+      }
+
+      setRoutines((prevRoutines) =>
+        prevRoutines.filter((routine) => routine._id !== routineId)
+      );
+      alert("Routine deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting routine:", error);
+      alert("Failed to delete routine. Please try again.");
     }
   };
 
@@ -139,182 +158,142 @@ const RoutinePage = () => {
   }
 
   return (
-    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-      <Tabs defaultValue="all">
-        <div className="flex items-center">
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="draft">Draft</TabsTrigger>
-            <TabsTrigger value="archived" className="hidden sm:flex">
-              Archived
-            </TabsTrigger>
-          </TabsList>
-          <div className="ml-auto flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 gap-1">
-                  <ListFilter className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Filter
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Filter by</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuCheckboxItem checked>
-                  Active
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>Draft</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>Archived</DropdownMenuCheckboxItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button size="sm" variant="outline" className="h-7 gap-1">
-              <File className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Export
-              </span>
+    <main className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Routines</h1>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="h-9">
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Add Routine
             </Button>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="h-7 gap-1">
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Add Routine
-                  </span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New Routine</DialogTitle>
-                  <DialogDescription>
-                    Enter the details for the new routine.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                      Name
-                    </Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={newRoutine.name}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="description" className="text-right">
-                      Description
-                    </Label>
-                    <Input
-                      id="description"
-                      name="description"
-                      value={newRoutine.description}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">Days</Label>
-                    <div className="col-span-3 flex flex-wrap gap-2">
-                      {[
-                        "Monday",
-                        "Tuesday",
-                        "Wednesday",
-                        "Thursday",
-                        "Friday",
-                        "Saturday",
-                        "Sunday",
-                      ].map((day) => (
-                        <div key={day} className="flex items-center">
-                          <Checkbox
-                            id={day}
-                            checked={newRoutine.days.includes(day)}
-                            onCheckedChange={() => handleDayToggle(day)}
-                          />
-                          <Label htmlFor={day} className="ml-2">
-                            {day}
-                          </Label>
-                        </div>
-                      ))}
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Routine</DialogTitle>
+              <DialogDescription>
+                Enter the details for the new routine.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-right">
+                  Name
+                </Label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={newRoutine.name}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">
+                  Description
+                </Label>
+                <Input
+                  id="description"
+                  name="description"
+                  value={newRoutine.description}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Days</Label>
+                <div className="col-span-3 flex flex-wrap gap-2">
+                  {[
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday",
+                    "Saturday",
+                    "Sunday",
+                  ].map((day) => (
+                    <div key={day} className="flex items-center">
+                      <Checkbox
+                        id={day}
+                        checked={newRoutine.days.includes(day)}
+                        onCheckedChange={() => handleDayToggle(day)}
+                      />
+                      <Label htmlFor={day} className="ml-2">
+                        {day}
+                      </Label>
                     </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleAddRoutine}>Add Routine</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-        <TabsContent value="all">
-          <Card>
-            <CardHeader>
-              <CardTitle>Routines</CardTitle>
-              <CardDescription>
-                Manage your routines and view their details.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="hidden md:table-cell">Days</TableHead>
-                    <TableHead>
-                      <span className="sr-only">Actions</span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {routines.map((routine) => (
-                    <TableRow key={routine._id}>
-                      <TableCell className="font-medium">
-                        <Link href={`/dashboard/routines/${routine._id}`}>
-                          {routine.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{routine.description}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {routine.days.join(", ")}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              aria-haspopup="true"
-                              size="icon"
-                              variant="ghost"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Toggle menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem>Delete</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleAddRoutine}>Add Routine</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {routines.map((routine) => (
+          <Card key={routine._id} className="flex flex-col">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle>{routine.name}</CardTitle>
+                  <CardDescription>{routine.description}</CardDescription>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => handleEdit(routine._id)}>
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDelete(routine._id)}>
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-grow">
+              <div className="flex items-center mb-4">
+                <Calendar className="h-4 w-4 mr-2" />
+                <span className="text-sm text-gray-600">
+                  {routine.days.join(", ")}
+                </span>
+              </div>
+              {routine.tasks && routine.tasks.length > 0 ? (
+                <div>
+                  <h4 className="font-semibold mb-2">Tasks:</h4>
+                  <ul className="space-y-2">
+                    {routine.tasks.map((task: Task) => (
+                      <li key={task._id} className="flex items-center">
+                        <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                        <span>{task.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No tasks added yet.</p>
+              )}
             </CardContent>
             <CardFooter>
-              <div className="text-xs text-muted-foreground">
-                Showing <strong>1-{routines.length}</strong> of{" "}
-                <strong>{routines.length}</strong> routines
-              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => handleEdit(routine._id)}
+              >
+                View Details
+              </Button>
             </CardFooter>
           </Card>
-        </TabsContent>
-      </Tabs>
+        ))}
+      </div>
     </main>
   );
 };

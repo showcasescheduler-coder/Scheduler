@@ -52,9 +52,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 const Projects = () => {
   const { projects, setProjects, addProject } = useAppContext();
+  const router = useRouter();
   const { userId } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newProject, setNewProject] = useState({
@@ -128,6 +130,8 @@ const Projects = () => {
   const handleDeleteProject = async (projectId: string) => {
     if (!confirm("Are you sure you want to delete this project?")) return;
 
+    console.log("Deleting project with id:", projectId);
+
     try {
       const response = await fetch(`/api/projects/${projectId}`, {
         method: "DELETE",
@@ -156,6 +160,25 @@ const Projects = () => {
     }
   };
 
+  const handleEdit = (projectId: string) => {
+    router.push(`/dashboard/projects/${projectId}`);
+  };
+
+  const EmptyProjectsDisplay = () => (
+    <div className="flex flex-col items-center justify-center h-[60vh]">
+      <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
+        <h3 className="text-lg font-semibold mb-2">No Projects Yet</h3>
+        <p className="text-gray-500 mb-4">
+          Get started by creating your first project!
+        </p>
+        <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
+          <PlusCircle className="h-4 w-4" />
+          Add Your First Project
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <main className="p-4 sm:px-6 sm:py-0">
       <Tabs defaultValue="all" className="mb-4">
@@ -163,13 +186,9 @@ const Projects = () => {
           <TabsList>
             <TabsTrigger value="all">Active</TabsTrigger>
             <TabsTrigger value="active">Completed</TabsTrigger>
-            {/* <TabsTrigger value="draft">Draft</TabsTrigger>
-            <TabsTrigger value="archived" className="hidden sm:flex">
-              Archived
-            </TabsTrigger> */}
           </TabsList>
           <div className="flex items-center gap-2">
-            <DropdownMenu>
+            {/* <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 gap-1">
                   <ListFilter className="h-3.5 w-3.5" />
@@ -187,13 +206,13 @@ const Projects = () => {
                 <DropdownMenuCheckboxItem>Draft</DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem>Archived</DropdownMenuCheckboxItem>
               </DropdownMenuContent>
-            </DropdownMenu>
-            <Button size="sm" variant="outline" className="h-8 gap-1">
+            </DropdownMenu> */}
+            {/* <Button size="sm" variant="outline" className="h-8 gap-1">
               <File className="h-3.5 w-3.5" />
               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Export
               </span>
-            </Button>
+            </Button> */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" className="h-8 gap-1">
@@ -288,61 +307,69 @@ const Projects = () => {
           </div>
         </div>
         <TabsContent value="all">
-          <div className="grid gap-4 md:grid-cols-2">
-            {projects.map((project) => (
-              <Card key={project._id} className="flex flex-col">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>{project.name}</CardTitle>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDeleteProject(project._id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <CardDescription
-                    className="line-clamp-2 text-sm text-muted-foreground"
-                    title={project.description} // This will show the full description on hover
-                  >
-                    {project.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>
-                      {project.deadline &&
-                      !isNaN(new Date(project.deadline).getTime())
-                        ? format(new Date(project.deadline), "MMMM d, yyyy")
-                        : "No deadline set"}
-                    </span>
-                  </div>
-                  <Badge className={getPriorityColor(project.priority)}>
-                    {project.priority}
-                  </Badge>
-                </CardContent>
-                <CardFooter className="mt-auto">
-                  <Link
-                    href={`/dashboard/projects/${project._id}`}
-                    className="text-sm text-blue-600 hover:underline"
-                  >
-                    View Details
-                  </Link>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
+          {projects.length === 0 ? (
+            <EmptyProjectsDisplay />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {projects.map((project) => (
+                <Card key={project._id} className="flex flex-col">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>{project.name}</CardTitle>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            onClick={() => handleEdit(project._id)}
+                          >
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteProject(project._id)}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <CardDescription
+                      className="line-clamp-2 text-sm text-muted-foreground"
+                      title={project.description}
+                    >
+                      {project.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="h-4 w-4" />
+                      <span>
+                        {project.deadline &&
+                        !isNaN(new Date(project.deadline).getTime())
+                          ? format(new Date(project.deadline), "MMMM d, yyyy")
+                          : "No deadline set"}
+                      </span>
+                    </div>
+                    <Badge className={getPriorityColor(project.priority)}>
+                      {project.priority}
+                    </Badge>
+                  </CardContent>
+                  <CardFooter className="mt-auto">
+                    <Link
+                      href={`/dashboard/projects/${project._id}`}
+                      className="text-sm text-blue-600 hover:underline"
+                    >
+                      View Details
+                    </Link>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </main>

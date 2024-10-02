@@ -205,7 +205,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setBlocks((prev) => [...prev, block]);
     setDay((prevDay) => ({
       ...prevDay,
-      blocks: [...prevDay.blocks, block._id],
+      blocks: [...prevDay.blocks, block],
     }));
   };
 
@@ -221,7 +221,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setBlocks((prev) => prev.filter((block) => block._id !== id));
     setDay((prevDay) => ({
       ...prevDay,
-      blocks: prevDay.blocks.filter((blockId) => blockId !== id),
+      blocks: prevDay.blocks.filter((block) => block._id !== id),
     }));
   };
 

@@ -128,6 +128,20 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   });
   const { userId } = useAuth();
 
+  // const fetchTasks = async () => {
+  //   try {
+  //     const res = await fetch(`/api/get-tasks-for-modal?userId=${userId}`);
+  //     if (!res.ok) {
+  //       throw new Error("Failed to fetch tasks");
+  //     }
+  //     const data = await res.json();
+  //     console.log("tasks", data);
+  //     setTasks(data);
+  //   } catch (error) {
+  //     console.error("Error fetching tasks:", error);
+  //   }
+  // };
+
   const fetchTasks = async () => {
     try {
       const res = await fetch(`/api/tasks?userId=${userId}`);
@@ -167,7 +181,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       console.log("fetching projects");
       fetchProjects();
     }
-  }, [activeTab]);
+  }, [activeTab, isOpen]); // Add isOpen to the dependency array
 
   const addTaskToBlock = async (taskId: string) => {
     try {
@@ -329,46 +343,38 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           <TabsContent value="existingTask">
             <ScrollArea className="h-72 w-full rounded-md border">
               <div className="p-4 space-y-4">
-                {tasks.map((task) => (
-                  <Card
-                    key={task._id}
-                    className={task.block ? "opacity-50" : ""}
-                  >
-                    <CardContent className="p-3 flex items-center justify-between">
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-medium">{task.name}</h4>
-                        <p className="text-xs text-muted-foreground">
-                          {task.description}
-                        </p>
-                        <div className="flex items-center space-x-2">
-                          {/* <Badge
-                            variant={
-                              task.priority.toLowerCase() as
-                                | "default"
-                                | "secondary"
-                                | "destructive"
-                            }
-                          >
-                            {task.priority}
-                          </Badge> */}
-                          {task.block && (
-                            <Badge variant="outline">Assigned</Badge>
-                          )}
+                {tasks
+                  .filter((task) => task.completed === false) // Only include tasks where completed is false
+                  .map((task) => (
+                    <Card
+                      key={task._id}
+                      className={task.block ? "opacity-50" : ""}
+                    >
+                      <CardContent className="p-3 flex items-center justify-between">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-medium">{task.name}</h4>
+                          <p className="text-xs text-muted-foreground">
+                            {task.description}
+                          </p>
+                          <div className="flex items-center space-x-2">
+                            {task.block && (
+                              <Badge variant="outline">Assigned</Badge>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="shrink-0"
-                        onClick={() => addTaskToBlock(task._id)}
-                        disabled={!!task.block}
-                      >
-                        <PlusCircle className="h-4 w-4 mr-1" />
-                        {task.block ? "Assigned" : "Add"}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0"
+                          onClick={() => addTaskToBlock(task._id)}
+                          disabled={!!task.block}
+                        >
+                          <PlusCircle className="h-4 w-4 mr-1" />
+                          {task.block ? "Assigned" : "Add"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
               </div>
             </ScrollArea>
             {/* <ScrollArea className="h-[300px] w-full rounded-md border">
@@ -425,7 +431,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 <div className="p-4 space-y-4">
                   {projects
                     .find((p) => p._id === selectedProject)
-                    ?.tasks.map((task) => (
+                    ?.tasks.filter((task) => task.completed === false) // Only include tasks where completed is false
+                    .map((task) => (
                       <Card
                         key={task._id}
                         className={task.block ? "opacity-50" : ""}
@@ -439,7 +446,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                             <div className="flex items-center space-x-2">
                               <Badge
                                 variant={
-                                  task.priority.toLowerCase() as
+                                  task.priority?.toLowerCase() as
                                     | "default"
                                     | "secondary"
                                     | "destructive"

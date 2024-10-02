@@ -78,7 +78,13 @@ export async function DELETE(
     // Delete the task
     await Task.findByIdAndDelete(id);
 
-    return NextResponse.json({ message: "Task deleted successfully" });
+    // Find the updated block to return its new state
+    const updatedBlock = task.block ? await Block.findById(task.block) : null;
+
+    return NextResponse.json({
+      message: "Task deleted successfully",
+      updatedBlock,
+    });
   } catch (error) {
     console.error("Error deleting task:", error);
     return NextResponse.json({ error: "Error deleting task" }, { status: 500 });

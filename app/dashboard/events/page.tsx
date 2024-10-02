@@ -43,11 +43,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAppContext } from "@/app/context/AppContext";
+import { useRouter } from "next/navigation";
 
 const EventsPage = () => {
   const { events, addEvent, userData, setEvents } = useAppContext();
   const { userId } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const router = useRouter();
   const [newEvent, setNewEvent] = useState({
     name: "",
     description: "",
@@ -130,6 +132,34 @@ const EventsPage = () => {
     }
   };
 
+  const handleEdit = (taskId: string) => {
+    router.push(`/dashboard/events/${taskId}`);
+  };
+
+  const handleDelete = async (eventId: string) => {
+    if (!confirm("Are you sure you want to delete this event?")) return;
+
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete event");
+      }
+
+      // Remove the deleted event from the local state
+      setEvents((prevEvents) =>
+        prevEvents.filter((event) => event._id !== eventId)
+      );
+
+      alert("Event deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      alert("Failed to delete event. Please try again.");
+    }
+  };
+
   if (isLoading) {
     return <div>Loading events...</div>; // Or use a more sophisticated loading component
   }
@@ -147,7 +177,7 @@ const EventsPage = () => {
             </TabsTrigger> */}
           </TabsList>
           <div className="ml-auto flex items-center gap-2">
-            <DropdownMenu>
+            {/* <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 gap-1">
                   <ListFilter className="h-3.5 w-3.5" />
@@ -172,7 +202,7 @@ const EventsPage = () => {
               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Export
               </span>
-            </Button>
+            </Button> */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" className="h-7 gap-1">
@@ -319,8 +349,16 @@ const EventsPage = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem>Delete</DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(event._id)}
+                            >
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(event._id)}
+                            >
+                              Delete
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

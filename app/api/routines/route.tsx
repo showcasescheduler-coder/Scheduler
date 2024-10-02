@@ -10,14 +10,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log("Received routine data:", body);
 
-    // Extract only the fields we need for creating a new routine
-    const { name, description, days, block } = body;
+    const { name, description, days, block, userId } = body;
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "User ID is required" },
+        { status: 400 }
+      );
+    }
 
     const newRoutine = new Routine({
       name,
       description,
       days,
       block,
+      userId,
     });
 
     await newRoutine.save();

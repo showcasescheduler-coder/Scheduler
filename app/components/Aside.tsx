@@ -1,16 +1,12 @@
+"use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Home,
-  LineChart,
-  Package,
   Package2,
-  Settings,
-  ShoppingCart,
-  Users2,
   ListTodo,
   FolderKanban,
   CalendarClock,
-  NotebookTabs,
   CalendarDays,
 } from "lucide-react";
 import {
@@ -20,6 +16,26 @@ import {
 } from "@/components/ui/tooltip";
 
 const Aside = () => {
+  const pathname = usePathname();
+
+  const isLinkActive = (href: string) => {
+    if (href === "/dashboard") {
+      return pathname === "/dashboard";
+    }
+    return pathname.startsWith(href);
+  };
+
+  const getLinkClassName = (href: string) => {
+    const baseClasses =
+      "flex h-9 w-9 items-center justify-center rounded-lg transition-colors md:h-8 md:w-8";
+    const activeClasses = "bg-accent text-accent-foreground";
+    const inactiveClasses = "text-muted-foreground hover:text-foreground";
+
+    return `${baseClasses} ${
+      isLinkActive(href) ? activeClasses : inactiveClasses
+    }`;
+  };
+
   return (
     <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
       <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
@@ -32,10 +48,7 @@ const Aside = () => {
         </Link>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Link
-              href="/dashboard"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
-            >
+            <Link href="/dashboard" className={getLinkClassName("/dashboard")}>
               <Home className="h-5 w-5" />
               <span className="sr-only">Dashboard</span>
             </Link>
@@ -46,7 +59,7 @@ const Aside = () => {
           <TooltipTrigger asChild>
             <Link
               href="/dashboard/projects"
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+              className={getLinkClassName("/dashboard/projects")}
             >
               <FolderKanban className="h-5 w-5" />
               <span className="sr-only">Projects</span>
@@ -58,7 +71,7 @@ const Aside = () => {
           <TooltipTrigger asChild>
             <Link
               href="/dashboard/tasks"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+              className={getLinkClassName("/dashboard/tasks")}
             >
               <ListTodo className="h-5 w-5" />
               <span className="sr-only">Tasks</span>
@@ -70,7 +83,7 @@ const Aside = () => {
           <TooltipTrigger asChild>
             <Link
               href="/dashboard/events"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+              className={getLinkClassName("/dashboard/events")}
             >
               <CalendarDays className="h-5 w-5" />
               <span className="sr-only">Events</span>
@@ -82,7 +95,7 @@ const Aside = () => {
           <TooltipTrigger asChild>
             <Link
               href="/dashboard/routines"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+              className={getLinkClassName("/dashboard/routines")}
             >
               <CalendarClock className="h-5 w-5" />
               <span className="sr-only">Routines</span>
@@ -90,68 +103,6 @@ const Aside = () => {
           </TooltipTrigger>
           <TooltipContent side="right">Routines</TooltipContent>
         </Tooltip>
-        {/* <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="/dashboard/analytics"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
-            >
-              <LineChart className="h-5 w-5" />
-              <span className="sr-only">Analytics</span>
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent side="right">Analytics</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="/dashboard/test"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
-            >
-              <LineChart className="h-5 w-5" />
-              <span className="sr-only">Analytics</span>
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent side="right">Analytics</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="/dashboard/testDash"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
-            >
-              <LineChart className="h-5 w-5" />
-              <span className="sr-only">Analytics</span>
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent side="right">Analytics</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="/dashboard/fulldashboard"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
-            >
-              <LineChart className="h-5 w-5" />
-              <span className="sr-only">Full Dashboard</span>
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent side="right">Full Dashboard</TooltipContent>
-        </Tooltip>
-      </nav>
-      <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="#"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
-            >
-              <Settings className="h-5 w-5" />
-              <span className="sr-only">Settings</span>
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent side="right">Settings</TooltipContent>
-        </Tooltip> */}
       </nav>
     </aside>
   );

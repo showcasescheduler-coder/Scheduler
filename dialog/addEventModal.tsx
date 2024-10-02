@@ -25,6 +25,7 @@ import { Event } from "@/app/context/models";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
 import { useAuth } from "@clerk/nextjs";
+import { Day, Block } from "@/app/context/models";
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -53,7 +54,9 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch(`/api/events?userId=${userId}`);
+      const res = await fetch(
+        `/api/get-events-for-modal?userId=${userId}&date=${day.date}`
+      );
       if (!res.ok) {
         throw new Error("Failed to fetch events");
       }
@@ -66,10 +69,10 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   };
 
   useEffect(() => {
-    if (activeTab === "existingEvent") {
+    if (activeTab === "existingEvent" && day.date) {
       fetchEvents();
     }
-  }, [activeTab]);
+  }, [activeTab, day.date]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -83,10 +86,17 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   };
 
   const handleNewEventSubmit = async () => {
+    if (!userId) {
+      console.error("User ID is not available");
+      return;
+    }
+
     const newEventObj = {
       ...newEvent,
       date: day.date,
+      userId, // Include the userId in the request
     };
+
     try {
       const response = await fetch("/api/events/with-block", {
         method: "POST",
@@ -98,9 +108,11 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
           dayId: day._id,
         }),
       });
+
       if (!response.ok) {
         throw new Error("Failed to create event with block");
       }
+
       const data = await response.json();
       console.log("New event and block created:", data);
 
@@ -131,29 +143,48 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   };
 
   const addEventToBlock = async (eventId: string) => {
+    if (!day._id) {
+      console.error("Day ID is not available");
+      return;
+    }
+
+    console.log("Creating block for event:", eventId);
+
     try {
-      const res = await fetch(`/api/blocks/${blockId}`, {
+      const res = await fetch(`/api/add-event-to-block`, {
         method: "POST",
-        body: JSON.stringify({ eventId: eventId }),
+        body: JSON.stringify({
+          eventId: eventId,
+          dayId: day._id,
+          date: day.date,
+        }),
         headers: {
           "Content-Type": "application/json",
         },
       });
       if (!res.ok) {
-        throw new Error("Failed to add event to block");
+        throw new Error("Failed to create block for event");
       }
       const data = await res.json();
-      console.log("event added to block", data);
+      console.log("Block created for event:", data);
 
+      // Update the events state
       setEvents((prevEvents: Event[]) =>
         prevEvents.map((event) =>
-          event._id === eventId ? { ...event, block: blockId } : event
+          event._id === eventId ? { ...event, block: data.block._id } : event
         )
       );
 
+      // Update the day data in the context
+      setDay((prevDay: Day) => ({
+        ...prevDay,
+        blocks: [...prevDay.blocks, data.block],
+      }));
+
       updateDay();
+      onClose(); // Close the modal after adding the event
     } catch (error) {
-      console.error("Error adding event to block:", error);
+      console.error("Error creating block for event:", error);
     }
   };
 
@@ -224,44 +255,57 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+              <Button variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button onClick={handleNewEventSubmit}>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Add Event
+              </Button>
             </div>
           </TabsContent>
           <TabsContent value="existingEvent">
             <ScrollArea className="h-72 w-full rounded-md border">
               <div className="p-4 space-y-4">
-                {events.map((event) => (
-                  <Card
-                    key={event._id}
-                    className={event.block ? "opacity-50" : ""}
-                  >
-                    <CardContent className="p-3 flex items-center justify-between">
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-medium">{event.name}</h4>
-                        <p className="text-xs text-muted-foreground">
-                          {event.description}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {event.startTime} - {event.endTime}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="shrink-0"
-                        onClick={() => addEventToBlock(event._id)}
-                        disabled={!!event.block}
-                      >
-                        <PlusCircle className="h-4 w-4 mr-1" />
-                        {event.block ? "Assigned" : "Add"}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
+                {events.length > 0 ? (
+                  events.map((event) => (
+                    <Card
+                      key={event._id}
+                      className={event.block ? "opacity-50" : ""}
+                    >
+                      <CardContent className="p-3 flex items-center justify-between">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-medium">{event.name}</h4>
+                          <p className="text-xs text-muted-foreground">
+                            {event.description}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {event.startTime} - {event.endTime}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0"
+                          onClick={() => addEventToBlock(event._id)}
+                          disabled={!!event.block}
+                        >
+                          <PlusCircle className="h-4 w-4 mr-1" />
+                          {event.block ? "Assigned" : "Add"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <p className="text-center text-muted-foreground">
+                    No events found for this date.
+                  </p>
+                )}
               </div>
             </ScrollArea>
           </TabsContent>
         </Tabs>
-        <DialogFooter>
+        {/* <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
@@ -269,7 +313,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
             <CheckCircle className="mr-2 h-4 w-4" />
             Add Event
           </Button>
-        </DialogFooter>
+        </DialogFooter> */}
       </DialogContent>
     </Dialog>
   );

@@ -132,13 +132,13 @@ const EventDetailsPage = ({ params: { id } }: Props) => {
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             Event Details
           </h1>
-          <Badge variant="outline" className="ml-auto sm:ml-0">
+          {/* <Badge variant="outline" className="ml-auto sm:ml-0">
             {status}
-          </Badge>
+          </Badge> */}
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Button variant="outline" size="sm">
+            {/* <Button variant="outline" size="sm">
               Discard
-            </Button>
+            </Button> */}
             <Button size="sm" onClick={handleSave}>
               Save Event
             </Button>
@@ -225,7 +225,7 @@ const EventDetailsPage = ({ params: { id } }: Props) => {
               </CardContent>
             </Card>
           </div>
-          <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
+          {/* <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
             <Card>
               <CardHeader>
                 <CardTitle>Event Status</CardTitle>
@@ -265,12 +265,12 @@ const EventDetailsPage = ({ params: { id } }: Props) => {
                 </Button>
               </CardContent>
             </Card>
-          </div>
+          </div> */}
         </div>
         <div className="flex items-center justify-center gap-2 md:hidden">
-          <Button variant="outline" size="sm">
+          {/* <Button variant="outline" size="sm">
             Discard
-          </Button>
+          </Button> */}
           <Button size="sm" onClick={handleSave}>
             Save Event
           </Button>

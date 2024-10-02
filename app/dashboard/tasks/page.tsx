@@ -53,9 +53,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { set } from "mongoose";
 import { useAuth } from "@clerk/nextjs";
 type NewTaskForm = Omit<Task, "id" | "status">;
+import { useRouter } from "next/navigation";
 
 const Page = () => {
   const { userId } = useAuth();
+  const router = useRouter();
   const { tasks, addTask, setTasks } = useAppContext();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newTask, setNewTask] = useState<Task>({
@@ -151,6 +153,52 @@ const Page = () => {
     }
   };
 
+  const handleDelete = async (taskId: string) => {
+    if (!userId) return;
+    try {
+      const response = await fetch(
+        `/api/tasks/stand-alone-tasks?id=${taskId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete task");
+      }
+
+      const deletedTask = await response.json();
+
+      // Remove the deleted task from the local state
+      setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
+
+      setIsDialogOpen(false); // Close the dialog after deleting
+      setNewTask({
+        _id: "",
+        name: "",
+        description: "",
+        priority: "Medium",
+        duration: 5,
+        deadline: "",
+        completed: false,
+        block: null,
+        routine: null,
+        isRoutineTask: false,
+        project: null,
+        projectId: null,
+      });
+
+      alert("Task deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      alert("Failed to delete task. Please try again.");
+    }
+  };
+
+  const handleEdit = (taskId: string) => {
+    router.push(`/dashboard/tasks/${taskId}`);
+  };
+
   const standaloneTasks = useMemo(() => {
     return tasks.filter(
       (task) =>
@@ -183,7 +231,7 @@ const Page = () => {
             </TabsTrigger> */}
           </TabsList>
           <div className="ml-auto flex items-center gap-2">
-            <DropdownMenu>
+            {/* <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 gap-1">
                   <ListFilter className="h-3.5 w-3.5" />
@@ -207,7 +255,7 @@ const Page = () => {
               <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Export
               </span>
-            </Button>
+            </Button> */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" className="h-7 gap-1">
@@ -361,8 +409,16 @@ const Page = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem>Delete</DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(task._id)}
+                            >
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(task._id)}
+                            >
+                              Delete
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

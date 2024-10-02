@@ -68,7 +68,7 @@ export interface Block {
   startTime: string;
   endTime: string;
   tasks: Task[];
-  event: Event[];
+  event?: string; // Change this to a string (event ID) instead of Event[]
 }
 
 export interface Day {
@@ -76,7 +76,7 @@ export interface Day {
   date: string;
   completed: boolean;
   completedTasksCount: number;
-  blocks: (Block | string)[];
+  blocks: Block[]; // Remove the
 }
 
 export interface User {

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongo";
 import Task from "@/models/Task";
 import Block from "@/models/Block";
+import Day from "@/models/Day";
 
 export async function POST(
   request: NextRequest,
@@ -100,14 +101,13 @@ export async function DELETE(
   try {
     const blockId = params.id;
 
-    // First, check if the block exists and has no tasks
-    const block = await Block.findById(blockId);
+    // Find the block and populate its tasks
+    const block = await Block.findById(blockId).populate("tasks");
     if (!block) {
       return NextResponse.json({ message: "Block not found" }, { status: 404 });
     }
 
-    console.log("Is this a block", block);
-
+    // Check if the block truly has no tasks
     if (block.tasks && block.tasks.length > 0) {
       return NextResponse.json(
         { message: "Cannot delete block with tasks. Remove all tasks first." },
@@ -122,9 +122,9 @@ export async function DELETE(
       return NextResponse.json({ message: "Block not found" }, { status: 404 });
     }
 
-    // Optionally, you might want to update any references to this block in other collections
+    // Optionally, update any references to this block in other collections
     // For example, remove this block from the day's blocks array
-    // await Day.updateMany({ blocks: blockId }, { $pull: { blocks: blockId } });
+    await Day.updateMany({ blocks: blockId }, { $pull: { blocks: blockId } });
 
     return NextResponse.json(
       { message: "Block deleted successfully" },

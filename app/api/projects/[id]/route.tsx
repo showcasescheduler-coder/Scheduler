@@ -8,13 +8,15 @@ export async function PUT(
 ) {
   await dbConnect();
 
-  const { id } = params;
-  const body = await request.json();
-
   try {
-    const updatedProject = await Project.findByIdAndUpdate(id, body, {
-      new: true,
-    });
+    const { id } = params;
+    const body = await request.json();
+
+    const updatedProject = await Project.findByIdAndUpdate(
+      id,
+      { $set: body },
+      { new: true, runValidators: true }
+    );
 
     if (!updatedProject) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
@@ -22,6 +24,7 @@ export async function PUT(
 
     return NextResponse.json(updatedProject);
   } catch (error) {
+    console.error("Error updating project:", error);
     return NextResponse.json(
       { error: "Error updating project" },
       { status: 500 }
@@ -31,13 +34,15 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: { id: string } }
 ) {
   await dbConnect();
-  const { projectId } = params;
+  const { id } = params;
+
+  console.log("Deleting project with id:", id);
 
   try {
-    const deletedProject = await Project.findByIdAndDelete(projectId);
+    const deletedProject = await Project.findByIdAndDelete(id);
     if (!deletedProject) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }

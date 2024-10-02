@@ -9,8 +9,23 @@ export async function POST(request: Request) {
     await dbConnect();
 
     const body = await request.json();
-    const { name, description, date, startTime, endTime, dayId, priority } =
-      body;
+    const {
+      name,
+      description,
+      date,
+      startTime,
+      endTime,
+      dayId,
+      priority,
+      userId,
+    } = body;
+
+    if (!userId) {
+      return NextResponse.json(
+        { success: false, error: "User ID is required" },
+        { status: 400 }
+      );
+    }
 
     // Create the block
     const block = new Block({
@@ -19,6 +34,7 @@ export async function POST(request: Request) {
       startTime,
       endTime,
       status: "pending",
+      userId, // Add userId to the block
     });
     await block.save();
 
@@ -34,6 +50,7 @@ export async function POST(request: Request) {
       endTime,
       block: block._id,
       priority,
+      userId, // Add userId to the event
     });
     await event.save();
 

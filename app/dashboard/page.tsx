@@ -88,6 +88,8 @@ import {
 import { InfoIcon } from "lucide-react";
 import { useUserAndDay } from "@/hooks/useUserAndDay";
 import { useAuth } from "@clerk/nextjs";
+import LoadingMessages from "@/app/components/MessgageSpinner"; // Add this import
+
 interface TimeBlock {
   description: string;
   startTime: string;
@@ -142,7 +144,8 @@ const DashboardPage = () => {
     startTime: "",
     endTime: "",
   });
-  const [updatingTasks, setUpdatingTasks] = useState<Set<string>>(new Set());
+  const [updatingTasks, setUpdatingTasks] = useState(false);
+  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [editingBlock, setEditingBlock] = useState<Block | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [performanceRating, setPerformanceRating] =
@@ -337,6 +340,8 @@ const DashboardPage = () => {
   const handleTaskCompletion = useCallback(
     debounce(async (taskId: string, completed: boolean) => {
       if (!day) return;
+      setUpdatingTasks(true);
+      setUpdatingTaskId(taskId);
 
       try {
         let completedTaskCount = calculateCompletedTasksCount(day.blocks);
@@ -390,6 +395,7 @@ const DashboardPage = () => {
 
           newPerformanceRating = await ratingResponse.json();
         }
+        console.log("newPerformanceRating", newPerformanceRating);
 
         // Update the day with the new performance rating
         const updateResponse = await fetch(`/api/days/${day._id}`, {
@@ -429,11 +435,8 @@ const DashboardPage = () => {
       } catch (error) {
         console.error("Error updating task completion status:", error);
       } finally {
-        setUpdatingTasks((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(taskId);
-          return newSet;
-        });
+        setUpdatingTasks(false);
+        setUpdatingTaskId(null);
       }
     }, 500),
     [day, calculateCompletedTasksCount, mutate]
@@ -565,7 +568,7 @@ Use the toolbar to access these sections and input your information.`);
 
   const handleAddBlock = async () => {
     try {
-      const response = await fetch("/api/blocks", {
+      const response = await fetch("/api/add-block-to-schedule", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -575,6 +578,7 @@ Use the toolbar to access these sections and input your information.`);
           name: newBlock.name,
           startTime: newBlock.startTime,
           endTime: newBlock.endTime,
+          userId: userId, // Assuming you have access to userId
         }),
       });
 
@@ -582,20 +586,21 @@ Use the toolbar to access these sections and input your information.`);
         throw new Error("Failed to add block");
       }
 
-      const addedBlock: Block = await response.json();
+      const data = await response.json();
+      console.log("New block created:", data);
 
-      // Update the day data using SWR's mutate function
-      mutate(
-        (currentDay: Day) => ({
-          ...currentDay,
-          blocks: [...currentDay.blocks, addedBlock],
-        }),
-        false
-      );
+      // Update the day data in the context
+      setDay((prevDay) => ({
+        ...prevDay,
+        blocks: [...prevDay.blocks, data.block],
+      }));
 
       // Close the dialog and reset the form
       setIsDialogOpen(false);
       setNewBlock({ name: "", startTime: "", endTime: "" });
+
+      // Update the day view
+      updateDay();
     } catch (error) {
       console.error("Error adding block:", error);
       // Handle error (e.g., show an error message to the user)
@@ -697,10 +702,10 @@ Use the toolbar to access these sections and input your information.`);
     (block: Block) => block.status === "pending"
   );
 
-  const onTaskCheckChange = (taskId: string, completed: boolean) => {
-    setUpdatingTasks((prev) => new Set(prev).add(taskId));
-    handleTaskCompletion(taskId, completed);
-  };
+  // const onTaskCheckChange = (taskId: string, completed: boolean) => {
+  //   setUpdatingTasks((prev) => new Set(prev).add(taskId));
+  //   handleTaskCompletion(taskId, completed);
+  // };
 
   const handleSaveTask = async (updatedTask: Task) => {
     try {
@@ -928,15 +933,20 @@ Use the toolbar to access these sections and input your information.`);
 
         const { updatedBlock, updatedTask } = await response.json();
 
-        mutate(
-          (currentDay: Day) => ({
-            ...currentDay,
-            blocks: currentDay.blocks.map((b) => {
-              if (typeof b === "string" || b._id !== block._id) return b;
-              return updatedBlock;
-            }),
+        // Update the day using setDay
+        setDay((currentDay: Day) => ({
+          ...currentDay,
+          blocks: currentDay.blocks.map((b) => {
+            if (typeof b === "string" || b._id !== block._id) return b;
+            return updatedBlock;
           }),
-          false
+        }));
+
+        // Update the tasks in the global context
+        setTasks((currentTasks) =>
+          currentTasks.map((t) =>
+            t._id === task._id ? { ...t, block: null } : t
+          )
         );
 
         alert(
@@ -948,6 +958,98 @@ Use the toolbar to access these sections and input your information.`);
       }
     }
   };
+
+  // const handleRemoveTaskFromBlock = async (task: Task, block: Block) => {
+  //   if (
+  //     window.confirm(
+  //       "Are you sure you want to remove this task from the block? It will still be available in your task list."
+  //     )
+  //   ) {
+  //     try {
+  //       const response = await fetch(`/api/blocks/${block._id}`, {
+  //         method: "PATCH",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify({
+  //           action: "removeTask",
+  //           taskId: task._id,
+  //         }),
+  //       });
+
+  //       if (!response.ok) {
+  //         throw new Error("Failed to remove task from block");
+  //       }
+
+  //       const { updatedBlock, updatedTask } = await response.json();
+
+  //       // Update the day data in the context using setDay
+  //       setDay((prevDay) => {
+  //         const updatedBlocks = prevDay.blocks.map((b) => {
+  //           if (typeof b === "string" || b._id !== block._id) return b;
+  //           return updatedBlock;
+  //         });
+
+  //         return {
+  //           ...prevDay,
+  //           blocks: updatedBlocks,
+  //         };
+  //       });
+
+  //       alert(
+  //         "Task removed from this block. You can find it in your task list."
+  //       );
+  //     } catch (error) {
+  //       console.error("Error removing task from block:", error);
+  //       alert("Failed to remove task from block. Please try again.");
+  //     }
+  //   }
+  // };
+
+  // const handleRemoveTaskFromBlock = async (task: Task, block: Block) => {
+  //   if (
+  //     window.confirm(
+  //       "Are you sure you want to remove this task from the block? It will still be available in your task list."
+  //     )
+  //   ) {
+  //     try {
+  //       const response = await fetch(`/api/blocks/${block._id}`, {
+  //         method: "PATCH",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify({
+  //           action: "removeTask",
+  //           taskId: task._id,
+  //         }),
+  //       });
+
+  //       if (!response.ok) {
+  //         throw new Error("Failed to remove task from block");
+  //       }
+
+  //       const { updatedBlock, updatedTask } = await response.json();
+
+  //       mutate(
+  //         (currentDay: Day) => ({
+  //           ...currentDay,
+  //           blocks: currentDay.blocks.map((b) => {
+  //             if (typeof b === "string" || b._id !== block._id) return b;
+  //             return updatedBlock;
+  //           }),
+  //         }),
+  //         false
+  //       );
+
+  //       alert(
+  //         "Task removed from this block. You can find it in your task list."
+  //       );
+  //     } catch (error) {
+  //       console.error("Error removing task from block:", error);
+  //       alert("Failed to remove task from block. Please try again.");
+  //     }
+  //   }
+  // };
 
   const handleDeleteTask = async (task: Task, block: Block) => {
     if (
@@ -966,15 +1068,19 @@ Use the toolbar to access these sections and input your information.`);
           throw new Error("Failed to delete task");
         }
 
+        const data = await response.json();
+
         mutate(
           (currentDay: Day) => ({
             ...currentDay,
             blocks: currentDay.blocks.map((b) => {
               if (typeof b === "string" || b._id !== block._id) return b;
-              return {
-                ...b,
-                tasks: b.tasks.filter((t) => t._id !== task._id),
-              };
+              return (
+                data.updatedBlock || {
+                  ...b,
+                  tasks: b.tasks.filter((t) => t._id !== task._id),
+                }
+              );
             }),
           }),
           false
@@ -992,6 +1098,47 @@ Use the toolbar to access these sections and input your information.`);
     score: number;
     comment: string;
   }
+
+  const handleRemoveBlockFromSchedule = async (blockId: string) => {
+    if (
+      window.confirm(
+        "Are you sure you want to remove this event from your schedule?"
+      )
+    ) {
+      try {
+        const response = await fetch(`/api/remove-block-from-schedule`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ blockId, dayId: day._id }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to remove block from schedule");
+        }
+
+        const data = await response.json();
+
+        // Update the local state
+        mutate(
+          (currentDay: Day) => ({
+            ...currentDay,
+            blocks: currentDay.blocks.filter((b) => {
+              if (typeof b === "string") return b !== blockId;
+              return b._id !== blockId;
+            }),
+          }),
+          false
+        );
+
+        alert("Event removed from schedule successfully");
+      } catch (error) {
+        console.error("Error removing block from schedule:", error);
+        alert("Failed to remove event from schedule. Please try again.");
+      }
+    }
+  };
 
   const handleReactivateBlock = async (blockId: string) => {
     try {
@@ -1060,7 +1207,11 @@ Use the toolbar to access these sections and input your information.`);
           </CardHeader>
           <CardContent>
             <div className="text-xs text-muted-foreground">
-              {Math.round((completedTasks / totalTasks) * 100)}% completion rate
+              {totalTasks > 0
+                ? `${Math.round(
+                    (completedTasks / totalTasks) * 100
+                  )}% completion rate`
+                : "0% completion rate"}
             </div>
           </CardContent>
           <CardFooter>
@@ -1229,15 +1380,10 @@ Use the toolbar to access these sections and input your information.`);
             </Dialog>
           </div>
         </div>
-        {scheduleStatus && (
+        {isGeneratingSchedule && (
           <Card className="mt-4 mb-4">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-center space-x-4">
-                {isGeneratingSchedule && (
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                )}
-                <p className="text-lg font-medium">{scheduleStatus}</p>
-              </div>
+              <LoadingMessages isLoading={isGeneratingSchedule} />
             </CardContent>
           </Card>
         )}
@@ -1283,6 +1429,15 @@ Use the toolbar to access these sections and input your information.`);
                         >
                           Delete
                         </DropdownMenuItem>
+                        {isEventBlock && (
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              handleRemoveBlockFromSchedule(block._id)
+                            }
+                          >
+                            Remove from Schedule
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                     {/* {isEventBlock ? (
@@ -1323,18 +1478,20 @@ Use the toolbar to access these sections and input your information.`);
                                 <CardContent className="p-3 flex items-center justify-between">
                                   <div className="flex items-center space-x-3">
                                     <div className="flex-shrink-0">
-                                      {updatingTasks.has(task._id) ? (
+                                      {updatingTasks &&
+                                      updatingTaskId === task._id ? (
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                       ) : (
                                         <Checkbox
                                           id={`task-${task._id || taskIndex}`}
                                           checked={task.completed}
                                           onCheckedChange={(checked) =>
-                                            onTaskCheckChange(
+                                            handleTaskCompletion(
                                               task._id,
                                               checked as boolean
                                             )
                                           }
+                                          disabled={updatingTasks}
                                         />
                                       )}
                                     </div>
