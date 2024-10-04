@@ -158,6 +158,8 @@ const DashboardPage = () => {
   const [scheduleStatus, setScheduleStatus] = useState<string | null>(null);
   const MINIMUM_TASKS_REQUIRED = 5; // Adjust this number as needed
 
+  const [apiResponse, setApiResponse] = useState<string | null>(null);
+
   const handleEditBlock = (block: Block) => {
     setEditingBlock(block);
   };
@@ -1170,6 +1172,22 @@ Use the toolbar to access these sections and input your information.`);
     }
   };
 
+  const handleTestApi = async () => {
+    try {
+      const response = await fetch("/api/test-gpt", {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error("API request failed");
+      }
+      const data = await response.json();
+      setApiResponse(data.message);
+    } catch (error) {
+      console.error("Error testing API:", error);
+      setApiResponse("Error occurred while testing API");
+    }
+  };
+
   return (
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
       <div className="grid gap-4 md:grid-cols-4">
@@ -1754,6 +1772,27 @@ Use the toolbar to access these sections and input your information.`);
           onClose={() => setEditingTask(null)}
           onSave={handleSaveTask}
         />
+      )}
+      <Card className="md:col-span-1">
+        <CardHeader className="pb-3">
+          <CardTitle>Test GPT API</CardTitle>
+          <CardDescription>Test the ChatGPT API connection</CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Button className="w-full" onClick={handleTestApi}>
+            Test API
+          </Button>
+        </CardFooter>
+      </Card>
+      {apiResponse && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>API Response</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>{apiResponse}</p>
+          </CardContent>
+        </Card>
       )}
       {/* {availableuserInformation && (
         <Card className="mt-8">

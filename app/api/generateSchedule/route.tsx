@@ -2,7 +2,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 // Add this line at the top of your file
-export const maxDuration = 60; // Set to 300 seconds (5 minutes) or your desired limit
+export const config = {
+  runtime: "edge", // This is optional, but can help with performance
+  maxDuration: 60,
+};
 
 export async function POST(request: NextRequest) {
   const { userInformation, formattedCurrentTime, formattedCurrentDate } =
