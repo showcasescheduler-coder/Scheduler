@@ -1,10 +1,14 @@
 // app/api/generateSchedule/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
+// Add this line at the top of your file
+export const maxDuration = 60; // Set to 300 seconds (5 minutes) or your desired limit
 
 export async function POST(request: NextRequest) {
   const { userInformation, formattedCurrentTime, formattedCurrentDate } =
     await request.json();
+
+  console.log("Received user information:", JSON.stringify(userInformation));
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -113,6 +117,8 @@ Note: Ensure all IDs are included, using existing IDs where available and genera
     userInformation
   )}\n\nRules: ${rules}`;
 
+  console.log("Sending request to OpenAI API");
+
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -130,12 +136,18 @@ Note: Ensure all IDs are included, using existing IDs where available and genera
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`OpenAI API error: ${response.status}`, errorText);
+      return NextResponse.json(
+        { message: `OpenAI API error: ${errorText}` },
+        { status: response.status }
+      );
     }
 
     const data = await response.json();
     const parsedResponse = JSON.parse(data.choices[0].message.content);
 
+    console.log("Successfully generated schedule");
     return NextResponse.json(parsedResponse);
   } catch (error) {
     console.error("An error occurred:", error);
