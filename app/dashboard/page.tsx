@@ -1773,7 +1773,7 @@ Use the toolbar to access these sections and input your information.`);
           onSave={handleSaveTask}
         />
       )}
-      <Card className="md:col-span-1">
+      {/* <Card className="md:col-span-1">
         <CardHeader className="pb-3">
           <CardTitle>Test GPT API</CardTitle>
           <CardDescription>Test the ChatGPT API connection</CardDescription>
@@ -1783,8 +1783,8 @@ Use the toolbar to access these sections and input your information.`);
             Test API
           </Button>
         </CardFooter>
-      </Card>
-      {apiResponse && (
+      </Card> */}
+      {/* {apiResponse && (
         <Card className="mt-4">
           <CardHeader>
             <CardTitle>API Response</CardTitle>
@@ -1793,7 +1793,7 @@ Use the toolbar to access these sections and input your information.`);
             <p>{apiResponse}</p>
           </CardContent>
         </Card>
-      )}
+      )} */}
       {/* {availableuserInformation && (
         <Card className="mt-8">
           <CardHeader>
