@@ -1533,8 +1533,12 @@ Use the toolbar to access these sections and input your information.`);
                                     <Badge className="text-xs hidden md:inline-flex">
                                       {task.priority}
                                     </Badge>
-                                    <Badge className="text-xs hidden md:inline-flex">
-                                      {task.duration} min
+                                    <Badge className="text-xs">
+                                      {task.duration}
+                                      <span className="hidden md:inline">
+                                        {" "}
+                                        min
+                                      </span>
                                     </Badge>
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
@@ -1694,7 +1698,7 @@ Use the toolbar to access these sections and input your information.`);
                                         <Badge className="text-xs hidden md:inline-flex">
                                           {task.priority}
                                         </Badge>
-                                        <Badge className="text-xs hidden md:inline-flex">
+                                        <Badge className="text-xs">
                                           {task.duration} min
                                         </Badge>
                                       </div>

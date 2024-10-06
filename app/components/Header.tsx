@@ -81,7 +81,7 @@ const Header = () => {
                 <Package2 className="h-5 w-5 transition-all group-hover:scale-110" />
                 <span className="sr-only">Acme Inc</span>
               </Link>
-              <NavLink href="/dashboard/fulldashboard" icon={Home}>
+              <NavLink href="/dashboard" icon={Home}>
                 Dashboard
               </NavLink>
               <NavLink href="/dashboard/projects" icon={FolderKanban}>
@@ -96,12 +96,12 @@ const Header = () => {
               <NavLink href="/dashboard/routines" icon={CalendarClock}>
                 Routines
               </NavLink>
-              <NavLink href="/dashboard/analytics" icon={LineChart}>
+              {/* <NavLink href="/dashboard/analytics" icon={LineChart}>
                 Analytics
-              </NavLink>
-              <NavLink href="#" icon={Settings}>
+              </NavLink> */}
+              {/* <NavLink href="#" icon={Settings}>
                 Settings
-              </NavLink>
+              </NavLink> */}
             </nav>
           </SheetContent>
         </Sheet>
