@@ -73,20 +73,37 @@ export async function DELETE(
 
   try {
     const { id } = params;
+    const { projectId } = await request.json();
+
+    console.log("Deleting project task with ID:", id);
+    console.log("Project ID:", projectId);
 
     // Find and delete the task
     const deletedTask = await Task.findByIdAndDelete(id);
+
+    console.log("Deleted task:", deletedTask);
 
     if (!deletedTask) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
     // Remove the task from the project's tasks array
-    await Project.findByIdAndUpdate(deletedTask.project, {
-      $pull: { tasks: id },
-    });
+    const updatedProject = await Project.findByIdAndUpdate(
+      projectId,
+      { $pull: { tasks: id } },
+      { new: true }
+    );
 
-    return NextResponse.json({ message: "Task deleted successfully" });
+    console.log("Updated project:", updatedProject);
+
+    if (!updatedProject) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      message: "Task deleted successfully",
+      updatedProject,
+    });
   } catch (error) {
     console.error("Error deleting project task:", error);
     return NextResponse.json(

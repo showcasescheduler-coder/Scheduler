@@ -438,21 +438,43 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleDeleteTask = async (taskId: string, projectId: string) => {
     if (!project) return;
     if (!confirm("Are you sure you want to delete this task?")) return;
 
     try {
       const response = await fetch(`/api/projects/tasks/${taskId}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ projectId }),
       });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Update local and global state
-      // ...
+      // Update local state
+      setProject((prevProject) => {
+        if (!prevProject) return null; // Handle null case
+        return {
+          ...prevProject, // Spread all existing properties
+          tasks: prevProject.tasks.filter((task) => task._id !== taskId),
+        };
+      });
+
+      // Update global state if you're using it
+      setProjects((prevProjects) =>
+        prevProjects.map((p) =>
+          p._id === projectId
+            ? {
+                ...p, // Spread all existing properties
+                tasks: p.tasks.filter((task) => task._id !== taskId),
+              }
+            : p
+        )
+      );
     } catch (error) {
       console.error("Error deleting task:", error);
       alert("Failed to delete task. Please try again.");
@@ -626,7 +648,9 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onSelect={() => handleDeleteTask(task._id)}
+                                onSelect={() =>
+                                  handleDeleteTask(task._id, project._id)
+                                }
                               >
                                 Delete
                               </DropdownMenuItem>
