@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongo";
 import Routine from "@/models/Routine";
 import Task from "@/models/Task";
+import Project from "@/models/Project";
 
 export async function POST(
   request: NextRequest,

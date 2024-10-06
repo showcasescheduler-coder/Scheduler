@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { ChevronLeft, PlusCircle, CalendarIcon } from "lucide-react";
+import { ChevronLeft, PlusCircle, MoreVertical } from "lucide-react";
 import { useAppContext } from "@/app/context/AppContext";
 import { Routine, RoutineTask } from "@/app/context/models";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -42,6 +42,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Props {
   params: { id: string };
@@ -55,6 +61,8 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
   });
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingTask, setEditingTask] = useState<RoutineTask | null>(null);
+  const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
   const router = useRouter();
 
   const days = [
@@ -93,6 +101,97 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
   ) => {
     const { name, value } = e.target;
     setRoutine((prev) => (prev ? { ...prev, [name]: value } : null));
+  };
+
+  const handleEditTask = (task: RoutineTask) => {
+    setEditingTask(task);
+    setIsEditTaskDialogOpen(true);
+  };
+
+  const handleUpdateTask = async () => {
+    if (!editingTask || !routine) return;
+
+    try {
+      const response = await fetch(
+        `/api/edit-routine-task/${editingTask._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...editingTask,
+            routineId: routine._id,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Update local state
+      setRoutine((prevRoutine) => {
+        if (!prevRoutine) return null;
+        return {
+          ...prevRoutine,
+          tasks: prevRoutine.tasks.map((task) =>
+            task._id === editingTask._id ? result.updatedTask : task
+          ),
+        };
+      });
+
+      // Update global state
+      updateRoutine(routine._id, {
+        tasks: routine.tasks.map((task) =>
+          task._id === editingTask._id ? result.updatedTask : task
+        ),
+      });
+
+      setIsEditTaskDialogOpen(false);
+      setEditingTask(null);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      alert("Failed to update task. Please try again.");
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!routine) return;
+    if (!confirm("Are you sure you want to delete this task?")) return;
+
+    try {
+      const response = await fetch(`/api/delete-task-from-routine/${taskId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ routineId: routine._id }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Update local state
+      setRoutine((prevRoutine) => {
+        if (!prevRoutine) return null;
+        return {
+          ...prevRoutine,
+          tasks: prevRoutine.tasks.filter((task) => task._id !== taskId),
+        };
+      });
+
+      // Update global state
+      updateRoutine(routine._id, {
+        tasks: routine.tasks.filter((task) => task._id !== taskId),
+      });
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      alert("Failed to delete task. Please try again.");
+    }
   };
 
   const handleDayToggle = (day: string) => {
@@ -165,9 +264,9 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
   if (!routine) return <div>Routine not found</div>;
 
   return (
-    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-      <div className="mx-auto grid max-w-[59rem] flex-1 auto-rows-max gap-4">
-        <div className="flex items-center gap-4">
+    <main className="flex-1 p-4 sm:p-6 md:p-8">
+      <div className="mx-auto max-w-[59rem]">
+        <div className="flex items-center gap-4 mb-4">
           <Button
             variant="outline"
             size="icon"
@@ -175,33 +274,33 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
             onClick={() => router.push("/dashboard/routines")}
           >
             <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Back to Projects</span>
+            <span className="sr-only">Back to Routines</span>
           </Button>
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             {routine.name}
           </h1>
-          <Badge variant="outline" className="ml-auto sm:ml-0">
-            {routine.tasks.length} tasks
-          </Badge>
+          {routine && (
+            <Badge variant="outline" className="ml-auto sm:ml-0">
+              {routine.tasks.length} tasks
+            </Badge>
+          )}
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            {/* <Button variant="outline" size="sm">
-              Discard
-            </Button> */}
             <Button size="sm" onClick={handleSave}>
               Save Routine
             </Button>
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
-          <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-            <Card>
-              <CardHeader>
+
+        <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
+          <div className="grid gap-4 sm:col-span-1 lg:col-span-2 lg:gap-8">
+            <Card className="overflow-hidden">
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Routine Details</CardTitle>
                 <CardDescription>
                   Provide details for your routine.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="grid gap-6">
                   <div className="grid gap-3">
                     <Label htmlFor="name">Routine Name</Label>
@@ -244,36 +343,69 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
+
+            <Card className="overflow-hidden">
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Tasks</CardTitle>
                 <CardDescription>
                   Tasks associated with this routine.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Priority</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {routine.tasks.map((task) => (
-                      <TableRow key={task._id}>
-                        <TableCell>{task.name}</TableCell>
-                        <TableCell>{task.description}</TableCell>
-                        <TableCell>{task.duration}</TableCell>
-                        <TableCell>{task.priority}</TableCell>
+              <CardContent className="p-4 sm:p-6">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead className="hidden md:table-cell">
+                          Description
+                        </TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead className="hidden md:table-cell">
+                          Priority
+                        </TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {routine.tasks.map((task) => (
+                        <TableRow key={task._id}>
+                          <TableCell>{task.name}</TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {task.description}
+                          </TableCell>
+                          <TableCell>{task.duration} minutes</TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {task.priority}
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onSelect={() => handleEditTask(task)}
+                                >
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onSelect={() => handleDeleteTask(task._id)}
+                                >
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
-              <CardFooter className="justify-center border-t p-4">
+              <CardFooter className="justify-center border-t p-4 sm:p-6">
                 <Dialog
                   open={isTaskDialogOpen}
                   onOpenChange={setIsTaskDialogOpen}
@@ -359,9 +491,9 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
                             <SelectValue placeholder="Select priority" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="High">Low</SelectItem>
+                            <SelectItem value="Low">Low</SelectItem>
                             <SelectItem value="Medium">Medium</SelectItem>
-                            <SelectItem value="Low">High</SelectItem>
+                            <SelectItem value="High">High</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -374,39 +506,102 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
               </CardFooter>
             </Card>
           </div>
-          {/* <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Routine Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-6">
-                  <div className="grid gap-3">
-                    <Label htmlFor="status">Status</Label>
-                    <Select>
-                      <SelectTrigger id="status">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div> */}
         </div>
-        <div className="flex items-center justify-center gap-2 md:hidden">
-          {/* <Button variant="outline" size="sm">
-            Discard
-          </Button> */}
-          <Button size="sm" onClick={handleSave}>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 md:hidden mt-4">
+          <Button size="sm" onClick={handleSave} className="w-full sm:w-auto">
             Save Routine
           </Button>
         </div>
       </div>
+
+      <Dialog
+        open={isEditTaskDialogOpen}
+        onOpenChange={setIsEditTaskDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+            <DialogDescription>
+              Update the details of the task.
+            </DialogDescription>
+          </DialogHeader>
+          {editingTask && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-task-name" className="text-right">
+                  Name
+                </Label>
+                <Input
+                  id="edit-task-name"
+                  value={editingTask.name}
+                  onChange={(e) =>
+                    setEditingTask({ ...editingTask, name: e.target.value })
+                  }
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-task-description" className="text-right">
+                  Description
+                </Label>
+                <Input
+                  id="edit-task-description"
+                  value={editingTask.description}
+                  onChange={(e) =>
+                    setEditingTask({
+                      ...editingTask,
+                      description: e.target.value,
+                    })
+                  }
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-task-duration" className="text-right">
+                  Duration (minutes)
+                </Label>
+                <Input
+                  id="edit-task-duration"
+                  type="number"
+                  min="5"
+                  max="240"
+                  value={editingTask.duration}
+                  onChange={(e) =>
+                    setEditingTask({
+                      ...editingTask,
+                      duration: Number(e.target.value),
+                    })
+                  }
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-task-priority" className="text-right">
+                  Priority
+                </Label>
+                <Select
+                  value={editingTask.priority}
+                  onValueChange={(value) =>
+                    setEditingTask({ ...editingTask, priority: value })
+                  }
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="High">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={handleUpdateTask}>Update Task</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 };

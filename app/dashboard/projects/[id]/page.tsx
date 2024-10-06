@@ -484,9 +484,9 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
   if (!project) return <div>Loading...</div>;
 
   return (
-    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-      <div className="mx-auto grid max-w-[59rem] flex-1 auto-rows-max gap-4">
-        <div className="flex items-center gap-4">
+    <main className="flex-1 p-4 sm:p-6 md:p-8">
+      <div className="mx-auto max-w-[59rem]">
+        <div className="flex items-center gap-4 mb-4">
           <Button
             variant="outline"
             size="icon"
@@ -499,43 +499,23 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
           <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
             {project.name}
           </h1>
-          {/* <Badge variant="outline" className="ml-auto sm:ml-0">
-            In stock
-          </Badge> */}
           <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            {/* <Button variant="outline" size="sm">
-              Discard
-            </Button> */}
             <Button size="sm" onClick={handleSave}>
               Save Project
             </Button>
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
-          <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-            <Card>
-              <CardHeader>
+
+        <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
+          <div className="grid gap-4 sm:col-span-1 lg:col-span-2 lg:gap-8">
+            <Card className="overflow-hidden">
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Project Details</CardTitle>
                 <CardDescription>
                   Update the details of your project
                 </CardDescription>
-                {/* 
-                When we have the ability to generate tasks events and routines , we can uncomment this button
-                
-                <Button
-            size="sm"
-            onClick={handleGenerateTasks}
-            disabled={generatingTasks}
-          >
-            {generatingTasks ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="mr-2 h-4 w-4" />
-            )}
-            Generate Tasks
-          </Button> */}
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="grid gap-6">
                   <div className="grid gap-3">
                     <Label htmlFor="name">Project Name</Label>
@@ -563,7 +543,7 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "w-[280px] justify-start text-left font-normal",
+                            "w-full sm:w-[280px] justify-start text-left font-normal",
                             !project.deadline && "text-muted-foreground"
                           )}
                         >
@@ -592,8 +572,9 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader>
+
+            <Card className="overflow-hidden">
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Tasks</CardTitle>
                 <CardDescription>
                   Manage tasks associated with this project
@@ -611,58 +592,72 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                   Generate Tasks
                 </Button>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 {generatingTasks && (
                   <GeneratingTasksMessages isGenerating={generatingTasks} />
                 )}
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Deadline</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortTasksByDeadline(project.tasks).map((task) => (
-                      <TableRow key={task._id}>
-                        <TableCell>{task.name}</TableCell>
-                        <TableCell>{task.description}</TableCell>
-                        <TableCell>{task.duration} minutes</TableCell>
-                        <TableCell>{task.priority}</TableCell>
-                        <TableCell>{formatDate(task.deadline)}</TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onSelect={() => handleEditTask(task)}
-                              >
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onSelect={() =>
-                                  handleDeleteTask(task._id, project._id)
-                                }
-                              >
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead className="hidden md:table-cell">
+                          Description
+                        </TableHead>
+                        <TableHead className="hidden md:table-cell">
+                          Duration
+                        </TableHead>
+                        <TableHead className="hidden md:table-cell">
+                          Priority
+                        </TableHead>
+                        <TableHead>Deadline</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {sortTasksByDeadline(project.tasks).map((task) => (
+                        <TableRow key={task._id}>
+                          <TableCell>{task.name}</TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {task.description}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {task.duration} minutes
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {task.priority}
+                          </TableCell>
+                          <TableCell>{formatDate(task.deadline)}</TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onSelect={() => handleEditTask(task)}
+                                >
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onSelect={() =>
+                                    handleDeleteTask(task._id, project._id)
+                                  }
+                                >
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
-              <CardFooter className="justify-center border-t p-4">
+              <CardFooter className="justify-center border-t p-4 sm:p-6">
                 <Dialog
                   open={isTaskDialogOpen}
                   onOpenChange={setIsTaskDialogOpen}
@@ -776,12 +771,12 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
               </CardFooter>
             </Card>
           </div>
-          <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
-            <Card>
-              <CardHeader>
+          {/* <div className="grid gap-4 sm:col-span-1 lg:gap-8">
+            <Card className="overflow-hidden">
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Project Status</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 sm:p-6">
                 <div className="grid gap-6">
                   <div className="grid gap-3">
                     <Label htmlFor="status">Status</Label>
@@ -799,13 +794,13 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                 </div>
               </CardContent>
             </Card>
-          </div>
+          </div> */}
         </div>
-        <div className="flex items-center justify-center gap-2 md:hidden">
-          <Button variant="outline" size="sm">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 md:hidden mt-4">
+          <Button variant="outline" size="sm" className="w-full sm:w-auto">
             Discard
           </Button>
-          <Button size="sm" onClick={handleSave}>
+          <Button size="sm" onClick={handleSave} className="w-full sm:w-auto">
             Save Project
           </Button>
         </div>
