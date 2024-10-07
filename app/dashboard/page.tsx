@@ -1195,9 +1195,9 @@ Use the toolbar to access these sections and input your information.`);
   console.log("day", day);
 
   return (
-    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="md:col-span-1">
+    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 max-w-full overflow-x-hidden">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+        <Card className="w-full max-w-full overflow-hidden md:col-span-1">
           <CardHeader className="pb-3">
             <CardTitle>Daily Planner</CardTitle>
             <CardDescription className="max-w-lg text-balance leading-relaxed">
@@ -1224,7 +1224,7 @@ Use the toolbar to access these sections and input your information.`);
             </Button>
           </CardFooter>
         </Card>
-        <Card className="hidden md:block">
+        <Card className="w-full max-w-full overflow-hidden hidden md:block">
           <CardHeader className="pb-2">
             <CardDescription>Tasks Completed</CardDescription>
             <CardTitle className="text-4xl">{`${completedTasks}/${totalTasks}`}</CardTitle>
@@ -1245,7 +1245,7 @@ Use the toolbar to access these sections and input your information.`);
             />
           </CardFooter>
         </Card>
-        <Card className="hidden md:block">
+        <Card className="w-full max-w-full overflow-hidden hidden md:block">
           <CardHeader className="pb-2">
             <CardDescription>Time Blocks Completed</CardDescription>
             <CardTitle className="text-4xl">{`${completedBlocksCount}/${blockCount}`}</CardTitle>
@@ -1264,7 +1264,7 @@ Use the toolbar to access these sections and input your information.`);
             />
           </CardFooter>
         </Card>
-        <Card className="hidden md:block">
+        <Card className="w-full max-w-full overflow-hidden hidden md:block">
           <CardHeader className="pb-2">
             <CardDescription>Performance Score</CardDescription>
             <CardTitle className="text-4xl">
