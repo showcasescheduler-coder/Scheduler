@@ -2,6 +2,7 @@ import React, { ReactNode } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Aside from "../components/Aside";
 import Header from "../components/Header";
+import { Toaster } from "react-hot-toast";
 
 interface Props {
   children: ReactNode;
@@ -18,6 +19,7 @@ const layout = ({ children }: Props) => {
           <Header />
           {children}
         </div>
+        <Toaster />
       </div>
     </TooltipProvider>
   );

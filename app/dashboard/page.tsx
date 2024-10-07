@@ -89,6 +89,7 @@ import { InfoIcon } from "lucide-react";
 import { useUserAndDay } from "@/hooks/useUserAndDay";
 import { useAuth } from "@clerk/nextjs";
 import LoadingMessages from "@/app/components/MessgageSpinner"; // Add this import
+import toast from "react-hot-toast";
 
 interface TimeBlock {
   description: string;
@@ -462,18 +463,25 @@ const DashboardPage = () => {
     console.log("Generating schedule...");
 
     if (totalTasks < MINIMUM_TASKS_REQUIRED) {
-      alert(`To create your personalized schedule, please add:
-
-- Tasks or projects in 'Projects' and 'Tasks'
-- Upcoming events in 'Events'
-- Daily or weekly routines in 'Routines'
-
-Use the toolbar to access these sections and input your information.`);
+      toast.error(
+        `To create your personalized schedule, please add:
+      - Tasks or projects in 'Projects' and 'Tasks'
+      - Upcoming events in 'Events'
+      - Daily or weekly routines in 'Routines'
+      Use the toolbar to access these sections and input your information.`,
+        {
+          duration: 5000,
+          position: "top-center",
+        }
+      );
       return;
     }
 
     if (hasPendingBlocks) {
-      alert("Please complete all blocks before generating a schedule");
+      toast.error("Please complete all blocks before generating a schedule", {
+        duration: 3000,
+        position: "top-center",
+      });
       return;
     }
 
@@ -1188,6 +1196,8 @@ Use the toolbar to access these sections and input your information.`);
     }
   };
 
+  console.log("day", day);
+
   return (
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
       <div className="grid gap-4 md:grid-cols-4">
@@ -1525,12 +1535,28 @@ Use the toolbar to access these sections and input your information.`);
                                     </div>
                                   </div>
                                   <div className="flex items-center space-x-2">
-                                    <Badge className="text-xs hidden md:inline-flex">
-                                      {task.isRoutineTask
-                                        ? "Routine"
-                                        : "Stand-alone"}
-                                    </Badge>
-                                    <Badge className="text-xs hidden md:inline-flex">
+                                    {task.projectId ? (
+                                      <Badge className="text-xs bg-purple-100 text-purple-800">
+                                        Project
+                                      </Badge>
+                                    ) : task.isRoutineTask ? (
+                                      <Badge className="text-xs bg-green-100 text-green-800">
+                                        Routine
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="text-xs">
+                                        Stand-alone
+                                      </Badge>
+                                    )}
+                                    <Badge
+                                      className={`text-xs ${
+                                        task.priority === "High"
+                                          ? "bg-red-100 text-red-800"
+                                          : task.priority === "Medium"
+                                          ? "bg-yellow-100 text-yellow-800"
+                                          : "bg-green-100 text-green-800"
+                                      }`}
+                                    >
                                       {task.priority}
                                     </Badge>
                                     <Badge className="text-xs">
