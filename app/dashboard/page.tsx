@@ -1405,13 +1405,13 @@ Use the toolbar to access these sections and input your information.`);
             </Dialog>
           </div>
         </div>
-        {/* {isGeneratingSchedule && (
+        {isGeneratingSchedule && (
           <Card className="mt-4 mb-4">
             <CardContent className="pt-6">
               <LoadingMessages isLoading={isGeneratingSchedule} />
             </CardContent>
           </Card>
-        )} */}
+        )}
         <TabsContent value="active" className="space-y-4">
           {day &&
             sortedBlocks.map((blockOrString: Block | string, index: number) => {
@@ -1532,21 +1532,22 @@ Use the toolbar to access these sections and input your information.`);
                                     </div>
                                   </div>
                                   <div className="flex items-center space-x-2">
+                                    {/* New Code (Modify like this) */}
                                     {task.projectId ? (
-                                      <Badge className="text-xs bg-purple-100 text-purple-800">
+                                      <Badge className="text-xs hidden md:inline-flex bg-purple-100 text-purple-800">
                                         Project
                                       </Badge>
                                     ) : task.isRoutineTask ? (
-                                      <Badge className="text-xs bg-green-100 text-green-800">
+                                      <Badge className="text-xs hidden md:inline-flex bg-green-100 text-green-800">
                                         Routine
                                       </Badge>
                                     ) : (
-                                      <Badge className="text-xs">
+                                      <Badge className="text-xs hidden md:inline-flex">
                                         Stand-alone
                                       </Badge>
                                     )}
                                     <Badge
-                                      className={`text-xs ${
+                                      className={`text-xs hidden md:inline-flex ${
                                         task.priority === "High"
                                           ? "bg-red-100 text-red-800"
                                           : task.priority === "Medium"
@@ -1555,13 +1556,6 @@ Use the toolbar to access these sections and input your information.`);
                                       }`}
                                     >
                                       {task.priority}
-                                    </Badge>
-                                    <Badge className="text-xs">
-                                      {task.duration}
-                                      <span className="hidden md:inline">
-                                        {" "}
-                                        min
-                                      </span>
                                     </Badge>
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
