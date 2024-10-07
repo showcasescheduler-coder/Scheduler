@@ -1195,9 +1195,9 @@ Use the toolbar to access these sections and input your information.`);
   console.log("day", day);
 
   return (
-    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 max-w-full overflow-x-hidden">
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
-        <Card className="w-full max-w-full overflow-hidden md:col-span-1">
+    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="md:col-span-1">
           <CardHeader className="pb-3">
             <CardTitle>Daily Planner</CardTitle>
             <CardDescription className="max-w-lg text-balance leading-relaxed">
@@ -1224,7 +1224,7 @@ Use the toolbar to access these sections and input your information.`);
             </Button>
           </CardFooter>
         </Card>
-        <Card className="w-full max-w-full overflow-hidden hidden md:block">
+        <Card className="hidden md:block">
           <CardHeader className="pb-2">
             <CardDescription>Tasks Completed</CardDescription>
             <CardTitle className="text-4xl">{`${completedTasks}/${totalTasks}`}</CardTitle>
@@ -1245,7 +1245,7 @@ Use the toolbar to access these sections and input your information.`);
             />
           </CardFooter>
         </Card>
-        <Card className="w-full max-w-full overflow-hidden hidden md:block">
+        <Card className="hidden md:block">
           <CardHeader className="pb-2">
             <CardDescription>Time Blocks Completed</CardDescription>
             <CardTitle className="text-4xl">{`${completedBlocksCount}/${blockCount}`}</CardTitle>
@@ -1264,7 +1264,7 @@ Use the toolbar to access these sections and input your information.`);
             />
           </CardFooter>
         </Card>
-        <Card className="w-full max-w-full overflow-hidden hidden md:block">
+        <Card className="hidden md:block">
           <CardHeader className="pb-2">
             <CardDescription>Performance Score</CardDescription>
             <CardTitle className="text-4xl">
@@ -1799,6 +1799,63 @@ Use the toolbar to access these sections and input your information.`);
           onSave={handleSaveTask}
         />
       )}
+      {/* <Card className="md:col-span-1">
+        <CardHeader className="pb-3">
+          <CardTitle>Test GPT API</CardTitle>
+          <CardDescription>Test the ChatGPT API connection</CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Button className="w-full" onClick={handleTestApi}>
+            Test API
+          </Button>
+        </CardFooter>
+      </Card> */}
+      {/* {apiResponse && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>API Response</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>{apiResponse}</p>
+          </CardContent>
+        </Card>
+      )} */}
+      {/* {availableuserInformation && (
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>AI Response</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="whitespace-pre-wrap overflow-auto max-h-96 bg-gray-100 p-4 rounded">
+              {JSON.stringify(availableuserInformation, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
+      {aiResponse && (
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>AI Response</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="whitespace-pre-wrap overflow-auto max-h-96 bg-gray-100 p-4 rounded">
+              {JSON.stringify(aiResponse, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
+      )}
+      {day && (
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>AI Response</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <pre className="whitespace-pre-wrap overflow-auto max-h-96 bg-gray-100 p-4 rounded">
+              {JSON.stringify(incompleteBlocks, null, 2)}
+            </pre>
+          </CardContent>
+        </Card>
+      )} */}
     </main>
   );
 };
