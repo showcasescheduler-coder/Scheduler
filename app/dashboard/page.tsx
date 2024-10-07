@@ -444,6 +444,7 @@ const DashboardPage = () => {
     }, 500),
     [day, calculateCompletedTasksCount, mutate]
   );
+
   const hasPendingBlocks = day?.blocks.some(
     (block: Block) => block.status === "pending"
   );
@@ -1404,13 +1405,13 @@ Use the toolbar to access these sections and input your information.`);
             </Dialog>
           </div>
         </div>
-        {isGeneratingSchedule && (
+        {/* {isGeneratingSchedule && (
           <Card className="mt-4 mb-4">
             <CardContent className="pt-6">
               <LoadingMessages isLoading={isGeneratingSchedule} />
             </CardContent>
           </Card>
-        )}
+        )} */}
         <TabsContent value="active" className="space-y-4">
           {day &&
             sortedBlocks.map((blockOrString: Block | string, index: number) => {
