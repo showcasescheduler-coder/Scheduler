@@ -89,6 +89,7 @@ import { InfoIcon } from "lucide-react";
 import { useUserAndDay } from "@/hooks/useUserAndDay";
 import { useAuth } from "@clerk/nextjs";
 import LoadingMessages from "@/app/components/MessgageSpinner"; // Add this import
+import toast from "react-hot-toast";
 
 interface TimeBlock {
   description: string;
@@ -473,7 +474,10 @@ Use the toolbar to access these sections and input your information.`);
     }
 
     if (hasPendingBlocks) {
-      alert("Please complete all blocks before generating a schedule");
+      toast.error("Please complete all blocks before generating a schedule", {
+        duration: 3000,
+        position: "top-center",
+      });
       return;
     }
 
@@ -1795,63 +1799,6 @@ Use the toolbar to access these sections and input your information.`);
           onSave={handleSaveTask}
         />
       )}
-      {/* <Card className="md:col-span-1">
-        <CardHeader className="pb-3">
-          <CardTitle>Test GPT API</CardTitle>
-          <CardDescription>Test the ChatGPT API connection</CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button className="w-full" onClick={handleTestApi}>
-            Test API
-          </Button>
-        </CardFooter>
-      </Card> */}
-      {/* {apiResponse && (
-        <Card className="mt-4">
-          <CardHeader>
-            <CardTitle>API Response</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>{apiResponse}</p>
-          </CardContent>
-        </Card>
-      )} */}
-      {/* {availableuserInformation && (
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>AI Response</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="whitespace-pre-wrap overflow-auto max-h-96 bg-gray-100 p-4 rounded">
-              {JSON.stringify(availableuserInformation, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
-      {aiResponse && (
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>AI Response</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="whitespace-pre-wrap overflow-auto max-h-96 bg-gray-100 p-4 rounded">
-              {JSON.stringify(aiResponse, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
-      {day && (
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>AI Response</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="whitespace-pre-wrap overflow-auto max-h-96 bg-gray-100 p-4 rounded">
-              {JSON.stringify(incompleteBlocks, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
-      )} */}
     </main>
   );
 };
