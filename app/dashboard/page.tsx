@@ -464,35 +464,13 @@ const DashboardPage = () => {
     console.log("Generating schedule...");
 
     if (totalTasks < MINIMUM_TASKS_REQUIRED) {
-      toast.error(
-        (t) => (
-          <div>
-            <p>To create your personalized schedule, please add:</p>
-            <ul
-              style={{
-                listStyleType: "disc",
-                paddingLeft: "20px",
-                marginTop: "10px",
-              }}
-            >
-              <li>Tasks or projects in 'Projects' and 'Tasks'</li>
-              <li>Upcoming events in 'Events'</li>
-              <li>Daily or weekly routines in 'Routines'</li>
-            </ul>
-            <p style={{ marginTop: "10px" }}>
-              Use the toolbar to access these sections and input your
-              information.
-            </p>
-          </div>
-        ),
-        {
-          duration: 6000, // Increase duration to give user more time to read
-          style: {
-            maxWidth: "400px", // Adjust as needed
-            padding: "16px",
-          },
-        }
-      );
+      alert(`To create your personalized schedule, please add:
+
+- Tasks or projects in 'Projects' and 'Tasks'
+- Upcoming events in 'Events'
+- Daily or weekly routines in 'Routines'
+
+Use the toolbar to access these sections and input your information.`);
       return;
     }
 
