@@ -464,13 +464,35 @@ const DashboardPage = () => {
     console.log("Generating schedule...");
 
     if (totalTasks < MINIMUM_TASKS_REQUIRED) {
-      alert(`To create your personalized schedule, please add:
-
-- Tasks or projects in 'Projects' and 'Tasks'
-- Upcoming events in 'Events'
-- Daily or weekly routines in 'Routines'
-
-Use the toolbar to access these sections and input your information.`);
+      toast.error(
+        (t) => (
+          <div>
+            <p>To create your personalized schedule, please add:</p>
+            <ul
+              style={{
+                listStyleType: "disc",
+                paddingLeft: "20px",
+                marginTop: "10px",
+              }}
+            >
+              <li>Tasks or projects in 'Projects' and 'Tasks'</li>
+              <li>Upcoming events in 'Events'</li>
+              <li>Daily or weekly routines in 'Routines'</li>
+            </ul>
+            <p style={{ marginTop: "10px" }}>
+              Use the toolbar to access these sections and input your
+              information.
+            </p>
+          </div>
+        ),
+        {
+          duration: 6000, // Increase duration to give user more time to read
+          style: {
+            maxWidth: "400px", // Adjust as needed
+            padding: "16px",
+          },
+        }
+      );
       return;
     }
 
@@ -608,8 +630,10 @@ Use the toolbar to access these sections and input your information.`);
 
       // Update the day view
       updateDay();
+      toast.success("New block added successfully");
     } catch (error) {
       console.error("Error adding block:", error);
+      toast.error("Failed to add new block. Please try again.");
       // Handle error (e.g., show an error message to the user)
     }
   };
@@ -684,13 +708,13 @@ Use the toolbar to access these sections and input your information.`);
       );
 
       // Optionally, you can show a success message to the user
-      alert("Block completed successfully");
+      toast.success("Block completed successfully");
 
       // Trigger a re-fetch to ensure data consistency
       mutate();
     } catch (error) {
       console.error("Error completing block:", error);
-      alert("Failed to complete block. Please try again.");
+      toast.error("Failed to complete block. Please try again.");
     }
   };
 
@@ -902,16 +926,16 @@ Use the toolbar to access these sections and input your information.`);
           }),
           false
         );
-        alert(result.message);
+        toast.success("Block deleted successfully");
       } else {
         throw new Error(result.message);
       }
     } catch (error: unknown) {
       console.error("Error deleting block:", error);
       if (error instanceof Error) {
-        alert(error.message);
+        toast.error("Failed to delete block. Please try again.");
       } else {
-        alert("An unknown error occurred while deleting the block");
+        toast.error("Failed to delete block. Please try again.");
       }
     }
   };
@@ -956,12 +980,10 @@ Use the toolbar to access these sections and input your information.`);
           )
         );
 
-        alert(
-          "Task removed from this block. You can find it in your task list."
-        );
+        toast.success("Task removed from block and moved to your task list");
       } catch (error) {
         console.error("Error removing task from block:", error);
-        alert("Failed to remove task from block. Please try again.");
+        toast.error("Failed to remove task from block. Please try again.");
       }
     }
   };
@@ -1093,10 +1115,10 @@ Use the toolbar to access these sections and input your information.`);
           false
         );
 
-        alert("Task permanently deleted.");
+        toast.success("Task deleted successfully");
       } catch (error) {
         console.error("Error deleting task:", error);
-        alert("Failed to delete task. Please try again.");
+        toast.error("Failed to delete task. Please try again.");
       }
     }
   };
@@ -1139,10 +1161,10 @@ Use the toolbar to access these sections and input your information.`);
           false
         );
 
-        alert("Event removed from schedule successfully");
+        toast.success("Event removed from schedule successfully");
       } catch (error) {
         console.error("Error removing block from schedule:", error);
-        alert("Failed to remove event from schedule. Please try again.");
+        toast.error("Failed to remove event from schedule. Please try again.");
       }
     }
   };
@@ -1170,10 +1192,10 @@ Use the toolbar to access these sections and input your information.`);
       );
 
       // Optionally, show a success message
-      alert("Block reactivated successfully");
+      toast.success("Block reactivated successfully");
     } catch (error) {
       console.error("Error reactivating block:", error);
-      alert("Failed to reactivate block. Please try again.");
+      toast.error("Failed to reactivate block. Please try again.");
     }
   };
 
