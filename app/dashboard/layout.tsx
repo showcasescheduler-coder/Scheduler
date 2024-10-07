@@ -19,7 +19,6 @@ const layout = ({ children }: Props) => {
           <Header />
           {children}
         </div>
-        <Toaster />
       </div>
     </TooltipProvider>
   );

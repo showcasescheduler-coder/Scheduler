@@ -89,7 +89,6 @@ import { InfoIcon } from "lucide-react";
 import { useUserAndDay } from "@/hooks/useUserAndDay";
 import { useAuth } from "@clerk/nextjs";
 import LoadingMessages from "@/app/components/MessgageSpinner"; // Add this import
-import toast from "react-hot-toast";
 
 interface TimeBlock {
   description: string;
@@ -463,25 +462,18 @@ const DashboardPage = () => {
     console.log("Generating schedule...");
 
     if (totalTasks < MINIMUM_TASKS_REQUIRED) {
-      toast.error(
-        `To create your personalized schedule, please add:
-      - Tasks or projects in 'Projects' and 'Tasks'
-      - Upcoming events in 'Events'
-      - Daily or weekly routines in 'Routines'
-      Use the toolbar to access these sections and input your information.`,
-        {
-          duration: 5000,
-          position: "top-center",
-        }
-      );
+      alert(`To create your personalized schedule, please add:
+
+- Tasks or projects in 'Projects' and 'Tasks'
+- Upcoming events in 'Events'
+- Daily or weekly routines in 'Routines'
+
+Use the toolbar to access these sections and input your information.`);
       return;
     }
 
     if (hasPendingBlocks) {
-      toast.error("Please complete all blocks before generating a schedule", {
-        duration: 3000,
-        position: "top-center",
-      });
+      alert("Please complete all blocks before generating a schedule");
       return;
     }
 
