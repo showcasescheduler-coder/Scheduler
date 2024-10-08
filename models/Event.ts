@@ -9,6 +9,8 @@ export interface IEvent extends Document {
   endTime: string;
   block?: mongoose.Types.ObjectId; // Make block optional
   priority?: string;
+  isRecurring?: boolean;
+  days?: string[];
 }
 
 const EventSchema: Schema = new Schema(
@@ -16,7 +18,7 @@ const EventSchema: Schema = new Schema(
     userId: { type: String, required: true },
     name: { type: String, required: true },
     description: { type: String, required: true },
-    date: { type: Date, required: true },
+    date: { type: Date, required: false },
     startTime: { type: String, required: true },
     endTime: { type: String, required: true },
     block: {
@@ -25,6 +27,8 @@ const EventSchema: Schema = new Schema(
       required: false, // Make block not required
     },
     priority: { type: String, enum: ["Low", "Medium", "High"] },
+    isRecurring: { type: Boolean, default: false },
+    days: [String],
   },
   { timestamps: true }
 );

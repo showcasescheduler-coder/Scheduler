@@ -9,6 +9,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { userId, ...eventData } = body;
 
+    console.log("eventData", eventData);
+    console.log("userId", userId);
+
     if (!userId) {
       return NextResponse.json(
         { error: "User ID is required" },

@@ -26,6 +26,8 @@ export interface Event {
   endTime: string;
   block: string | null;
   priority: string;
+  isRecurring: boolean;
+  days: string[];
 }
 
 export interface Project {

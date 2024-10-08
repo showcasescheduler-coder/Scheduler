@@ -44,20 +44,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAppContext } from "@/app/context/AppContext";
 import { useRouter } from "next/navigation";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { toast } from "react-hot-toast";
+import { Event } from "@/app/context/models";
+
+interface NewEvent {
+  name: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  isRecurring: boolean;
+  days: string[]; // Changed from never[] to string[]
+}
 
 const EventsPage = () => {
   const { events, addEvent, userData, setEvents } = useAppContext();
   const { userId } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const router = useRouter();
-  const [newEvent, setNewEvent] = useState({
+  const [newEvent, setNewEvent] = useState<NewEvent>({
     name: "",
     description: "",
     date: "",
     startTime: "",
     endTime: "",
+    isRecurring: false,
+    days: [], // Initialize as an empty array of strings
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [eventType, setEventType] = useState("one-off");
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -80,21 +97,55 @@ const EventsPage = () => {
     fetchEvents();
   }, [userId, setEvents]);
 
-  const handleInputChange = (e: { target: { name: any; value: any } }) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setNewEvent((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleRecurringChange = (value: string) => {
+    setNewEvent((prev) => ({ ...prev, isRecurring: value === "recurring" }));
+  };
+
+  const handleDayToggle = (day: string) => {
+    setNewEvent((prev) => ({
+      ...prev,
+      days: prev.days.includes(day)
+        ? prev.days.filter((d) => d !== day)
+        : [...prev.days, day],
+    }));
+  };
+
   const handleAddEvent = async () => {
-    if (!userId) return;
+    if (
+      !newEvent.name ||
+      !newEvent.description ||
+      !newEvent.startTime ||
+      !newEvent.endTime
+    ) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+
+    if (newEvent.isRecurring && newEvent.days.length === 0) {
+      toast.error("Please select at least one day for recurring events.");
+      return;
+    }
+
+    if (!newEvent.isRecurring && !newEvent.date) {
+      toast.error("Please select a date for single events.");
+      return;
+    }
+
     try {
-      const newEventData = {
+      const eventData = {
         name: newEvent.name,
         description: newEvent.description,
-        date: format(new Date(`${newEvent.date}T00:00:00Z`), "yyyy-MM-dd"),
         startTime: newEvent.startTime,
         endTime: newEvent.endTime,
-        userId: userId,
+        isRecurring: newEvent.isRecurring,
+        ...(newEvent.isRecurring
+          ? { days: newEvent.days }
+          : { date: newEvent.date }),
       };
 
       const response = await fetch("/api/events", {
@@ -102,33 +153,41 @@ const EventsPage = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(newEventData),
+        body: JSON.stringify({
+          userId, // Separate from eventData
+          ...eventData,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create event");
+        throw new Error("Failed to add event");
       }
 
-      const createdEvent = await response.json();
+      const result = await response.json();
+      console.log("Event added:", result);
 
-      // Add the new event to the local state
-      addEvent(createdEvent);
-
-      // Reset form and close dialog
+      // Reset the form and close the dialog
       setNewEvent({
         name: "",
         description: "",
         date: "",
         startTime: "",
         endTime: "",
+        isRecurring: false,
+        days: [],
       });
       setIsDialogOpen(false);
 
-      // Optionally, show a success message
-      alert("Event created successfully!");
+      toast.success("Event added successfully.");
+
+      // Refresh the events list
+      const updatedEvents = await fetch(`/api/events?userId=${userId}`).then(
+        (res) => res.json()
+      );
+      setEvents(updatedEvents);
     } catch (error) {
-      console.error("Error creating event:", error);
-      alert("Failed to create event. Please try again.");
+      console.error("Error adding event:", error);
+      toast.error("Failed to add event. Please try again.");
     }
   };
 
@@ -160,6 +219,46 @@ const EventsPage = () => {
     }
   };
 
+  const oneOffEvents = events.filter((event) => !event.isRecurring);
+  const recurringEvents = events.filter((event) => event.isRecurring);
+
+  const renderEventRow = (event: Event) => (
+    <TableRow key={event._id}>
+      <TableCell className="font-medium">
+        <Link href={`/dashboard/events/${event._id}`}>{event.name}</Link>
+      </TableCell>
+      <TableCell className="hidden sm:table-cell font-medium">
+        {event.description}
+      </TableCell>
+      <TableCell>
+        {event.isRecurring
+          ? event.days.join(", ")
+          : format(parseISO(event.date), "yyyy-MM-dd")}
+      </TableCell>
+      <TableCell>{event.startTime}</TableCell>
+      <TableCell className="hidden md:table-cell">{event.endTime}</TableCell>
+      <TableCell>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button aria-haspopup="true" size="icon" variant="ghost">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">Toggle menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => handleEdit(event._id)}>
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDelete(event._id)}>
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  );
+
   if (isLoading) {
     return <div>Loading events...</div>; // Or use a more sophisticated loading component
   }
@@ -169,7 +268,7 @@ const EventsPage = () => {
       <Tabs defaultValue="all">
         <div className="flex items-center">
           <TabsList>
-            <TabsTrigger value="all">Up Coming</TabsTrigger>
+            <TabsTrigger value="all">Active Events</TabsTrigger>
             <TabsTrigger value="active">Completed</TabsTrigger>
             {/* <TabsTrigger value="draft">Draft</TabsTrigger>
             <TabsTrigger value="archived" className="hidden sm:flex">
@@ -245,18 +344,65 @@ const EventsPage = () => {
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="date" className="text-right">
-                      Date
-                    </Label>
-                    <Input
-                      id="date"
-                      name="date"
-                      type="date"
-                      value={newEvent.date}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                    />
+                    <Label className="text-right">Event Type</Label>
+                    <RadioGroup
+                      defaultValue="single"
+                      onValueChange={handleRecurringChange}
+                      className="col-span-3 flex space-x-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="single" id="single" />
+                        <Label htmlFor="single">Single Date</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="recurring" id="recurring" />
+                        <Label htmlFor="recurring">Recurring</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
+
+                  {newEvent.isRecurring ? (
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label className="text-right">Days</Label>
+                      <div className="col-span-3 flex flex-wrap gap-2">
+                        {[
+                          "Monday",
+                          "Tuesday",
+                          "Wednesday",
+                          "Thursday",
+                          "Friday",
+                          "Saturday",
+                          "Sunday",
+                        ].map((day) => (
+                          <div key={day} className="flex items-center">
+                            <Checkbox
+                              id={day}
+                              checked={newEvent.days.includes(day)}
+                              onCheckedChange={() => handleDayToggle(day)}
+                            />
+                            <Label htmlFor={day} className="ml-2">
+                              {day}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="date" className="text-right">
+                        Date
+                      </Label>
+                      <Input
+                        id="date"
+                        name="date"
+                        type="date"
+                        value={newEvent.date}
+                        onChange={handleInputChange}
+                        className="col-span-3"
+                      />
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="startTime" className="text-right">
                       Start Time
@@ -285,19 +431,27 @@ const EventsPage = () => {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button onClick={handleAddEvent}>Add Event</Button>
+                  <Button type="submit" onClick={handleAddEvent}>
+                    Add Event
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
         </div>
         <TabsContent value="all">
-          <Card x-chunk="dashboard-06-chunk-0">
+          <Card>
             <CardHeader>
               <CardTitle>Events</CardTitle>
               <CardDescription>
                 Manage your Meetings and Appointments
               </CardDescription>
+              <Tabs value={eventType} onValueChange={setEventType}>
+                <TabsList>
+                  <TabsTrigger value="one-off">One-off Events</TabsTrigger>
+                  <TabsTrigger value="recurring">Recurring Events</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </CardHeader>
             <CardContent>
               <Table>
@@ -307,10 +461,12 @@ const EventsPage = () => {
                     <TableHead className="hidden sm:table-cell">
                       Description
                     </TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Time</TableHead>
+                    <TableHead>
+                      {eventType === "one-off" ? "Date" : "Days"}
+                    </TableHead>
+                    <TableHead>Start Time</TableHead>
                     <TableHead className="hidden md:table-cell">
-                      Duration
+                      End Time
                     </TableHead>
                     <TableHead>
                       <span className="sr-only">Actions</span>
@@ -318,59 +474,28 @@ const EventsPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {events.map((event, index) => (
-                    <TableRow key={event._id}>
-                      <TableCell className="font-medium">
-                        <Link href={`/dashboard/events/${event._id}`}>
-                          {event.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell font-medium">
-                        {event.description}
-                      </TableCell>
-                      <TableCell>
-                        {format(parseISO(event.date), "yyyy-MM-dd")}
-                      </TableCell>
-                      <TableCell>{event.startTime}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {event.endTime}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              aria-haspopup="true"
-                              size="icon"
-                              variant="ghost"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Toggle menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() => handleEdit(event._id)}
-                            >
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(event._id)}
-                            >
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {eventType === "one-off"
+                    ? oneOffEvents.map(renderEventRow)
+                    : recurringEvents.map(renderEventRow)}
                 </TableBody>
               </Table>
             </CardContent>
             <CardFooter>
               <div className="text-xs text-muted-foreground">
-                Showing <strong>1-3</strong> of <strong>{events.length}</strong>{" "}
-                tasks
+                Showing{" "}
+                <strong>
+                  1-
+                  {eventType === "one-off"
+                    ? oneOffEvents.length
+                    : recurringEvents.length}
+                </strong>{" "}
+                of{" "}
+                <strong>
+                  {eventType === "one-off"
+                    ? oneOffEvents.length
+                    : recurringEvents.length}
+                </strong>{" "}
+                events
               </div>
             </CardFooter>
           </Card>

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -85,6 +86,7 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
   const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("incomplete");
 
   useEffect(() => {
     const fetchProjectDetails = async () => {
@@ -307,6 +309,14 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
       return format(parseISO(date), "PPP");
     }
     return format(date, "PPP");
+  };
+
+  // Function to filter tasks based on the active tab
+  const getFilteredTasks = () => {
+    if (!project) return [];
+    return project.tasks.filter((task) =>
+      activeTab === "completed" ? task.completed : !task.completed
+    );
   };
 
   const handleAddTask = async () => {
@@ -579,18 +589,32 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                 <CardDescription>
                   Manage tasks associated with this project
                 </CardDescription>
-                <Button
-                  size="sm"
-                  onClick={handleGenerateTasks}
-                  disabled={generatingTasks}
-                >
-                  {generatingTasks ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="mr-2 h-4 w-4" />
+                <div className="flex flex-col gap-4 mt-4">
+                  <Tabs
+                    value={activeTab}
+                    onValueChange={setActiveTab}
+                    className="w-full"
+                  >
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="incomplete">Incomplete</TabsTrigger>
+                      <TabsTrigger value="completed">Completed</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  {activeTab !== "completed" && (
+                    <Button
+                      onClick={handleGenerateTasks}
+                      disabled={generatingTasks}
+                      className="w-full"
+                    >
+                      {generatingTasks ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="mr-2 h-4 w-4" />
+                      )}
+                      Generate Tasks
+                    </Button>
                   )}
-                  Generate Tasks
-                </Button>
+                </div>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
                 {generatingTasks && (
@@ -615,7 +639,7 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sortTasksByDeadline(project.tasks).map((task) => (
+                      {sortTasksByDeadline(getFilteredTasks()).map((task) => (
                         <TableRow key={task._id}>
                           <TableCell>{task.name}</TableCell>
                           <TableCell className="hidden md:table-cell">
@@ -647,6 +671,20 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                                   }
                                 >
                                   Delete
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onSelect={() => {
+                                    const updatedTask = {
+                                      ...task,
+                                      completed: !task.completed,
+                                    };
+                                    setEditingTask(updatedTask);
+                                    handleUpdateTask();
+                                  }}
+                                >
+                                  {task.completed
+                                    ? "Mark as Incomplete"
+                                    : "Mark as Complete"}
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -771,30 +809,6 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
               </CardFooter>
             </Card>
           </div>
-          {/* <div className="grid gap-4 sm:col-span-1 lg:gap-8">
-            <Card className="overflow-hidden">
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle>Project Status</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 sm:p-6">
-                <div className="grid gap-6">
-                  <div className="grid gap-3">
-                    <Label htmlFor="status">Status</Label>
-                    <Select>
-                      <SelectTrigger id="status">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="completed">Completed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div> */}
         </div>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-2 md:hidden mt-4">
           <Button variant="outline" size="sm" className="w-full sm:w-auto">
@@ -805,114 +819,6 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
           </Button>
         </div>
       </div>
-
-      {/* Edit Task Dialog */}
-      <Dialog
-        open={isEditTaskDialogOpen}
-        onOpenChange={setIsEditTaskDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Task</DialogTitle>
-            <DialogDescription>
-              Update the details of the task.
-            </DialogDescription>
-          </DialogHeader>
-          {editingTask && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-task-name" className="text-right">
-                  Name
-                </Label>
-                <Input
-                  id="edit-task-name"
-                  value={editingTask.name}
-                  onChange={(e) =>
-                    setEditingTask({ ...editingTask, name: e.target.value })
-                  }
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-task-description" className="text-right">
-                  Description
-                </Label>
-                <Textarea
-                  id="edit-task-description"
-                  value={editingTask.description}
-                  onChange={(e) =>
-                    setEditingTask({
-                      ...editingTask,
-                      description: e.target.value,
-                    })
-                  }
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-task-deadline" className="text-right">
-                  Deadline
-                </Label>
-                <Input
-                  id="edit-task-deadline"
-                  type="date"
-                  value={
-                    editingTask.deadline
-                      ? format(new Date(editingTask.deadline), "yyyy-MM-dd")
-                      : ""
-                  }
-                  onChange={(e) =>
-                    setEditingTask({ ...editingTask, deadline: e.target.value })
-                  }
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-task-duration" className="text-right">
-                  Duration (minutes)
-                </Label>
-                <Input
-                  id="edit-task-duration"
-                  type="number"
-                  min="5"
-                  max="240"
-                  value={editingTask.duration}
-                  onChange={(e) =>
-                    setEditingTask({
-                      ...editingTask,
-                      duration: Number(e.target.value),
-                    })
-                  }
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-task-priority" className="text-right">
-                  Priority
-                </Label>
-                <Select
-                  value={editingTask.priority}
-                  onValueChange={(value) =>
-                    setEditingTask({ ...editingTask, priority: value })
-                  }
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Low">Low</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="High">High</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button onClick={handleUpdateTask}>Update Task</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </main>
   );
 };
