@@ -73,6 +73,7 @@ const EventsPage = () => {
     isRecurring: false,
     days: [], // Initialize as an empty array of strings
   });
+
   const [isLoading, setIsLoading] = useState(true);
   const [eventType, setEventType] = useState("one-off");
 

@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, ReactNode } from "react";
+import React, { useState } from "react";
+import { ReactNode } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import {
@@ -13,9 +14,9 @@ import {
   CalendarClock,
   LineChart,
   Settings,
+  ChevronDown,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
-
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -28,6 +29,13 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const today = new Date();
 interface NavLinkProps {
@@ -38,6 +46,9 @@ interface NavLinkProps {
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<"today" | "tomorrow">(
+    "today"
+  );
   const pathname = usePathname();
 
   const closeSheet = () => setIsOpen(false);
@@ -60,6 +71,9 @@ const Header = () => {
       return { href, label: part.charAt(0).toUpperCase() + part.slice(1) };
     });
   };
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -131,6 +145,45 @@ const Header = () => {
       </div>
       <div className="flex items-center gap-4">
         <div className="flex items-center justify-center gap-2 absolute left-1/2 transform -translate-x-1/2 sm:static sm:left-auto sm:transform-none">
+          <div className="sm:hidden flex items-center">
+            <Calendar className="h-4 w-4 text-muted-foreground mr-2" />
+            <span className="text-sm font-medium">
+              {format(
+                selectedDate === "today" ? today : tomorrow,
+                "EEEE, MMMM d"
+              )}
+            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-1">
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setSelectedDate("today")}>
+                  Today
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectedDate("tomorrow")}>
+                  Tomorrow
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="hidden sm:block">
+            <Tabs
+              defaultValue={selectedDate}
+              onValueChange={(value) =>
+                setSelectedDate(value as "today" | "tomorrow")
+              }
+            >
+              <TabsList>
+                <TabsTrigger value="today">Today</TabsTrigger>
+                <TabsTrigger value="tomorrow">Tomorrow</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
+        <div className="hidden sm:flex items-center justify-center gap-2">
           <Calendar className="h-5 w-5 text-muted-foreground" />
           <span className="text-sm font-medium sm:text-base whitespace-nowrap">
             {format(today, "EEEE, MMMM d, yyyy")}
