@@ -131,6 +131,7 @@ const DashboardPage = () => {
     blocks,
     setBlocks,
     setDay,
+    selectedDay,
   } = useAppContext();
   const [aiResponse, setAiResponse] = useState<ScheduleResponse | null>(null);
   // const { day, isLoading, isError, mutate } = useTodayDay();
@@ -1193,7 +1194,8 @@ Use the toolbar to access these sections and input your information.`);
     }
   };
 
-  console.log("day", day);
+  // console.log("day", day);
+  console.log("selected day", selectedDay);
 
   return (
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">

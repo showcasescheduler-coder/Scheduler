@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
+import { useAppContext } from "@/app/context/AppContext"; // Import the AppContext
 import { ReactNode } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -36,6 +37,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@clerk/nextjs";
 
 const today = new Date();
 interface NavLinkProps {
@@ -46,10 +48,9 @@ interface NavLinkProps {
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<"today" | "tomorrow">(
-    "today"
-  );
+  const { selectedDay, setSelectedDay } = useAppContext(); // Use the context
   const pathname = usePathname();
+  const { isLoaded, userId } = useAuth();
 
   const closeSheet = () => setIsOpen(false);
 
@@ -74,6 +75,10 @@ const Header = () => {
 
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const updateSelectedDay = (date: "today" | "tomorrow") => {
+    setSelectedDay(date);
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -146,24 +151,28 @@ const Header = () => {
       <div className="flex items-center gap-4">
         <div className="flex items-center justify-center gap-2 absolute left-1/2 transform -translate-x-1/2 sm:static sm:left-auto sm:transform-none">
           <div className="sm:hidden flex items-center">
-            <Calendar className="h-4 w-4 text-muted-foreground mr-2" />
-            <span className="text-sm font-medium">
-              {format(
-                selectedDate === "today" ? today : tomorrow,
-                "EEEE, MMMM d"
-              )}
-            </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-1">
-                  <ChevronDown className="h-4 w-4" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 p-0 flex items-center"
+                >
+                  <Calendar className="h-4 w-4 text-muted-foreground mr-2" />
+                  <span className="text-sm font-medium">
+                    {format(
+                      selectedDay === "today" ? today : tomorrow,
+                      "MMM d" // Shortened date format
+                    )}
+                  </span>
+                  <ChevronDown className="h-4 w-4 ml-1" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setSelectedDate("today")}>
+                <DropdownMenuItem onClick={() => updateSelectedDay("today")}>
                   Today
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedDate("tomorrow")}>
+                <DropdownMenuItem onClick={() => updateSelectedDay("tomorrow")}>
                   Tomorrow
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -171,9 +180,9 @@ const Header = () => {
           </div>
           <div className="hidden sm:block">
             <Tabs
-              defaultValue={selectedDate}
+              defaultValue={selectedDay}
               onValueChange={(value) =>
-                setSelectedDate(value as "today" | "tomorrow")
+                updateSelectedDay(value as "today" | "tomorrow")
               }
             >
               <TabsList>

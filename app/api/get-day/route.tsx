@@ -2,39 +2,50 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongo";
 import Day from "@/models/Day";
 import User from "@/models/User";
-import { Types } from "mongoose";
-import Block from "@/models/Block"; // Import the Block model
-import Task from "@/models/Task"; // Import the Task model if necessary
 
 export async function GET(request: NextRequest) {
   await dbConnect();
 
   try {
-    const userId = request.nextUrl.searchParams.get("userId");
-    const date = request.nextUrl.searchParams.get("date");
+    const clerkId = request.nextUrl.searchParams.get("userId");
+    const dateParam = request.nextUrl.searchParams.get("date");
 
-    if (!userId || !date) {
+    console.log("clerkId", clerkId);
+    console.log("dateParam", dateParam);
+
+    if (!clerkId || !dateParam) {
       return NextResponse.json(
-        { error: "User ID and date are required" },
+        { error: "User ID and date parameter are required" },
         { status: 400 }
       );
     }
 
-    const user = await User.findById(userId);
-    console.log("user", user);
+    const user = await User.findOne({ clerkId });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+    console.log("user", user);
 
-    let day = await Day.findOne({ user: userId, date: date }).populate({
+    let targetDate = new Date();
+    if (dateParam === "tomorrow") {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+    console.log("targetDate", targetDate);
+    const formattedDate = targetDate.toISOString().split("T")[0]; // Get date in YYYY-MM-DD format
+    console.log("formattedDate", formattedDate);
+
+    let day = await Day.findOne({
+      user: user._id,
+      date: formattedDate,
+    }).populate({
       path: "blocks",
       populate: { path: "tasks" },
     });
 
     if (!day) {
       day = new Day({
-        user: userId,
-        date: date,
+        user: user._id,
+        date: formattedDate,
         completed: false,
         blocks: [],
         completedTasksCount: 0,

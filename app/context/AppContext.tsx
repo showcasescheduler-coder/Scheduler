@@ -13,6 +13,8 @@ import {
   Block,
 } from "./models";
 
+type SelectedDay = "today" | "tomorrow";
+
 type AppContextType = {
   events: Event[];
   day: Day;
@@ -53,6 +55,9 @@ type AppContextType = {
   routines: Routine[];
   userData: UserData;
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  selectedDay: SelectedDay;
+  setSelectedDay: React.Dispatch<React.SetStateAction<SelectedDay>>;
+  fetchDayData: (date: SelectedDay) => Promise<void>;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -76,6 +81,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     events: [],
     routines: [],
   });
+  const [selectedDay, setSelectedDay] = useState<SelectedDay>("today");
 
   const addEvent = (event: Event) => {
     setEvents((prev) => [...prev, event]);
@@ -225,6 +231,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const fetchDayData = async (date: SelectedDay) => {
+    try {
+      const userId = "user-id-here"; // Replace with actual user ID from your auth system
+      const response = await fetch(
+        `/api/get-day?date=${date}&userId=${userId}`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch day");
+      }
+      const data = await response.json();
+      setDay(data);
+      setSelectedDay(date);
+    } catch (error) {
+      console.error("Error fetching day:", error);
+      // Optionally, set a fallback date or show an error message
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -260,6 +284,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addBlock,
         updateBlock,
         deleteBlock,
+        selectedDay,
+        setSelectedDay,
+        fetchDayData,
       }}
     >
       {children}
