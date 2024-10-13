@@ -25,6 +25,8 @@ import {
   MoreHorizontal,
   RefreshCw,
   Sparkles,
+  ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -85,11 +87,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { InfoIcon } from "lucide-react";
+import { InfoIcon, AlertCircle } from "lucide-react";
 import { useUserAndDay } from "@/hooks/useUserAndDay";
 import { useAuth } from "@clerk/nextjs";
 import LoadingMessages from "@/app/components/MessgageSpinner"; // Add this import
 import toast from "react-hot-toast";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface TimeBlock {
   description: string;
@@ -792,13 +799,7 @@ Use the toolbar to access these sections and input your information.`);
     return Math.round((completedTasks / tasks.length) * 100);
   };
   const getCompletedBlocksCount = (blocks: Block[]): number => {
-    return blocks.filter(
-      (block: Block) =>
-        block.status === "complete" &&
-        block.tasks &&
-        block.tasks.length > 0 &&
-        block.tasks.every((task) => task.completed)
-    ).length;
+    return blocks.filter((block: Block) => block.status === "complete").length;
   };
 
   const completedBlocksCount = getCompletedBlocksCount(day.blocks);
@@ -807,11 +808,7 @@ Use the toolbar to access these sections and input your information.`);
   const getBlockCompletionRate = (blocks: Block[]): number => {
     const totalBlocks = blocks.length;
     const completedBlocks = blocks.filter(
-      (block: Block) =>
-        block.status === "complete" &&
-        block.tasks &&
-        block.tasks.length > 0 &&
-        block.tasks.every((task) => task.completed)
+      (block: Block) => block.status === "complete"
     ).length;
     return totalBlocks > 0 ? (completedBlocks / totalBlocks) * 100 : 0;
   };
@@ -1194,280 +1191,507 @@ Use the toolbar to access these sections and input your information.`);
     }
   };
 
-  // console.log("day", day);
+  const handleCompleteDay = async () => {
+    try {
+      const response = await fetch("/api/complete-day", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ dayId: day._id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to complete day");
+      }
+
+      const completedDay = await response.json();
+
+      // Update the local state
+      mutate(
+        (currentDay: Day) => ({
+          ...currentDay,
+          completed: true,
+        }),
+        false
+      );
+
+      toast.success("Day completed successfully!");
+    } catch (error) {
+      console.error("Error completing day:", error);
+      toast.error("Failed to complete day. Please try again.");
+    }
+  };
+
+  const handleReactivateDay = async () => {
+    try {
+      const response = await fetch("/api/reactivate-day", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ dayId: day._id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to reactivate day");
+      }
+
+      const completedDay = await response.json();
+
+      // Update the local state
+      mutate(
+        (currentDay: Day) => ({
+          ...currentDay,
+          completed: false,
+        }),
+        false
+      );
+
+      toast.success("Day reactivated successfully!");
+    } catch (error) {
+      console.error("Error reactivating day:", error);
+      toast.error("Failed to reactivate day. Please try again.");
+    }
+  };
+
+  console.log("day", day);
   console.log("selected day", selectedDay);
 
   return (
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle>Daily Planner</CardTitle>
-            <CardDescription className="max-w-lg text-balance leading-relaxed">
-              Generate your daily plan
-            </CardDescription>
-          </CardHeader>
-          <CardFooter>
-            <Button
-              className="w-full"
-              onClick={generateSchedule}
-              disabled={isGeneratingSchedule}
-            >
-              {isGeneratingSchedule ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate Plan
-                </>
-              )}
+      {day.completed === true ? (
+        <div className="space-y-8 max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 className="text-3xl md:text-4xl font-bold text-primary">
+              Day Complete
+            </h1>
+            <Button variant="outline" size="sm" onClick={handleReactivateDay}>
+              <RotateCcw className="mr-2 h-4 w-4" /> Reactivate Day
             </Button>
-          </CardFooter>
-        </Card>
-        <Card className="hidden md:block">
-          <CardHeader className="pb-2">
-            <CardDescription>Tasks Completed</CardDescription>
-            <CardTitle className="text-4xl">{`${completedTasks}/${totalTasks}`}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs text-muted-foreground">
-              {totalTasks > 0
-                ? `${Math.round(
-                    (completedTasks / totalTasks) * 100
-                  )}% completion rate`
-                : "0% completion rate"}
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Progress
-              value={taskCompletionRate}
-              aria-label={`${Math.round(taskCompletionRate)}% tasks completed`}
-            />
-          </CardFooter>
-        </Card>
-        <Card className="hidden md:block">
-          <CardHeader className="pb-2">
-            <CardDescription>Time Blocks Completed</CardDescription>
-            <CardTitle className="text-4xl">{`${completedBlocksCount}/${blockCount}`}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xs text-muted-foreground">
-              {blockCount - completedBlocksCount} blocks remaining
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Progress
-              value={blockCompletionRate}
-              aria-label={`${Math.round(
-                blockCompletionRate
-              )}% time blocks completed`}
-            />
-          </CardFooter>
-        </Card>
-        <Card className="hidden md:block">
-          <CardHeader className="pb-2">
-            <CardDescription>Performance Score</CardDescription>
-            <CardTitle className="text-4xl">
-              {day.performanceRating
-                ? `${day.performanceRating.score}/10`
-                : "0/10"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium">
-                {day.performanceRating
-                  ? day.performanceRating.level
-                  : "Preparing for Takeoff"}
-              </div>
-              <Popover>
-                <PopoverTrigger>
-                  <InfoIcon className="h-4 w-4 text-muted-foreground" />
-                </PopoverTrigger>
-                <PopoverContent>
-                  <p className="text-sm">
-                    {day.performanceRating
-                      ? day.performanceRating.comment
-                      : "Complete tasks to see your performance rating!"}
-                  </p>
-                </PopoverContent>
-              </Popover>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Progress
-              value={
-                day.performanceRating ? day.performanceRating.score * 10 : 0
-              }
-              aria-label="Performance score"
-            />
-          </CardFooter>
-        </Card>
-      </div>
+          </div>
 
-      <Tabs defaultValue="active" className="w-full">
-        <div className="flex items-center mb-4">
-          <TabsList>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-          </TabsList>
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              onClick={handleAddRoutine}
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1"
-            >
-              <CalendarClock className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Add Routine
-              </span>
-            </Button>
-            <Button
-              onClick={handleAddEvent}
-              size="sm"
-              variant="outline"
-              className="h-7 gap-1"
-            >
-              <CalendarPlus className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Add Event
-              </span>
-            </Button>
+          <div className="grid gap-8 md:grid-cols-2">
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle>Today's Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {completedBlocks.map((block: Block) => (
+                    <Collapsible key={block._id}>
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <div>
+                          <p className="font-medium">{block.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {block.startTime} - {block.endTime}
+                          </p>
+                        </div>
+                        <div className="flex items-center">
+                          <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                          <CollapsibleTrigger>
+                            <Button variant="ghost" size="sm">
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </CollapsibleTrigger>
+                        </div>
+                      </div>
+                      <CollapsibleContent className="mt-2 ml-4 space-y-2">
+                        {block.tasks &&
+                          block.tasks.map((task) => (
+                            <div key={task._id} className="flex items-center">
+                              <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                              <span className="text-sm">{task.name}</span>
+                            </div>
+                          ))}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="h-7 gap-1">
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Add Block
-                  </span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Add New Block</DialogTitle>
-                  <DialogDescription>
-                    Create a new time block for your schedule.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                      Name
-                    </Label>
-                    <Input
-                      id="name"
-                      value={newBlock.name}
-                      onChange={(e) =>
-                        setNewBlock({ ...newBlock, name: e.target.value })
-                      }
-                      className="col-span-3"
-                    />
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle>Productivity Metrics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <span>Tasks Completed</span>
+                      <span className="font-semibold">
+                        {Math.round(taskCompletionRate)}%
+                      </span>
+                    </div>
+                    <Progress value={taskCompletionRate} className="h-2" />
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="startTime" className="text-right">
-                      Start Time
-                    </Label>
-                    <Input
-                      id="startTime"
-                      type="time"
-                      value={newBlock.startTime}
-                      onChange={(e) =>
-                        setNewBlock({ ...newBlock, startTime: e.target.value })
-                      }
-                      className="col-span-3"
-                    />
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <span>Time Blocks Completed</span>
+                      <span className="font-semibold">
+                        {Math.round(blockCompletionRate)}%
+                      </span>
+                    </div>
+                    <Progress value={blockCompletionRate} className="h-2" />
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="endTime" className="text-right">
-                      End Time
-                    </Label>
-                    <Input
-                      id="endTime"
-                      type="time"
-                      value={newBlock.endTime}
-                      onChange={(e) =>
-                        setNewBlock({ ...newBlock, endTime: e.target.value })
-                      }
-                      className="col-span-3"
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <span>Overall Completion</span>
+                      <span className="font-semibold">
+                        {Math.round(
+                          (taskCompletionRate + blockCompletionRate) / 2
+                        )}
+                        %
+                      </span>
+                    </div>
+                    <Progress
+                      value={(taskCompletionRate + blockCompletionRate) / 2}
+                      className="h-2"
                     />
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button type="submit" onClick={handleAddBlock}>
-                    Add Block
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-center">
+                  Performance Rating: {day.performanceRating.level}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center justify-center">
+                  <div className="text-6xl font-bold text-primary mb-4">
+                    {day.performanceRating.score}/10
+                  </div>
+                  <p className="text-center text-muted-foreground">
+                    {day.performanceRating.comment}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-        {isGeneratingSchedule && (
-          <Card className="mt-4 mb-4">
-            <CardContent className="pt-6">
-              <LoadingMessages isLoading={isGeneratingSchedule} />
-            </CardContent>
-          </Card>
-        )}
-        <TabsContent value="active" className="space-y-4">
-          {day &&
-            sortedBlocks.map((blockOrString: Block | string, index: number) => {
-              const block =
-                typeof blockOrString === "string"
-                  ? ({ _id: blockOrString } as Block)
-                  : (blockOrString as Block);
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-3">
+                <CardTitle>Daily Planner</CardTitle>
+                <CardDescription className="max-w-lg text-balance leading-relaxed">
+                  Generate your daily plan
+                </CardDescription>
+              </CardHeader>
+              <CardFooter>
+                <Button
+                  className="w-full"
+                  onClick={generateSchedule}
+                  disabled={isGeneratingSchedule}
+                >
+                  {isGeneratingSchedule ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Generate Plan
+                    </>
+                  )}
+                </Button>
+              </CardFooter>
+            </Card>
+            <Card className="hidden md:block">
+              <CardHeader className="pb-2">
+                <CardDescription>Tasks Completed</CardDescription>
+                <CardTitle className="text-4xl">{`${completedTasks}/${totalTasks}`}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-xs text-muted-foreground">
+                  {totalTasks > 0
+                    ? `${Math.round(
+                        (completedTasks / totalTasks) * 100
+                      )}% completion rate`
+                    : "0% completion rate"}
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Progress
+                  value={taskCompletionRate}
+                  aria-label={`${Math.round(
+                    taskCompletionRate
+                  )}% tasks completed`}
+                />
+              </CardFooter>
+            </Card>
+            <Card className="hidden md:block">
+              <CardHeader className="pb-2">
+                <CardDescription>Time Blocks Completed</CardDescription>
+                <CardTitle className="text-4xl">{`${completedBlocksCount}/${blockCount}`}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-xs text-muted-foreground">
+                  {blockCount - completedBlocksCount} blocks remaining
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Progress
+                  value={blockCompletionRate}
+                  aria-label={`${Math.round(
+                    blockCompletionRate
+                  )}% time blocks completed`}
+                />
+              </CardFooter>
+            </Card>
+            <Card className="hidden md:block">
+              <CardHeader className="pb-2">
+                <CardDescription>Performance Score</CardDescription>
+                <CardTitle className="text-4xl">
+                  {day.performanceRating
+                    ? `${day.performanceRating.score}/10`
+                    : "0/10"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium">
+                    {day.performanceRating
+                      ? day.performanceRating.level
+                      : "Preparing for Takeoff"}
+                  </div>
+                  <Popover>
+                    <PopoverTrigger>
+                      <InfoIcon className="h-4 w-4 text-muted-foreground" />
+                    </PopoverTrigger>
+                    <PopoverContent>
+                      <p className="text-sm">
+                        {day.performanceRating
+                          ? day.performanceRating.comment
+                          : "Complete tasks to see your performance rating!"}
+                      </p>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Progress
+                  value={
+                    day.performanceRating ? day.performanceRating.score * 10 : 0
+                  }
+                  aria-label="Performance score"
+                />
+              </CardFooter>
+            </Card>
+          </div>
 
-              const isEventBlock = !!block.event;
+          <Tabs defaultValue="active" className="w-full">
+            <div className="flex items-center mb-4">
+              <TabsList>
+                <TabsTrigger value="active">Active</TabsTrigger>
+                <TabsTrigger value="completed">Completed</TabsTrigger>
+              </TabsList>
+              <div className="ml-auto flex items-center gap-2">
+                <Button
+                  onClick={handleAddRoutine}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1"
+                >
+                  <CalendarClock className="h-3.5 w-3.5" />
+                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Add Routine
+                  </span>
+                </Button>
+                <Button
+                  onClick={handleAddEvent}
+                  size="sm"
+                  variant="outline"
+                  className="h-7 gap-1"
+                >
+                  <CalendarPlus className="h-3.5 w-3.5" />
+                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Add Event
+                  </span>
+                </Button>
 
-              return (
-                <Card key={block._id || index}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <div>
-                      <CardTitle>
-                        {isEventBlock ? `Event: ${block.name}` : block.name}
-                      </CardTitle>
-                      <CardDescription>{`${block.startTime} - ${block.endTime}`}</CardDescription>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="h-7 gap-1">
+                      <PlusCircle className="h-3.5 w-3.5" />
+                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                        Add Block
+                      </span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Add New Block</DialogTitle>
+                      <DialogDescription>
+                        Create a new time block for your schedule.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="name" className="text-right">
+                          Name
+                        </Label>
+                        <Input
+                          id="name"
+                          value={newBlock.name}
+                          onChange={(e) =>
+                            setNewBlock({ ...newBlock, name: e.target.value })
+                          }
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="startTime" className="text-right">
+                          Start Time
+                        </Label>
+                        <Input
+                          id="startTime"
+                          type="time"
+                          value={newBlock.startTime}
+                          onChange={(e) =>
+                            setNewBlock({
+                              ...newBlock,
+                              startTime: e.target.value,
+                            })
+                          }
+                          className="col-span-3"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="endTime" className="text-right">
+                          End Time
+                        </Label>
+                        <Input
+                          id="endTime"
+                          type="time"
+                          value={newBlock.endTime}
+                          onChange={(e) =>
+                            setNewBlock({
+                              ...newBlock,
+                              endTime: e.target.value,
+                            })
+                          }
+                          className="col-span-3"
+                        />
+                      </div>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          aria-haspopup="true"
-                          size="icon"
-                          variant="ghost"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onSelect={() => handleEditBlock(block)}
-                        >
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={() => handleDeleteBlock(block)}
-                        >
-                          Delete
-                        </DropdownMenuItem>
-                        {isEventBlock && (
-                          <DropdownMenuItem
-                            onSelect={() =>
-                              handleRemoveBlockFromSchedule(block._id)
-                            }
-                          >
-                            Remove from Schedule
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    {/* {isEventBlock ? (
+                    <DialogFooter>
+                      <Button type="submit" onClick={handleAddBlock}>
+                        Add Block
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+            {isGeneratingSchedule && (
+              <Card className="mt-4 mb-4">
+                <CardContent className="pt-6">
+                  <LoadingMessages isLoading={isGeneratingSchedule} />
+                </CardContent>
+              </Card>
+            )}
+
+            <TabsContent value="active" className="space-y-4">
+              {day.blocks.length > 0 && blockCompletionRate === 100 ? (
+                <Card className="w-full border-2 border-primary/10 shadow-md">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center text-lg sm:text-xl text-primary">
+                      <AlertCircle className="mr-2 h-5 w-5 text-yellow-500 flex-shrink-0" />
+                      <span>All Blocks Completed</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <Separator className="mb-4" />
+                  <CardContent className="pt-0 space-y-4">
+                    <div className="flex items-center space-x-2 text-sm sm:text-base text-muted-foreground">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <p>
+                        Congratulations! You've completed all your blocks for
+                        the day.
+                      </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4">
+                      <Button
+                        onClick={handleCompleteDay}
+                        className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                      >
+                        Complete Day
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsDialogOpen(true)}
+                        className="w-full sm:w-auto border-primary/20 hover:bg-primary/10 transition-colors"
+                      >
+                        Add New Block
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  {day &&
+                    sortedBlocks.map(
+                      (blockOrString: Block | string, index: number) => {
+                        const block =
+                          typeof blockOrString === "string"
+                            ? ({ _id: blockOrString } as Block)
+                            : (blockOrString as Block);
+
+                        const isEventBlock = !!block.event;
+
+                        return (
+                          <Card key={block._id || index}>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                              <div>
+                                <CardTitle>
+                                  {isEventBlock
+                                    ? `Event: ${block.name}`
+                                    : block.name}
+                                </CardTitle>
+                                <CardDescription>{`${block.startTime} - ${block.endTime}`}</CardDescription>
+                              </div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    aria-haspopup="true"
+                                    size="icon"
+                                    variant="ghost"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Toggle menu</span>
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuItem
+                                    onSelect={() => handleEditBlock(block)}
+                                  >
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onSelect={() => handleDeleteBlock(block)}
+                                  >
+                                    Delete
+                                  </DropdownMenuItem>
+                                  {isEventBlock && (
+                                    <DropdownMenuItem
+                                      onSelect={() =>
+                                        handleRemoveBlockFromSchedule(block._id)
+                                      }
+                                    >
+                                      Remove from Schedule
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                              {/* {isEventBlock ? (
                         <Badge
                           variant="secondary"
                           className="bg-orange-100 text-orange-800"
@@ -1480,129 +1704,145 @@ Use the toolbar to access these sections and input your information.`);
                           <Badge>{block.tasks[0].status}</Badge>
                         )
                       )} */}
-                  </CardHeader>
-                  <CardContent>
-                    {isEventBlock ? (
-                      <div className="text-sm text-gray-600">
-                        <Clock className="inline-block mr-2 h-4 w-4" />
-                        {block.description || "No description available"}
-                      </div>
-                    ) : (
-                      <>
-                        {block.tasks && block.tasks.length > 0 && (
-                          <Progress
-                            value={calculateProgress(block.tasks)}
-                            className="h-2 mt-2 mb-4"
-                          />
-                        )}
-                        <div className="space-y-2">
-                          {block.tasks &&
-                            block.tasks.map((task: Task, taskIndex: number) => (
-                              <Card
-                                key={task._id || taskIndex}
-                                className="bg-muted relative"
-                              >
-                                <CardContent className="p-3 flex items-center justify-between">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="flex-shrink-0">
-                                      {updatingTasks &&
-                                      updatingTaskId === task._id ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <Checkbox
-                                          id={`task-${task._id || taskIndex}`}
-                                          checked={task.completed}
-                                          onCheckedChange={(checked) =>
-                                            handleTaskCompletion(
-                                              task._id,
-                                              checked as boolean
-                                            )
-                                          }
-                                          disabled={updatingTasks}
-                                        />
-                                      )}
-                                    </div>
-                                    <div>
-                                      <label
-                                        htmlFor={`task-${
-                                          task._id || taskIndex
-                                        }`}
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                      >
-                                        {task.name}
-                                      </label>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    {/* New Code (Modify like this) */}
-                                    {task.projectId ? (
-                                      <Badge className="text-xs hidden md:inline-flex bg-purple-100 text-purple-800">
-                                        Project
-                                      </Badge>
-                                    ) : task.isRoutineTask ? (
-                                      <Badge className="text-xs hidden md:inline-flex bg-green-100 text-green-800">
-                                        Routine
-                                      </Badge>
-                                    ) : (
-                                      <Badge className="text-xs hidden md:inline-flex">
-                                        Stand-alone
-                                      </Badge>
-                                    )}
-                                    <Badge
-                                      className={`text-xs hidden md:inline-flex ${
-                                        task.priority === "High"
-                                          ? "bg-red-100 text-red-800"
-                                          : task.priority === "Medium"
-                                          ? "bg-yellow-100 text-yellow-800"
-                                          : "bg-green-100 text-green-800"
-                                      }`}
-                                    >
-                                      {task.priority}
-                                    </Badge>
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button
-                                          aria-haspopup="true"
-                                          size="icon"
-                                          variant="ghost"
-                                        >
-                                          <MoreHorizontal className="h-4 w-4" />
-                                          <span className="sr-only">
-                                            Actions
-                                          </span>
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                        <DropdownMenuLabel>
-                                          Actions
-                                        </DropdownMenuLabel>
-                                        <DropdownMenuItem
-                                          onSelect={() => handleEditTask(task)}
-                                        >
-                                          Edit
-                                        </DropdownMenuItem>
-                                        {!task.isRoutineTask && (
-                                          <DropdownMenuItem
-                                            onSelect={() =>
-                                              handleRemoveTaskFromBlock(
-                                                task,
-                                                block
-                                              )
-                                            }
+                            </CardHeader>
+                            <CardContent>
+                              {isEventBlock ? (
+                                <div className="text-sm text-gray-600">
+                                  <Clock className="inline-block mr-2 h-4 w-4" />
+                                  {block.description ||
+                                    "No description available"}
+                                </div>
+                              ) : (
+                                <>
+                                  {block.tasks && block.tasks.length > 0 && (
+                                    <Progress
+                                      value={calculateProgress(block.tasks)}
+                                      className="h-2 mt-2 mb-4"
+                                    />
+                                  )}
+                                  <div className="space-y-2">
+                                    {block.tasks &&
+                                      block.tasks.map(
+                                        (task: Task, taskIndex: number) => (
+                                          <Card
+                                            key={task._id || taskIndex}
+                                            className="bg-muted relative"
                                           >
-                                            Remove from Block
-                                          </DropdownMenuItem>
-                                        )}
-                                        <DropdownMenuItem
-                                          onSelect={() =>
-                                            handleDeleteTask(task, block)
-                                          }
-                                        >
-                                          Delete Task
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    {/* <Button
+                                            <CardContent className="p-3 flex items-center justify-between">
+                                              <div className="flex items-center space-x-3">
+                                                {selectedDay !== "tomorrow" && (
+                                                  <div className="flex-shrink-0">
+                                                    {updatingTasks &&
+                                                    updatingTaskId ===
+                                                      task._id ? (
+                                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                      <Checkbox
+                                                        id={`task-${
+                                                          task._id || taskIndex
+                                                        }`}
+                                                        checked={task.completed}
+                                                        onCheckedChange={(
+                                                          checked
+                                                        ) =>
+                                                          handleTaskCompletion(
+                                                            task._id,
+                                                            checked as boolean
+                                                          )
+                                                        }
+                                                        disabled={updatingTasks}
+                                                      />
+                                                    )}
+                                                  </div>
+                                                )}
+
+                                                <div>
+                                                  <label
+                                                    htmlFor={`task-${
+                                                      task._id || taskIndex
+                                                    }`}
+                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                                  >
+                                                    {task.name}
+                                                  </label>
+                                                </div>
+                                              </div>
+                                              <div className="flex items-center space-x-2">
+                                                {/* New Code (Modify like this) */}
+                                                {task.projectId ? (
+                                                  <Badge className="text-xs hidden md:inline-flex bg-purple-100 text-purple-800">
+                                                    Project
+                                                  </Badge>
+                                                ) : task.isRoutineTask ? (
+                                                  <Badge className="text-xs hidden md:inline-flex bg-green-100 text-green-800">
+                                                    Routine
+                                                  </Badge>
+                                                ) : (
+                                                  <Badge className="text-xs hidden md:inline-flex">
+                                                    Stand-alone
+                                                  </Badge>
+                                                )}
+                                                <Badge
+                                                  className={`text-xs hidden md:inline-flex ${
+                                                    task.priority === "High"
+                                                      ? "bg-red-100 text-red-800"
+                                                      : task.priority ===
+                                                        "Medium"
+                                                      ? "bg-yellow-100 text-yellow-800"
+                                                      : "bg-green-100 text-green-800"
+                                                  }`}
+                                                >
+                                                  {task.priority}
+                                                </Badge>
+                                                <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                      aria-haspopup="true"
+                                                      size="icon"
+                                                      variant="ghost"
+                                                    >
+                                                      <MoreHorizontal className="h-4 w-4" />
+                                                      <span className="sr-only">
+                                                        Actions
+                                                      </span>
+                                                    </Button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end">
+                                                    <DropdownMenuLabel>
+                                                      Actions
+                                                    </DropdownMenuLabel>
+                                                    <DropdownMenuItem
+                                                      onSelect={() =>
+                                                        handleEditTask(task)
+                                                      }
+                                                    >
+                                                      Edit
+                                                    </DropdownMenuItem>
+                                                    {!task.isRoutineTask && (
+                                                      <DropdownMenuItem
+                                                        onSelect={() =>
+                                                          handleRemoveTaskFromBlock(
+                                                            task,
+                                                            block
+                                                          )
+                                                        }
+                                                      >
+                                                        Remove from Block
+                                                      </DropdownMenuItem>
+                                                    )}
+                                                    <DropdownMenuItem
+                                                      onSelect={() =>
+                                                        handleDeleteTask(
+                                                          task,
+                                                          block
+                                                        )
+                                                      }
+                                                    >
+                                                      Delete Task
+                                                    </DropdownMenuItem>
+                                                  </DropdownMenuContent>
+                                                </DropdownMenu>
+                                                {/* <Button
                                       variant="ghost"
                                       size="icon"
                                       className="h-8 w-8"
@@ -1612,142 +1852,154 @@ Use the toolbar to access these sections and input your information.`);
                                         Drag handle
                                       </span>
                                     </Button> */}
+                                              </div>
+                                            </CardContent>
+                                          </Card>
+                                        )
+                                      )}
                                   </div>
-                                </CardContent>
-                              </Card>
-                            ))}
-                        </div>
-                      </>
-                    )}
-                    <div className="flex justify-end mt-4 space-x-2">
-                      {!isEventBlock && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="bg-white"
-                          onClick={() => handleAddTask(block._id)}
-                        >
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Add Task
-                        </Button>
-                      )}
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="bg-black text-white"
-                        onClick={() => handleCompleteBlock(block._id)}
-                      >
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Complete {isEventBlock ? "Event" : "Block"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-        </TabsContent>
-        <TabsContent value="completed" className="space-y-4">
-          {day &&
-            completedBlocks.map(
-              (blockOrString: Block | string, index: number) => {
-                const block =
-                  typeof blockOrString === "string"
-                    ? ({ _id: blockOrString } as Block)
-                    : (blockOrString as Block);
-
-                const isEventBlock = !!block.event;
-
-                return (
-                  <Card key={block._id || index}>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <div>
-                        <CardTitle>
-                          {isEventBlock ? `Event: ${block.name}` : block.name}
-                        </CardTitle>
-                        <CardDescription>{`${block.startTime} - ${block.endTime}`}</CardDescription>
-                      </div>
-                      <Badge variant="secondary">Completed</Badge>
-                    </CardHeader>
-                    <CardContent>
-                      {isEventBlock ? (
-                        <div className="text-sm text-gray-600">
-                          <Clock className="inline-block mr-2 h-4 w-4" />
-                          {block.description || "No description available"}
-                        </div>
-                      ) : (
-                        <>
-                          <Progress
-                            value={calculateProgress(block.tasks)}
-                            className="h-2 mt-2 mb-4 bg-gray-200"
-                          />
-                          <div className="space-y-2">
-                            {block.tasks &&
-                              block.tasks.map(
-                                (task: Task, taskIndex: number) => (
-                                  <Card
-                                    key={task._id || taskIndex}
-                                    className="bg-muted relative"
-                                  >
-                                    <CardContent className="p-3 flex items-center justify-between">
-                                      <div className="flex items-center space-x-3">
-                                        <div className="flex-shrink-0">
-                                          <Checkbox
-                                            id={`task-${task._id || taskIndex}`}
-                                            checked={task.completed}
-                                            disabled
-                                          />
-                                        </div>
-                                        <div>
-                                          <label
-                                            htmlFor={`task-${
-                                              task._id || taskIndex
-                                            }`}
-                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                          >
-                                            {task.name}
-                                          </label>
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <Badge className="text-xs hidden md:inline-flex">
-                                          {task.isRoutineTask
-                                            ? "Routine"
-                                            : "Stand-alone"}
-                                        </Badge>
-                                        <Badge className="text-xs hidden md:inline-flex">
-                                          {task.priority}
-                                        </Badge>
-                                        <Badge className="text-xs">
-                                          {task.duration} min
-                                        </Badge>
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-                                )
+                                </>
                               )}
-                          </div>
-                        </>
-                      )}
-                      <div className="flex justify-end mt-4 space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="bg-gray-100 text-gray-800 hover:bg-gray-200"
-                          onClick={() => handleReactivateBlock(block._id)}
-                        >
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Reactivate {isEventBlock ? "Event" : "Block"}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              }
-            )}
-        </TabsContent>
-      </Tabs>
+                              <div className="flex justify-end mt-4 space-x-2">
+                                {!isEventBlock && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="bg-white"
+                                    onClick={() => handleAddTask(block._id)}
+                                  >
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Add Task
+                                  </Button>
+                                )}
+                                {selectedDay !== "tomorrow" && (
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    className="bg-black text-white"
+                                    onClick={() =>
+                                      handleCompleteBlock(block._id)
+                                    }
+                                  >
+                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                    Complete {isEventBlock ? "Event" : "Block"}
+                                  </Button>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      }
+                    )}
+                </>
+              )}
+            </TabsContent>
+            <TabsContent value="completed" className="space-y-4">
+              {day &&
+                completedBlocks.map(
+                  (blockOrString: Block | string, index: number) => {
+                    const block =
+                      typeof blockOrString === "string"
+                        ? ({ _id: blockOrString } as Block)
+                        : (blockOrString as Block);
 
-      {/* <ScrollArea className="h-72 w-48 rounded-md border">
+                    const isEventBlock = !!block.event;
+
+                    return (
+                      <Card key={block._id || index}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <div>
+                            <CardTitle>
+                              {isEventBlock
+                                ? `Event: ${block.name}`
+                                : block.name}
+                            </CardTitle>
+                            <CardDescription>{`${block.startTime} - ${block.endTime}`}</CardDescription>
+                          </div>
+                          <Badge variant="secondary">Completed</Badge>
+                        </CardHeader>
+                        <CardContent>
+                          {isEventBlock ? (
+                            <div className="text-sm text-gray-600">
+                              <Clock className="inline-block mr-2 h-4 w-4" />
+                              {block.description || "No description available"}
+                            </div>
+                          ) : (
+                            <>
+                              <Progress
+                                value={calculateProgress(block.tasks)}
+                                className="h-2 mt-2 mb-4 bg-gray-200"
+                              />
+                              <div className="space-y-2">
+                                {block.tasks &&
+                                  block.tasks.map(
+                                    (task: Task, taskIndex: number) => (
+                                      <Card
+                                        key={task._id || taskIndex}
+                                        className="bg-muted relative"
+                                      >
+                                        <CardContent className="p-3 flex items-center justify-between">
+                                          <div className="flex items-center space-x-3">
+                                            <div className="flex-shrink-0">
+                                              <Checkbox
+                                                id={`task-${
+                                                  task._id || taskIndex
+                                                }`}
+                                                checked={task.completed}
+                                                disabled
+                                              />
+                                            </div>
+                                            <div>
+                                              <label
+                                                htmlFor={`task-${
+                                                  task._id || taskIndex
+                                                }`}
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                              >
+                                                {task.name}
+                                              </label>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center space-x-2">
+                                            <Badge className="text-xs hidden md:inline-flex">
+                                              {task.isRoutineTask
+                                                ? "Routine"
+                                                : "Stand-alone"}
+                                            </Badge>
+                                            <Badge className="text-xs hidden md:inline-flex">
+                                              {task.priority}
+                                            </Badge>
+                                            <Badge className="text-xs">
+                                              {task.duration} min
+                                            </Badge>
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                    )
+                                  )}
+                              </div>
+                            </>
+                          )}
+                          <div className="flex justify-end mt-4 space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="bg-gray-100 text-gray-800 hover:bg-gray-200"
+                              onClick={() => handleReactivateBlock(block._id)}
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              Reactivate {isEventBlock ? "Event" : "Block"}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  }
+                )}
+            </TabsContent>
+          </Tabs>
+
+          {/* <ScrollArea className="h-72 w-48 rounded-md border">
         <div className="p-4">
           <h4 className="mb-4 text-sm font-medium leading-none">Tags</h4>
           {tags.map((tag) => (
@@ -1760,43 +2012,43 @@ Use the toolbar to access these sections and input your information.`);
           ))}
         </div>
       </ScrollArea> */}
-      <AddTaskModal
-        isOpen={isAddTaskModalOpen}
-        onClose={() => setIsAddTaskModalOpen(false)}
-        onAddTask={handleAddTaskToBlock}
-        blockId={selectedBlockId && selectedBlockId}
-        updateDay={updateDay}
-      />
-      <AddEventModal
-        isOpen={isAddEventModalOpen}
-        onClose={() => setIsAddEventModalOpen(false)}
-        blockId={selectedBlockId && selectedBlockId}
-        updateDay={updateDay}
-      />
-      <AddRoutineModal
-        isOpen={isAddRoutineModalOpen}
-        onClose={() => setIsAddRoutineModalOpen(false)}
-        blockId={selectedBlockId && selectedBlockId}
-        updateDay={updateDay}
-      />
-      {/* Add EditBlockDialog and EditTaskDialog components */}
-      {editingBlock && (
-        <EditBlockDialog
-          block={editingBlock}
-          isOpen={!!editingBlock}
-          onClose={() => setEditingBlock(null)}
-          onSave={handleSaveBlock}
-        />
-      )}
-      {editingTask && (
-        <EditTaskDialog
-          task={editingTask}
-          isOpen={!!editingTask}
-          onClose={() => setEditingTask(null)}
-          onSave={handleSaveTask}
-        />
-      )}
-      {/* <Card className="md:col-span-1">
+          <AddTaskModal
+            isOpen={isAddTaskModalOpen}
+            onClose={() => setIsAddTaskModalOpen(false)}
+            onAddTask={handleAddTaskToBlock}
+            blockId={selectedBlockId && selectedBlockId}
+            updateDay={updateDay}
+          />
+          <AddEventModal
+            isOpen={isAddEventModalOpen}
+            onClose={() => setIsAddEventModalOpen(false)}
+            blockId={selectedBlockId && selectedBlockId}
+            updateDay={updateDay}
+          />
+          <AddRoutineModal
+            isOpen={isAddRoutineModalOpen}
+            onClose={() => setIsAddRoutineModalOpen(false)}
+            blockId={selectedBlockId && selectedBlockId}
+            updateDay={updateDay}
+          />
+          {/* Add EditBlockDialog and EditTaskDialog components */}
+          {editingBlock && (
+            <EditBlockDialog
+              block={editingBlock}
+              isOpen={!!editingBlock}
+              onClose={() => setEditingBlock(null)}
+              onSave={handleSaveBlock}
+            />
+          )}
+          {editingTask && (
+            <EditTaskDialog
+              task={editingTask}
+              isOpen={!!editingTask}
+              onClose={() => setEditingTask(null)}
+              onSave={handleSaveTask}
+            />
+          )}
+          {/* <Card className="md:col-span-1">
         <CardHeader className="pb-3">
           <CardTitle>Test GPT API</CardTitle>
           <CardDescription>Test the ChatGPT API connection</CardDescription>
@@ -1807,7 +2059,7 @@ Use the toolbar to access these sections and input your information.`);
           </Button>
         </CardFooter>
       </Card> */}
-      {/* {apiResponse && (
+          {/* {apiResponse && (
         <Card className="mt-4">
           <CardHeader>
             <CardTitle>API Response</CardTitle>
@@ -1817,7 +2069,7 @@ Use the toolbar to access these sections and input your information.`);
           </CardContent>
         </Card>
       )} */}
-      {/* {availableuserInformation && (
+          {/* {availableuserInformation && (
         <Card className="mt-8">
           <CardHeader>
             <CardTitle>AI Response</CardTitle>
@@ -1853,6 +2105,8 @@ Use the toolbar to access these sections and input your information.`);
           </CardContent>
         </Card>
       )} */}
+        </>
+      )}
     </main>
   );
 };
