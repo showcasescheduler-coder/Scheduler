@@ -1274,7 +1274,7 @@ Use the toolbar to access these sections and input your information.`);
           <div className="grid gap-8 md:grid-cols-2">
             <Card className="md:col-span-2">
               <CardHeader>
-                <CardTitle>Today's Summary</CardTitle>
+                <CardTitle>{"Today's Summary"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -1613,7 +1613,7 @@ Use the toolbar to access these sections and input your information.`);
                     <div className="flex items-center space-x-2 text-sm sm:text-base text-muted-foreground">
                       <CheckCircle className="h-5 w-5 text-green-500" />
                       <p>
-                        Congratulations! You've completed all your blocks for
+                        Congratulations! You have completed all your blocks for
                         the day.
                       </p>
                     </div>
