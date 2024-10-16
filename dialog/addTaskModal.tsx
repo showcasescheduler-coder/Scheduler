@@ -120,13 +120,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [selectedProject, setSelectedProject] = useState(projectsData[0].id);
   const [activeTab, setActiveTab] = useState<string>("newTask");
   const { tasks, projects, setProjects, setTasks, setBlocks } = useAppContext();
+  const { userId } = useAuth();
   const [newTask, setNewTask] = useState({
     name: "",
     description: "",
     priority: "",
     duration: 5, // Default duration of 5 minutes
   });
-  const { userId } = useAuth();
 
   // const fetchTasks = async () => {
   //   try {
@@ -227,6 +227,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       const taskData = {
         ...newTask,
         blockId: blockId,
+        userId: userId,
         duration: Math.max(5, Math.min(240, newTask.duration)), // Ensure duration is between 5 and 240 minutes
       };
 

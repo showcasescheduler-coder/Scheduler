@@ -387,7 +387,8 @@ const Page = () => {
                         {task.description}
                       </TableCell>
                       <TableCell>
-                        {format(parseISO(task.deadline), "yyyy-MM-dd")}
+                        {task.deadline &&
+                          format(parseISO(task.deadline), "yyyy-MM-dd")}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
                         {task.priority}

@@ -65,6 +65,10 @@ const Header = () => {
     </Link>
   );
 
+  const getSelectedDate = () => {
+    return selectedDay === "today" ? today : tomorrow;
+  };
+
   const generateBreadcrumbs = (path: string) => {
     const pathParts = path.split("/").filter((part) => part);
     return pathParts.map((part, index) => {
@@ -160,10 +164,7 @@ const Header = () => {
                 >
                   <Calendar className="h-4 w-4 text-muted-foreground mr-2" />
                   <span className="text-sm font-medium">
-                    {format(
-                      selectedDay === "today" ? today : tomorrow,
-                      "MMM d" // Shortened date format
-                    )}
+                    {format(getSelectedDate(), "MMM d")}
                   </span>
                   <ChevronDown className="h-4 w-4 ml-1" />
                 </Button>
@@ -195,7 +196,7 @@ const Header = () => {
         <div className="hidden sm:flex items-center justify-center gap-2">
           <Calendar className="h-5 w-5 text-muted-foreground" />
           <span className="text-sm font-medium sm:text-base whitespace-nowrap">
-            {format(today, "EEEE, MMMM d, yyyy")}
+            {format(getSelectedDate(), "EEEE, MMMM d, yyyy")}
           </span>
         </div>
         <UserButton />

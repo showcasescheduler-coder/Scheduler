@@ -725,14 +725,18 @@ Use the toolbar to access these sections and input your information.`);
   // };
 
   const handleSaveTask = async (updatedTask: Task) => {
+    console.log("Saving task:", updatedTask);
     try {
-      const response = await fetch(`/api/tasks/${updatedTask._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updatedTask),
-      });
+      const response = await fetch(
+        `/api/edit-schedule-task/${updatedTask._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updatedTask),
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to update task");
@@ -1254,9 +1258,6 @@ Use the toolbar to access these sections and input your information.`);
       toast.error("Failed to reactivate day. Please try again.");
     }
   };
-
-  console.log("day", day);
-  console.log("selected day", selectedDay);
 
   return (
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
