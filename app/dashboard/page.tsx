@@ -548,6 +548,29 @@ const DashboardPage = () => {
   );
 
   const handleGenerateSchedule = async () => {
+    const activeBlocks = sortedBlocks.filter(
+      (block) => block.status === "pending"
+    );
+    if (activeBlocks.length > 0) {
+      toast.error(
+        <div className="flex flex-col gap-2">
+          <p>
+            Please complete or delete all active blocks before generating a new
+            schedule.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            You have {activeBlocks.length} active block
+            {activeBlocks.length > 1 ? "s" : ""} remaining.
+          </p>
+        </div>,
+        {
+          duration: 5000,
+          position: "top-center",
+        }
+      );
+      return;
+    }
+
     setIsGeneratingScheduleDialogOpen(true);
   };
 
@@ -1779,9 +1802,13 @@ Use the toolbar to access these sections and input your information.`);
     } catch (error: unknown) {
       console.error("Error deleting block:", error);
       if (error instanceof Error) {
-        toast.error("Failed to delete block. Please try again.");
+        toast.error(
+          "Failed to delete block. Please try again. All tasks must be removed or deleted before you can delete this block"
+        );
       } else {
-        toast.error("Failed to delete block. Please try again.");
+        toast.error(
+          "Failed to delete block. Please try again. All tasks must be removed or deleted before you can delete this block"
+        );
       }
     }
   };
