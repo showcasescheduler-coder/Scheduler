@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react"; // Added useRef and useEffect
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,12 +29,33 @@ export const ScheduleGenerationDialog: React.FC<
   const [userInput, setUserInput] = useState("");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
+  const startTimeInputRef = useRef<HTMLInputElement>(null);
+  const endTimeInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setUserInput("");
+      setStartTime("09:00");
+      setEndTime("17:00");
+
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    }
+  }, [isOpen]);
 
   const handleComplete = () => {
     onGenerateSchedule(userInput, startTime, endTime);
     setUserInput("");
     setStartTime("09:00");
     setEndTime("17:00");
+  };
+
+  const handleTimeInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.blur();
+    setTimeout(() => {
+      e.target.focus();
+    }, 100);
   };
 
   return (
@@ -49,12 +70,25 @@ export const ScheduleGenerationDialog: React.FC<
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
+            <Label htmlFor="schedule-input">Your preferences</Label>
+            <Textarea
+              id="schedule-input"
+              placeholder="E.g., I want to focus on work in the morning, exercise in the afternoon, and have some free time in the evening."
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
             <Label htmlFor="start-time">Start Time</Label>
             <Input
               type="time"
               id="start-time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
+              ref={startTimeInputRef}
+              onFocus={handleTimeInputFocus}
+              autoComplete="off"
+              className="touch-none"
             />
           </div>
           <div className="grid gap-2">
@@ -64,15 +98,6 @@ export const ScheduleGenerationDialog: React.FC<
               id="end-time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="schedule-input">Your preferences</Label>
-            <Textarea
-              id="schedule-input"
-              placeholder="E.g., I want to focus on work in the morning, exercise in the afternoon, and have some free time in the evening."
-              value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
             />
           </div>
         </div>
