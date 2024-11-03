@@ -6,6 +6,7 @@ import { UserData } from "@/app/context/models";
 import { AddTaskModal } from "@/dialog/addTaskModal";
 import { AddEventModal } from "@/dialog/addEventModal";
 import { AddRoutineModal } from "@/dialog/addRoutineModal";
+import { ScheduleGenerationDialog } from "@/dialog/generateScheduleModal";
 import {
   ChevronLeft,
   ChevronRight,
@@ -153,18 +154,25 @@ const DashboardPage = () => {
     startTime: "",
     endTime: "",
   });
+  // Add these near the top of the component with other state declarations
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [previewSchedule, setpreviewSchedule] = useState({});
+  const [previewBlocks, setPreviewBlocks] = useState<Block[]>([]);
+  const [previewScheduleRationale, setPreviewScheduleRationale] = useState<
+    string | null
+  >("");
   const [updatingTasks, setUpdatingTasks] = useState(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [editingBlock, setEditingBlock] = useState<Block | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [performanceRating, setPerformanceRating] =
     useState<PerformanceRating | null>(null);
-  const [lastCompletedTasksCount, setLastCompletedTasksCount] = useState(0);
-  const [completedTasksCount, setCompletedTasksCount] = useState(0);
   const { isLoaded, userId } = useAuth();
   const [sortedBlocks, setSortedBlocks] = useState<Block[]>([]);
   const [isGeneratingSchedule, setIsGeneratingSchedule] = useState(false);
   const [scheduleStatus, setScheduleStatus] = useState<string | null>(null);
+  const [isGeneratingScheduleDialogOpen, setIsGeneratingScheduleDialogOpen] =
+    useState(false);
   const MINIMUM_TASKS_REQUIRED = 5; // Adjust this number as needed
 
   const [apiResponse, setApiResponse] = useState<string | null>(null);
@@ -348,21 +356,42 @@ const DashboardPage = () => {
     // You might need to add historical_data if you have it in your app context
   };
 
+  const calculateWeightedCompletion = (blocks: Block[]): number => {
+    if (!blocks || !Array.isArray(blocks) || blocks.length === 0) return 0;
+
+    // Block completion calculation (40% weight)
+    const totalBlocks = blocks.length;
+    const completedBlocks = blocks.filter(
+      (block) => block.status === "complete"
+    ).length;
+    const blockCompletionRate =
+      totalBlocks > 0 ? completedBlocks / totalBlocks : 0;
+
+    // Task completion calculation (60% weight)
+    let totalTasks = 0;
+    let completedTasks = 0;
+    blocks.forEach((block) => {
+      if (block.tasks) {
+        totalTasks += block.tasks.length;
+        completedTasks += block.tasks.filter((task) => task.completed).length;
+      }
+    });
+    const taskCompletionRate = totalTasks > 0 ? completedTasks / totalTasks : 0;
+
+    // Calculate weighted average (40% blocks, 60% tasks)
+    const weightedCompletion =
+      blockCompletionRate * 0.4 + taskCompletionRate * 0.6;
+    return Math.round(weightedCompletion * 100);
+  };
+
   const handleTaskCompletion = useCallback(
-    debounce(async (taskId: string, completed: boolean) => {
+    async (taskId: string, completed: boolean) => {
       if (!day) return;
       setUpdatingTasks(true);
       setUpdatingTaskId(taskId);
 
       try {
-        let completedTaskCount = calculateCompletedTasksCount(day.blocks);
-        completedTaskCount = completed
-          ? completedTaskCount + 1
-          : completedTaskCount - 1;
-
-        console.log(completedTaskCount);
-        console.log("Updating task completion status...");
-
+        // Update task completion status
         const response = await fetch(`/api/tasks/${taskId}`, {
           method: "PUT",
           headers: {
@@ -371,7 +400,6 @@ const DashboardPage = () => {
           body: JSON.stringify({
             completed,
             dayId: day._id,
-            completedTasksCount: completedTaskCount,
           }),
         });
 
@@ -381,52 +409,10 @@ const DashboardPage = () => {
 
         const { updatedTask, updatedDay } = await response.json();
 
-        let newPerformanceRating: PerformanceRating;
-
-        if (completedTaskCount === 0) {
-          newPerformanceRating = {
-            level: "Preparing for Takeoff",
-            score: 0,
-            comment:
-              "No tasks completed yet. Start your day by completing some tasks!",
-          };
-        } else {
-          // Only call the API if there are completed tasks
-          const ratingResponse = await fetch("/api/getPerformanceRating", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ updatedDay }),
-          });
-
-          if (!ratingResponse.ok) {
-            throw new Error("Failed to get performance rating");
-          }
-
-          newPerformanceRating = await ratingResponse.json();
-        }
-        console.log("newPerformanceRating", newPerformanceRating);
-
-        // Update the day with the new performance rating
-        const updateResponse = await fetch(`/api/days/${day._id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ performanceRating: newPerformanceRating }),
-        });
-
-        if (!updateResponse.ok) {
-          throw new Error("Failed to update day with performance rating");
-        }
-
         // Update local state
         mutate(
           (currentDay: Day) => ({
             ...currentDay,
-            completedTasksCount: updatedDay.completedTasksCount,
-            performanceRating: newPerformanceRating,
             blocks: currentDay.blocks.map((block) => {
               if (typeof block === "string") {
                 return block;
@@ -441,21 +427,835 @@ const DashboardPage = () => {
           }),
           false
         );
-
-        setPerformanceRating(newPerformanceRating);
       } catch (error) {
         console.error("Error updating task completion status:", error);
+        toast.error("Failed to update task status");
       } finally {
         setUpdatingTasks(false);
         setUpdatingTaskId(null);
       }
-    }, 500),
-    [day, calculateCompletedTasksCount, mutate]
+    },
+    [day, mutate]
   );
+
+  // const handleTaskCompletion = useCallback(
+  //   debounce(async (taskId: string, completed: boolean) => {
+  //     if (!day) return;
+  //     setUpdatingTasks(true);
+  //     setUpdatingTaskId(taskId);
+
+  //     try {
+  //       let completedTaskCount = calculateCompletedTasksCount(day.blocks);
+  //       completedTaskCount = completed
+  //         ? completedTaskCount + 1
+  //         : completedTaskCount - 1;
+
+  //       console.log(completedTaskCount);
+  //       console.log("Updating task completion status...");
+
+  //       const response = await fetch(`/api/tasks/${taskId}`, {
+  //         method: "PUT",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify({
+  //           completed,
+  //           dayId: day._id,
+  //           completedTasksCount: completedTaskCount,
+  //         }),
+  //       });
+
+  //       if (!response.ok) {
+  //         throw new Error("Failed to update task completion status");
+  //       }
+
+  //       const { updatedTask, updatedDay } = await response.json();
+
+  //       let newPerformanceRating: PerformanceRating;
+
+  //       if (completedTaskCount === 0) {
+  //         newPerformanceRating = {
+  //           level: "Preparing for Takeoff",
+  //           score: 0,
+  //           comment:
+  //             "No tasks completed yet. Start your day by completing some tasks!",
+  //         };
+  //       } else {
+  //         // Only call the API if there are completed tasks
+  //         const ratingResponse = await fetch("/api/getPerformanceRating", {
+  //           method: "POST",
+  //           headers: {
+  //             "Content-Type": "application/json",
+  //           },
+  //           body: JSON.stringify({ updatedDay }),
+  //         });
+
+  //         if (!ratingResponse.ok) {
+  //           throw new Error("Failed to get performance rating");
+  //         }
+
+  //         newPerformanceRating = await ratingResponse.json();
+  //       }
+  //       console.log("newPerformanceRating", newPerformanceRating);
+
+  //       // Update the day with the new performance rating
+  //       const updateResponse = await fetch(`/api/days/${day._id}`, {
+  //         method: "PUT",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify({ performanceRating: newPerformanceRating }),
+  //       });
+
+  //       if (!updateResponse.ok) {
+  //         throw new Error("Failed to update day with performance rating");
+  //       }
+
+  //       // Update local state
+  //       mutate(
+  //         (currentDay: Day) => ({
+  //           ...currentDay,
+  //           completedTasksCount: updatedDay.completedTasksCount,
+  //           performanceRating: newPerformanceRating,
+  //           blocks: currentDay.blocks.map((block) => {
+  //             if (typeof block === "string") {
+  //               return block;
+  //             }
+  //             return {
+  //               ...block,
+  //               tasks: block.tasks.map((task) =>
+  //                 task._id === taskId ? updatedTask : task
+  //               ),
+  //             };
+  //           }),
+  //         }),
+  //         false
+  //       );
+
+  //       setPerformanceRating(newPerformanceRating);
+  //     } catch (error) {
+  //       console.error("Error updating task completion status:", error);
+  //     } finally {
+  //       setUpdatingTasks(false);
+  //       setUpdatingTaskId(null);
+  //     }
+  //   }, 500),
+  //   [day, calculateCompletedTasksCount, mutate]
+  // );
 
   const hasPendingBlocks = day?.blocks.some(
     (block: Block) => block.status === "pending"
   );
+
+  const handleGenerateSchedule = async () => {
+    setIsGeneratingScheduleDialogOpen(true);
+  };
+
+  const handleDiscardPreview = () => {
+    setIsPreviewMode(false);
+    setPreviewBlocks([]);
+    toast.success("Preview discarded");
+  };
+
+  const handleSaveGeneratedSchedule = async () => {
+    console.log(previewSchedule);
+    try {
+      setIsGeneratingSchedule(true);
+      // Send the parsed response to the scheduler route
+      const schedulerResponse = await fetch("/api/scheduler", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dayId: day._id,
+          schedule: previewSchedule,
+          userId: user._id,
+        }),
+      });
+
+      if (!schedulerResponse.ok) {
+        throw new Error(`Scheduler error! status: ${schedulerResponse.status}`);
+      }
+
+      const updatedDay = await schedulerResponse.json();
+      console.log("Updated day:", updatedDay);
+
+      // Update the local state or trigger a refetch of the day data
+      mutate(updatedDay);
+      setScheduleStatus("Schedule generated successfully!");
+      setScheduleStatus(null);
+      // const response = await fetch("/api/save-generated-schedule", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify({
+      //     dayId: day._id,
+      //     blocks: previewBlocks,
+      //   }),
+      // });
+
+      // if (!response.ok) {
+      //   throw new Error("Failed to save schedule");
+      // }
+
+      // const updatedDay = await response.json();
+      // mutate(updatedDay);
+      setIsPreviewMode(false);
+      setPreviewBlocks([]);
+      toast.success("Schedule saved successfully!");
+    } catch (error) {
+      console.error("Error saving schedule:", error);
+      toast.error("Failed to save schedule. Please try again.");
+    } finally {
+      setIsGeneratingSchedule(false);
+    }
+  };
+
+  const generateScheduleTest = async (
+    userInput: string,
+    startTime: string,
+    endTime: string
+  ) => {
+    setIsGeneratingSchedule(true); // Add this li
+    setIsGeneratingScheduleDialogOpen(false);
+
+    // console.log("Projects:", projects);
+    // console.log("Original Tasks:", tasks);
+    // console.log("Routines:", routines);
+    // console.log("Events:", events);
+    console.log(userInput, startTime, endTime);
+
+    // Get the date and day of the week from the state
+    const selectedDate = new Date(day.date);
+    const formattedSelectedDate = selectedDate.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+    const selectedDayOfWeek = selectedDate.toLocaleString("en-us", {
+      weekday: "long",
+    });
+
+    console.log("Selected Date:", formattedSelectedDate);
+    console.log("Selected Day of Week:", selectedDayOfWeek);
+
+    // Filter out completed standalone tasks
+    const incompleteTasks = tasks.filter(
+      (task) => !task.isRoutineTask && !task.completed
+    );
+
+    // Filter out completed tasks from projects
+    const projectsWithIncompleteTasks = projects.map((project) => ({
+      ...project,
+      tasks: project.tasks.filter((task) => !task.completed),
+    }));
+
+    // Optimize tasks
+    const optimizedTasks = incompleteTasks.map((task) => {
+      const { name, description, duration, priority, deadline } = task;
+      const sanitizedDescription = description.trim().replace(/\n/g, " ");
+      const parsedDuration = Number(duration);
+
+      return {
+        name,
+        description: sanitizedDescription,
+        duration: parsedDuration,
+        priority,
+        ...(deadline && !isNaN(Date.parse(deadline)) && { deadline }),
+      };
+    });
+
+    // Filter and optimize events
+    const optimizedEvents = events
+      .filter((event) => {
+        console.log("Checking event:", event.name);
+
+        // Check if the event is for the selected date
+        if (event.date) {
+          const eventDate = new Date(event.date).toISOString().split("T")[0];
+          console.log(
+            "Event date:",
+            eventDate,
+            "Selected date:",
+            formattedSelectedDate
+          );
+          if (eventDate === formattedSelectedDate) {
+            console.log("Date match");
+            return true;
+          }
+        }
+
+        // Check if it's a recurring event for the selected day of the week
+        if (
+          event.isRecurring &&
+          event.days &&
+          event.days.includes(selectedDayOfWeek)
+        ) {
+          console.log("Recurring event match");
+          return true;
+        }
+
+        console.log("No match");
+        return false;
+      })
+      .map((event) => {
+        const { name, description, startTime, endTime } = event;
+        const sanitizedDescription = description.trim().replace(/\n/g, " ");
+
+        return {
+          name,
+          description: sanitizedDescription,
+          startTime,
+          endTime,
+        };
+      });
+
+    // Filter and optimize routines
+    const optimizedRoutines = routines
+      .filter((routine) => routine.days.includes(selectedDayOfWeek))
+      .map((routine) => ({
+        name: routine.name,
+        description: routine.description,
+        tasks: routine.tasks.map((task) => ({
+          name: task.name,
+          description: task.description,
+          duration: Number(task.duration),
+          priority: task.priority,
+        })),
+      }));
+
+    const optimizedProjects = projectsWithIncompleteTasks.map((project) => ({
+      id: project._id,
+      name: project.name,
+      description: project.description,
+      deadline: project.deadline,
+      priority: project.priority,
+      tasks: project.tasks.map((task) => ({
+        id: task._id,
+        name: task.name,
+        description: task.description,
+        completed: task.completed,
+        priority: task.priority,
+        duration: Number(task.duration),
+        projectId: project._id,
+        deadline: task.deadline,
+      })),
+    }));
+
+    console.log("Optimized Projects:", optimizedProjects);
+    console.log("Optimized Tasks:", optimizedTasks);
+    console.log("Optimized Events:", optimizedEvents);
+    console.log("Optimized Routines:", optimizedRoutines);
+
+    try {
+      if (isPreviewMode) {
+        const regeneratedSchedule = await fetch("/api/regenerate-schedule", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            previewSchedule: previewSchedule,
+            projects: optimizedProjects,
+            eventBlocks: events,
+            routineBlocks: routines,
+            tasks: optimizedTasks,
+            userInput: userInput,
+            startTime: startTime,
+            endTime: endTime,
+          }),
+        });
+
+        const regeneratedScedhuleJson = await regeneratedSchedule.json();
+        console.log(regeneratedScedhuleJson);
+        if (regeneratedScedhuleJson.blocks) {
+          setpreviewSchedule(regeneratedScedhuleJson);
+          setPreviewBlocks(regeneratedScedhuleJson.blocks);
+          setIsPreviewMode(true);
+          setPreviewScheduleRationale(
+            regeneratedScedhuleJson.scheduleRationale
+          );
+        }
+      } else {
+        const baseSchedule = await fetch("/api/intent-analysis", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            projects: optimizedProjects,
+            eventBlocks: optimizedEvents,
+            routineBlocks: optimizedRoutines,
+            tasks: optimizedTasks,
+            userInput: userInput,
+            startTime: startTime,
+            endTime: endTime,
+          }),
+        });
+
+        const baseSchedulejson = await baseSchedule.json();
+        console.log("Generated Initial Schedule:", baseSchedulejson);
+        console.log(
+          baseSchedulejson.hasEnoughData === false &&
+            baseSchedulejson.hasSpecificInstructions
+        );
+
+        if (
+          baseSchedulejson.hasEnoughData === false &&
+          baseSchedulejson.hasSpecificInstructions === false
+        ) {
+          console.log("running the default schedule");
+          const defaultScedhule = await fetch("/api/default-schedule", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              projects: optimizedProjects,
+              eventBlocks: events,
+              routineBlocks: routines,
+              tasks: optimizedTasks,
+              userInput: userInput,
+              startTime: startTime,
+              endTime: endTime,
+            }),
+          });
+
+          const defaultScedhuleJson = await defaultScedhule.json();
+          console.log(defaultScedhuleJson);
+
+          if (defaultScedhuleJson.blocks) {
+            setpreviewSchedule(defaultScedhuleJson);
+            setPreviewBlocks(defaultScedhuleJson.blocks);
+            setIsPreviewMode(true);
+            setPreviewScheduleRationale(defaultScedhuleJson.scheduleRationale);
+          }
+        }
+
+        if (
+          baseSchedulejson.hasEnoughData === false &&
+          baseSchedulejson.hasSpecificInstructions === true
+        ) {
+          console.log("running the specific schedule");
+          const userSpecificScedhule = await fetch(
+            "/api/user-specific-prompt",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                projects: optimizedProjects,
+                eventBlocks: events,
+                routineBlocks: routines,
+                tasks: optimizedTasks,
+                userInput: userInput,
+                startTime: startTime,
+                endTime: endTime,
+              }),
+            }
+          );
+
+          const userSpecificScedhuleJson = await userSpecificScedhule.json();
+          console.log(userSpecificScedhuleJson);
+          if (userSpecificScedhuleJson.blocks) {
+            setpreviewSchedule(userSpecificScedhuleJson);
+            setPreviewBlocks(userSpecificScedhuleJson.blocks);
+            setIsPreviewMode(true);
+            setPreviewScheduleRationale(
+              userSpecificScedhuleJson.scheduleRationale
+            );
+          }
+        }
+
+        if (
+          baseSchedulejson.hasEnoughData === true &&
+          baseSchedulejson.hasSpecificInstructions === false
+        ) {
+          console.log("running the fully automated schedule generation");
+          const automatedSchedule = await fetch(
+            "/api/non-specific-full-backlog",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                projects: optimizedProjects,
+                eventBlocks: events,
+                routineBlocks: routines,
+                tasks: optimizedTasks,
+                userInput: userInput,
+                startTime: startTime,
+                endTime: endTime,
+              }),
+            }
+          );
+
+          const automatedScheduleJson = await automatedSchedule.json();
+          console.log(automatedScheduleJson);
+          if (automatedScheduleJson.blocks) {
+            setpreviewSchedule(automatedScheduleJson);
+            setPreviewBlocks(automatedScheduleJson.blocks);
+            setIsPreviewMode(true);
+            setPreviewScheduleRationale(
+              automatedScheduleJson.scheduleRationale
+            );
+          }
+        }
+
+        if (
+          baseSchedulejson.hasEnoughData === true &&
+          baseSchedulejson.hasSpecificInstructions === true
+        ) {
+          console.log("running the specific schedule with full blocks");
+          const userSpecificFullBacklog = await fetch(
+            "/api/specific-full-backlog",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                projects: optimizedProjects,
+                eventBlocks: events,
+                routineBlocks: routines,
+                tasks: optimizedTasks,
+                userInput: userInput,
+                startTime: startTime,
+                endTime: endTime,
+              }),
+            }
+          );
+
+          const userSpecificFullBacklogJson =
+            await userSpecificFullBacklog.json();
+          console.log(userSpecificFullBacklogJson);
+          if (userSpecificFullBacklogJson.blocks) {
+            setpreviewSchedule(userSpecificFullBacklogJson);
+            setPreviewBlocks(userSpecificFullBacklogJson.blocks);
+            setIsPreviewMode(true);
+            setPreviewScheduleRationale(
+              userSpecificFullBacklogJson.scheduleRationale
+            );
+          }
+        }
+
+        // const response = await fetch("/api/generate-schedule-test", {
+        //   method: "POST",
+        //   headers: {
+        //     "Content-Type": "application/json",
+        //   },
+        //   body: JSON.stringify({
+        //     baseSchedulejson: baseSchedulejson,
+        //     userInput: userInput,
+        //     startTime: startTime,
+        //     endTime: endTime,
+        //     eventBlocks: optimizedEvents,
+        //     routineBlocks: optimizedRoutines,
+        //   }),
+        // });
+
+        // if (!response.ok) {
+        //   throw new Error("Failed to generate initial schedule");
+        // }
+
+        // const generatedSchedule = await response.json();
+        // console.log("Generated Initial Schedule:", generatedSchedule);
+
+        // // New API call to generate-schedule-add-tasks
+        // const taskIntegrationResponse = await fetch(
+        //   "/api/generate-schedule-add-tasks",
+        //   {
+        //     method: "POST",
+        //     headers: {
+        //       "Content-Type": "application/json",
+        //     },
+        //     body: JSON.stringify({
+        //       generatedSchedule: generatedSchedule,
+        //       userInput: userInput,
+        //       startTime: startTime,
+        //       endTime: endTime,
+        //       projects: optimizedProjects,
+        //       standaloneTasks: optimizedTasks,
+        //     }),
+        //   }
+        // );
+
+        // if (!taskIntegrationResponse.ok) {
+        //   throw new Error("Failed to integrate tasks into schedule");
+        // }
+
+        // const finalSchedule = await taskIntegrationResponse.json();
+        // console.log("Final Schedule with Integrated Tasks:", finalSchedule);
+
+        // console.log("Optimizing schedule for flow and productivity...");
+
+        // // New API call to optimize for flow and productivity
+        // const flowOptimizationResponse = await fetch(
+        //   "/api/optimize-schedule-flow",
+        //   {
+        //     method: "POST",
+        //     headers: {
+        //       "Content-Type": "application/json",
+        //     },
+        //     body: JSON.stringify({
+        //       currentSchedule: finalSchedule,
+        //       userPreferences: {
+        //         peakProductivityHours: ["09:00", "14:00"], // Example data, adjust as needed
+        //         preferredWorkPattern: "longer focused sessions",
+        //       },
+        //     }),
+        //   }
+        // );
+
+        // if (!flowOptimizationResponse.ok) {
+        //   throw new Error("Failed to optimize schedule for flow");
+        // }
+
+        // const optimizedSchedule = await flowOptimizationResponse.json();
+        // console.log("Flow-Optimized Schedule:", optimizedSchedule);
+
+        // // Here you can update your state or perform any other actions with the final schedule
+        // // For example:
+        // // setSchedule(finalSchedule);
+      }
+    } catch (error) {
+      console.error("Error in schedule generation process:", error);
+    } finally {
+      setIsGeneratingSchedule(false); // Add this line
+    }
+  };
+
+  // const generateScheduleTest = async (
+  //   userInput: string,
+  //   startTime: string,
+  //   endTime: string
+  // ) => {
+  //   // console.log("Projects:", projects);
+  //   // console.log("Original Tasks:", tasks);
+  //   // console.log("Routines:", routines);
+  //   // console.log("Events:", events);
+  //   console.log(userInput, startTime, endTime);
+
+  //   // Get the date and day of the week from the state
+  //   const selectedDate = new Date(day.date);
+  //   const formattedSelectedDate = selectedDate.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+  //   const selectedDayOfWeek = selectedDate.toLocaleString("en-us", {
+  //     weekday: "long",
+  //   });
+
+  //   console.log("Selected Date:", formattedSelectedDate);
+  //   console.log("Selected Day of Week:", selectedDayOfWeek);
+
+  //   // Filter out completed standalone tasks
+  //   const incompleteTasks = tasks.filter(
+  //     (task) => !task.isRoutineTask && !task.completed
+  //   );
+
+  //   // Filter out completed tasks from projects
+  //   const projectsWithIncompleteTasks = projects.map((project) => ({
+  //     ...project,
+  //     tasks: project.tasks.filter((task) => !task.completed),
+  //   }));
+
+  //   // Optimize tasks
+  //   const optimizedTasks = incompleteTasks.map((task) => {
+  //     const { name, description, duration, priority, deadline } = task;
+  //     const sanitizedDescription = description.trim().replace(/\n/g, " ");
+  //     const parsedDuration = Number(duration);
+
+  //     return {
+  //       name,
+  //       description: sanitizedDescription,
+  //       duration: parsedDuration,
+  //       priority,
+  //       ...(deadline && !isNaN(Date.parse(deadline)) && { deadline }),
+  //     };
+  //   });
+
+  //   // Filter and optimize events
+  //   const optimizedEvents = events
+  //     .filter((event) => {
+  //       console.log("Checking event:", event.name);
+
+  //       // Check if the event is for the selected date
+  //       if (event.date) {
+  //         const eventDate = new Date(event.date).toISOString().split("T")[0];
+  //         console.log(
+  //           "Event date:",
+  //           eventDate,
+  //           "Selected date:",
+  //           formattedSelectedDate
+  //         );
+  //         if (eventDate === formattedSelectedDate) {
+  //           console.log("Date match");
+  //           return true;
+  //         }
+  //       }
+
+  //       // Check if it's a recurring event for the selected day of the week
+  //       if (
+  //         event.isRecurring &&
+  //         event.days &&
+  //         event.days.includes(selectedDayOfWeek)
+  //       ) {
+  //         console.log("Recurring event match");
+  //         return true;
+  //       }
+
+  //       console.log("No match");
+  //       return false;
+  //     })
+  //     .map((event) => {
+  //       const { name, description, startTime, endTime } = event;
+  //       const sanitizedDescription = description.trim().replace(/\n/g, " ");
+
+  //       return {
+  //         name,
+  //         description: sanitizedDescription,
+  //         startTime,
+  //         endTime,
+  //       };
+  //     });
+
+  //   // Filter and optimize routines
+  //   const optimizedRoutines = routines
+  //     .filter((routine) => routine.days.includes(selectedDayOfWeek))
+  //     .map((routine) => ({
+  //       name: routine.name,
+  //       description: routine.description,
+  //       tasks: routine.tasks.map((task) => ({
+  //         name: task.name,
+  //         description: task.description,
+  //         duration: Number(task.duration),
+  //         priority: task.priority,
+  //       })),
+  //     }));
+
+  //   const optimizedProjects = projectsWithIncompleteTasks.map((project) => ({
+  //     id: project._id,
+  //     name: project.name,
+  //     description: project.description,
+  //     deadline: project.deadline,
+  //     priority: project.priority,
+  //     tasks: project.tasks.map((task) => ({
+  //       id: task._id,
+  //       name: task.name,
+  //       description: task.description,
+  //       completed: task.completed,
+  //       priority: task.priority,
+  //       duration: Number(task.duration),
+  //       projectId: project._id,
+  //       deadline: task.deadline,
+  //     })),
+  //   }));
+
+  //   // console.log("Optimized Projects:", optimizedProjects);
+  //   // console.log("Optimized Tasks:", optimizedTasks);
+  //   // console.log("Optimized Events:", optimizedEvents);
+  //   // console.log("Optimized Routines:", optimizedRoutines);
+
+  //   try {
+  //     const baseSchedule = await fetch("/api/set-base-schedule", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         projects: optimizedProjects,
+  //         eventBlocks: events,
+  //         routineBlocks: routines,
+  //         tasks: optimizedTasks,
+  //         userInput: userInput,
+  //         startTime: startTime,
+  //         endTime: endTime,
+  //       }),
+  //     });
+
+  //     const baseSchedulejson = await baseSchedule.json();
+  //     console.log("Generated Initial Schedule:", baseSchedulejson);
+
+  //     const response = await fetch("/api/generate-schedule-test", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         baseSchedulejson: baseSchedulejson,
+  //         userInput: userInput,
+  //         startTime: startTime,
+  //         endTime: endTime,
+  //         eventBlocks: optimizedEvents,
+  //         routineBlocks: optimizedRoutines,
+  //       }),
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error("Failed to generate initial schedule");
+  //     }
+
+  //     const generatedSchedule = await response.json();
+  //     console.log("Generated Initial Schedule:", generatedSchedule);
+
+  //     // New API call to generate-schedule-add-tasks
+  //     const taskIntegrationResponse = await fetch(
+  //       "/api/generate-schedule-add-tasks",
+  //       {
+  //         method: "POST",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify({
+  //           generatedSchedule: generatedSchedule,
+  //           userInput: userInput,
+  //           startTime: startTime,
+  //           endTime: endTime,
+  //           projects: optimizedProjects,
+  //           standaloneTasks: optimizedTasks,
+  //         }),
+  //       }
+  //     );
+
+  //     if (!taskIntegrationResponse.ok) {
+  //       throw new Error("Failed to integrate tasks into schedule");
+  //     }
+
+  //     const finalSchedule = await taskIntegrationResponse.json();
+  //     console.log("Final Schedule with Integrated Tasks:", finalSchedule);
+
+  //     console.log("Optimizing schedule for flow and productivity...");
+
+  //     // New API call to optimize for flow and productivity
+  //     const flowOptimizationResponse = await fetch(
+  //       "/api/optimize-schedule-flow",
+  //       {
+  //         method: "POST",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify({
+  //           currentSchedule: finalSchedule,
+  //           userPreferences: {
+  //             peakProductivityHours: ["09:00", "14:00"], // Example data, adjust as needed
+  //             preferredWorkPattern: "longer focused sessions",
+  //           },
+  //         }),
+  //       }
+  //     );
+
+  //     if (!flowOptimizationResponse.ok) {
+  //       throw new Error("Failed to optimize schedule for flow");
+  //     }
+
+  //     const optimizedSchedule = await flowOptimizationResponse.json();
+  //     console.log("Flow-Optimized Schedule:", optimizedSchedule);
+
+  //     // Here you can update your state or perform any other actions with the final schedule
+  //     // For example:
+  //     // setSchedule(finalSchedule);
+  //   } catch (error) {
+  //     console.error("Error in schedule generation process:", error);
+  //   }
+  // };
 
   const generateSchedule = async () => {
     // Count all tasks (standalone and from projects)
@@ -660,6 +1460,53 @@ Use the toolbar to access these sections and input your information.`);
     mutate();
   };
 
+  // First, modify the updatePerformanceRating function
+  const updatePerformanceRating = async (updatedDay: Day) => {
+    try {
+      const perfResponse = await fetch("/api/getPerformanceRating", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          updatedDay: updatedDay,
+        }),
+      });
+
+      if (!perfResponse.ok) {
+        throw new Error("Failed to update performance rating");
+      }
+
+      const newPerformanceRating = await perfResponse.json();
+
+      console.log(newPerformanceRating);
+
+      // Update the performance rating in the database
+      const updateResponse = await fetch(`/api/days/${day._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ performanceRating: newPerformanceRating }),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error("Failed to save performance rating");
+      }
+
+      // Update the local state
+      mutate(
+        (currentDay: Day) => ({
+          ...currentDay,
+          performanceRating: newPerformanceRating,
+        }),
+        false
+      );
+    } catch (error) {
+      console.error("Error updating performance rating:", error);
+    }
+  };
+
   const handleCompleteBlock = async (blockId: string) => {
     console.log("Completing block:", blockId);
     try {
@@ -675,28 +1522,47 @@ Use the toolbar to access these sections and input your information.`);
         throw new Error("Failed to complete block");
       }
 
-      const updatedBlock = await response.json();
+      const { updatedBlock } = await response.json();
 
-      // Update the local state immediately
-      mutate(
-        (currentDay: Day) => ({
-          ...currentDay,
-          blocks: currentDay.blocks.map((block) => {
-            if (typeof block === "string") {
-              return block;
-            }
-            return block._id === blockId
-              ? { ...block, ...updatedBlock }
-              : block;
-          }),
+      // Construct the updated day with the new block
+      const updatedDay = {
+        ...day,
+        blocks: day.blocks.map((block: { _id: string }) => {
+          if (typeof block === "string") return block;
+          return block._id === blockId ? updatedBlock : block;
         }),
-        false
+      };
+
+      // Update the local state immediately with the completed block
+      mutate(
+        (currentDay: Day) => {
+          // Create new blocks array with the updated block
+          const updatedBlocks = currentDay.blocks.map((block) => {
+            if (typeof block === "string") return block;
+            return block._id === blockId ? updatedBlock : block;
+          });
+
+          // Create new sorted blocks for active tab
+          const newSortedBlocks = sortedBlocks.filter(
+            (block) => block._id !== blockId
+          );
+          setSortedBlocks(newSortedBlocks);
+
+          return {
+            ...currentDay,
+            blocks: updatedBlocks,
+          };
+        },
+        false // Don't revalidate immediately
       );
 
-      // Optionally, you can show a success message to the user
+      // Show success message
       toast.success("Block completed successfully");
 
-      // Trigger a re-fetch to ensure data consistency
+      // Trigger performance rating update with the constructed updated day
+      await updatePerformanceRating(updatedDay);
+
+      // Finally, trigger a revalidation to ensure everything is in sync
       mutate();
     } catch (error) {
       console.error("Error completing block:", error);
@@ -1159,6 +2025,20 @@ Use the toolbar to access these sections and input your information.`);
         throw new Error("Failed to reactivate block");
       }
 
+      const block = await response.json();
+      const updatedBlock = block.block;
+
+      // Construct the updated day with the reactivated block
+      const updatedDay = {
+        ...day,
+        blocks: day.blocks.map((block: { _id: string }) => {
+          if (typeof block === "string") return block;
+          return block._id === blockId ? updatedBlock : block;
+        }),
+      };
+
+      updatePerformanceRating(updatedDay);
+
       // Update the local state
       mutate(
         (currentDay: Day) => ({
@@ -1258,6 +2138,9 @@ Use the toolbar to access these sections and input your information.`);
       toast.error("Failed to reactivate day. Please try again.");
     }
   };
+
+  // console.log("is this even working");
+  // console.log(day);
 
   return (
     <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
@@ -1381,13 +2264,15 @@ Use the toolbar to access these sections and input your information.`);
               <CardHeader className="pb-3">
                 <CardTitle>Daily Planner</CardTitle>
                 <CardDescription className="max-w-lg text-balance leading-relaxed">
-                  Generate your daily plan
+                  {isPreviewMode
+                    ? "Do you want to edit you plan"
+                    : "Generate your daily plan"}
                 </CardDescription>
               </CardHeader>
               <CardFooter>
                 <Button
                   className="w-full"
-                  onClick={generateSchedule}
+                  onClick={handleGenerateSchedule}
                   disabled={isGeneratingSchedule}
                 >
                   {isGeneratingSchedule ? (
@@ -1398,7 +2283,7 @@ Use the toolbar to access these sections and input your information.`);
                   ) : (
                     <>
                       <Sparkles className="mr-2 h-4 w-4" />
-                      Generate Plan
+                      {isPreviewMode ? "Regenerate Plan" : "Generate Plan"}
                     </>
                   )}
                 </Button>
@@ -1448,7 +2333,12 @@ Use the toolbar to access these sections and input your information.`);
             </Card>
             <Card className="hidden md:block">
               <CardHeader className="pb-2">
-                <CardDescription>Performance Score</CardDescription>
+                <CardDescription className="flex items-center justify-between">
+                  Performance Score
+                  {/* <Badge variant="outline" className="text-xs">
+                    Next update: 5:00 PM
+                  </Badge> */}
+                </CardDescription>
                 <CardTitle className="text-4xl">
                   {day.performanceRating
                     ? `${day.performanceRating.score}/10`
@@ -1488,110 +2378,113 @@ Use the toolbar to access these sections and input your information.`);
           </div>
 
           <Tabs defaultValue="active" className="w-full">
-            <div className="flex items-center mb-4">
-              <TabsList>
-                <TabsTrigger value="active">Active</TabsTrigger>
-                <TabsTrigger value="completed">Completed</TabsTrigger>
-              </TabsList>
-              <div className="ml-auto flex items-center gap-2">
-                <Button
-                  onClick={handleAddRoutine}
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1"
-                >
-                  <CalendarClock className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Add Routine
-                  </span>
-                </Button>
-                <Button
-                  onClick={handleAddEvent}
-                  size="sm"
-                  variant="outline"
-                  className="h-7 gap-1"
-                >
-                  <CalendarPlus className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Add Event
-                  </span>
-                </Button>
+            {!isPreviewMode && (
+              <div className="flex items-center mb-4">
+                <TabsList>
+                  <TabsTrigger value="active">Active</TabsTrigger>
+                  <TabsTrigger value="completed">Completed</TabsTrigger>
+                </TabsList>
+                <div className="ml-auto flex items-center gap-2">
+                  <Button
+                    onClick={handleAddRoutine}
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1"
+                  >
+                    <CalendarClock className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      Add Routine
+                    </span>
+                  </Button>
+                  <Button
+                    onClick={handleAddEvent}
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1"
+                  >
+                    <CalendarPlus className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                      Add Event
+                    </span>
+                  </Button>
 
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="h-7 gap-1">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Add Block
-                      </span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>Add New Block</DialogTitle>
-                      <DialogDescription>
-                        Create a new time block for your schedule.
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="name" className="text-right">
-                          Name
-                        </Label>
-                        <Input
-                          id="name"
-                          value={newBlock.name}
-                          onChange={(e) =>
-                            setNewBlock({ ...newBlock, name: e.target.value })
-                          }
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="startTime" className="text-right">
-                          Start Time
-                        </Label>
-                        <Input
-                          id="startTime"
-                          type="time"
-                          value={newBlock.startTime}
-                          onChange={(e) =>
-                            setNewBlock({
-                              ...newBlock,
-                              startTime: e.target.value,
-                            })
-                          }
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="endTime" className="text-right">
-                          End Time
-                        </Label>
-                        <Input
-                          id="endTime"
-                          type="time"
-                          value={newBlock.endTime}
-                          onChange={(e) =>
-                            setNewBlock({
-                              ...newBlock,
-                              endTime: e.target.value,
-                            })
-                          }
-                          className="col-span-3"
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="submit" onClick={handleAddBlock}>
-                        Add Block
+                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="h-7 gap-1">
+                        <PlusCircle className="h-3.5 w-3.5" />
+                        <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                          Add Block
+                        </span>
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Add New Block</DialogTitle>
+                        <DialogDescription>
+                          Create a new time block for your schedule.
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="name" className="text-right">
+                            Name
+                          </Label>
+                          <Input
+                            id="name"
+                            value={newBlock.name}
+                            onChange={(e) =>
+                              setNewBlock({ ...newBlock, name: e.target.value })
+                            }
+                            className="col-span-3"
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="startTime" className="text-right">
+                            Start Time
+                          </Label>
+                          <Input
+                            id="startTime"
+                            type="time"
+                            value={newBlock.startTime}
+                            onChange={(e) =>
+                              setNewBlock({
+                                ...newBlock,
+                                startTime: e.target.value,
+                              })
+                            }
+                            className="col-span-3"
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="endTime" className="text-right">
+                            End Time
+                          </Label>
+                          <Input
+                            id="endTime"
+                            type="time"
+                            value={newBlock.endTime}
+                            onChange={(e) =>
+                              setNewBlock({
+                                ...newBlock,
+                                endTime: e.target.value,
+                              })
+                            }
+                            className="col-span-3"
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button type="submit" onClick={handleAddBlock}>
+                          Add Block
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
-            </div>
+            )}
+
             {isGeneratingSchedule && (
               <Card className="mt-4 mb-4">
                 <CardContent className="pt-6">
@@ -1601,7 +2494,135 @@ Use the toolbar to access these sections and input your information.`);
             )}
 
             <TabsContent value="active" className="space-y-4">
-              {day.blocks.length > 0 && blockCompletionRate === 100 ? (
+              {isPreviewMode ? (
+                <Card className="mb-4 border-2 border-primary/20">
+                  <CardHeader>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                        <CardTitle className="text-xl text-primary">
+                          Schedule Preview
+                        </CardTitle>
+                        <CardDescription className="text-base">
+                          Review your generated schedule before saving
+                        </CardDescription>
+                      </div>
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        <Button
+                          onClick={handleDiscardPreview}
+                          variant="outline"
+                          className="flex-1 sm:flex-none"
+                        >
+                          Discard Preview
+                        </Button>
+                        <Button
+                          onClick={handleSaveGeneratedSchedule}
+                          className="bg-primary flex-1 sm:flex-none"
+                        >
+                          Save Schedule
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="bg-muted rounded-lg p-4">
+                      <h3 className="font-medium text-base mb-2">
+                        Schedule Rationale:
+                      </h3>
+                      <p className="text-muted-foreground">
+                        {previewScheduleRationale}
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-lg border-b pb-2">
+                        Proposed Time Blocks
+                      </h3>
+
+                      {previewBlocks.map((block, blockIndex) => (
+                        <Card
+                          key={`preview-block-${blockIndex}`}
+                          className="border border-muted"
+                        >
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <div>
+                              <CardTitle>{block.name}</CardTitle>
+                              <CardDescription>{`${block.startTime} - ${block.endTime}`}</CardDescription>
+                            </div>
+                            <div className="flex gap-2">
+                              {block.event && (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-orange-100 text-orange-800"
+                                >
+                                  Event
+                                </Badge>
+                              )}
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            {block.tasks && block.tasks.length > 0 && (
+                              <div className="space-y-2">
+                                {block.tasks.map((task, taskIndex) => (
+                                  <Card
+                                    key={`preview-task-${blockIndex}-${taskIndex}`}
+                                    className="bg-muted/50 relative"
+                                  >
+                                    <CardContent className="p-3 flex items-center justify-between flex-wrap gap-2">
+                                      <div className="flex items-center space-x-3 min-w-[200px]">
+                                        <div className="flex-shrink-0">
+                                          <Checkbox
+                                            id={`preview-task-${blockIndex}-${taskIndex}`}
+                                            disabled
+                                            checked={false}
+                                          />
+                                        </div>
+                                        <div>
+                                          <label
+                                            htmlFor={`preview-task-${blockIndex}-${taskIndex}`}
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                          >
+                                            {task.name}
+                                          </label>
+                                          {task.description && (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                              {task.description}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <Badge className="text-xs whitespace-nowrap">
+                                          {task.isRoutineTask
+                                            ? "Routine"
+                                            : "Task"}
+                                        </Badge>
+                                        <Badge
+                                          className={`text-xs whitespace-nowrap ${
+                                            task.priority === "High"
+                                              ? "bg-red-100 text-red-800"
+                                              : task.priority === "Medium"
+                                              ? "bg-yellow-100 text-yellow-800"
+                                              : "bg-green-100 text-green-800"
+                                          }`}
+                                        >
+                                          {task.priority}
+                                        </Badge>
+                                        <Badge className="text-xs whitespace-nowrap">
+                                          {task.duration} min
+                                        </Badge>
+                                      </div>
+                                    </CardContent>
+                                  </Card>
+                                ))}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : day.blocks.length > 0 && blockCompletionRate === 100 ? (
                 <Card className="w-full border-2 border-primary/10 shadow-md">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center text-lg sm:text-xl text-primary">
@@ -2013,13 +3034,16 @@ Use the toolbar to access these sections and input your information.`);
           ))}
         </div>
       </ScrollArea> */}
-          <AddTaskModal
-            isOpen={isAddTaskModalOpen}
-            onClose={() => setIsAddTaskModalOpen(false)}
-            onAddTask={handleAddTaskToBlock}
-            blockId={selectedBlockId && selectedBlockId}
-            updateDay={updateDay}
-          />
+          {isAddTaskModalOpen && day && (
+            <AddTaskModal
+              isOpen={isAddTaskModalOpen}
+              onClose={() => setIsAddTaskModalOpen(false)}
+              onAddTask={handleAddTaskToBlock}
+              blockId={selectedBlockId && selectedBlockId}
+              updateDay={updateDay}
+              day={day}
+            />
+          )}
           <AddEventModal
             isOpen={isAddEventModalOpen}
             onClose={() => setIsAddEventModalOpen(false)}
@@ -2031,6 +3055,11 @@ Use the toolbar to access these sections and input your information.`);
             onClose={() => setIsAddRoutineModalOpen(false)}
             blockId={selectedBlockId && selectedBlockId}
             updateDay={updateDay}
+          />
+          <ScheduleGenerationDialog
+            isOpen={isGeneratingScheduleDialogOpen}
+            onClose={() => setIsGeneratingScheduleDialogOpen(false)}
+            onGenerateSchedule={generateScheduleTest}
           />
           {/* Add EditBlockDialog and EditTaskDialog components */}
           {editingBlock && (

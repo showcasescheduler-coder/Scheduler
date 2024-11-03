@@ -58,6 +58,8 @@ const RoutinePage = () => {
     description: "",
     days: [],
     block: "",
+    startTime: "",
+    endTime: "",
   });
 
   useEffect(() => {
@@ -81,7 +83,9 @@ const RoutinePage = () => {
     fetchRoutines();
   }, [userId, setRoutines]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setNewRoutine((prev) => ({ ...prev, [name]: value }));
   };
@@ -97,6 +101,7 @@ const RoutinePage = () => {
 
   const handleAddRoutine = async () => {
     if (!userId) return;
+    console.log("Creating routine:", newRoutine);
     try {
       const response = await fetch("/api/routines", {
         method: "POST",
@@ -119,6 +124,8 @@ const RoutinePage = () => {
         description: "",
         days: [],
         block: "",
+        startTime: "",
+        endTime: "",
       });
       alert("Routine created successfully!");
     } catch (error) {
@@ -196,6 +203,32 @@ const RoutinePage = () => {
                   id="description"
                   name="description"
                   value={newRoutine.description}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="startTime" className="text-right">
+                  Start Time
+                </Label>
+                <Input
+                  id="startTime"
+                  name="startTime"
+                  type="time"
+                  value={newRoutine.startTime}
+                  onChange={handleInputChange}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="endTime" className="text-right">
+                  End Time
+                </Label>
+                <Input
+                  id="endTime"
+                  name="endTime"
+                  type="time"
+                  value={newRoutine.endTime}
                   onChange={handleInputChange}
                   className="col-span-3"
                 />

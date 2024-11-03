@@ -87,6 +87,9 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("incomplete");
+  const [isGenerateTasksDialogOpen, setIsGenerateTasksDialogOpen] =
+    useState(false);
+  const [generationContext, setGenerationContext] = useState("");
 
   useEffect(() => {
     const fetchProjectDetails = async () => {
@@ -246,6 +249,7 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
             description: project.description,
             deadline: format(new Date(project.deadline), "yyyy-MM-dd"),
           },
+          context: generationContext,
           today: new Date().toISOString().split("T")[0],
         }),
       });
@@ -294,6 +298,8 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
             : p
         )
       );
+      setIsGenerateTasksDialogOpen(false);
+      setGenerationContext("");
     } catch (error) {
       console.error("Error generating tasks:", error);
       alert("Failed to generate tasks. Please try again.");
@@ -602,7 +608,7 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
                   </Tabs>
                   {activeTab !== "completed" && (
                     <Button
-                      onClick={handleGenerateTasks}
+                      onClick={() => setIsGenerateTasksDialogOpen(true)}
                       disabled={generatingTasks}
                       className="w-full"
                     >
@@ -819,6 +825,47 @@ const ProjectDetailsPage = ({ params: { id } }: Props) => {
           </Button>
         </div>
       </div>
+      <Dialog
+        open={isGenerateTasksDialogOpen}
+        onOpenChange={setIsGenerateTasksDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Generate Project Tasks</DialogTitle>
+            <DialogDescription>
+              Provide additional context to help generate more relevant tasks
+              for your project.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-4">
+              <Label htmlFor="context">Additional Context</Label>
+              <Textarea
+                id="context"
+                value={generationContext}
+                onChange={(e) => setGenerationContext(e.target.value)}
+                placeholder="Add any specific requirements or context for task generation..."
+                className="min-h-[100px]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleGenerateTasks} disabled={generatingTasks}>
+              {generatingTasks ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Generate Tasks
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 };

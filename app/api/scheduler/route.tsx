@@ -14,6 +14,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const { dayId, schedule, userId } = await request.json();
+    console.log(dayId);
+    console.log(schedule);
+    console.log(userId);
 
     // Find the Day document
     let day = await Day.findOne({ _id: dayId, user: userId }).session(session);
@@ -34,10 +37,11 @@ export async function POST(request: NextRequest) {
         endTime: aiBlock.endTime,
         isEvent: aiBlock.isEvent,
         isRoutine: aiBlock.isRoutine,
+        isStandaloneBlock: aiBlock.isStandaloneBlock,
         status: "pending",
       });
 
-      if (aiBlock.isEvent) {
+      if (aiBlock.isEvent && aiBlock.eventId) {
         // Update the associated event with the new block ID
         await Event.findByIdAndUpdate(aiBlock.eventId, {
           block: block._id,
@@ -45,7 +49,7 @@ export async function POST(request: NextRequest) {
         block.event = aiBlock.eventId;
       }
 
-      if (aiBlock.isRoutine) {
+      if (aiBlock.isRoutine && aiBlock.routineId) {
         // Create a new block based on the routine template
         const routine = await Routine.findById(aiBlock.routineId).session(
           session
@@ -64,34 +68,47 @@ export async function POST(request: NextRequest) {
         let task;
 
         if (aiBlock.isRoutine) {
-          // For routine tasks, create new tasks based on the routine template
+          // For routine tasks, always create new tasks based on the routine template
           task = new Task({
             dayId: day._id,
             blockId: block._id,
             name: aiTask.name,
             description: aiTask.description,
-            status: aiTask.status,
+            status: "pending",
             priority: aiTask.priority,
             duration: aiTask.duration,
-            projectId: aiTask.projectId,
             isRoutineTask: true,
           });
           await task.save({ session });
         } else {
-          // For non-routine tasks, update existing tasks
-          task = await Task.findByIdAndUpdate(
-            aiTask.id,
-            {
-              blockId: block._id,
-              status: aiTask.status, // Update status if changed
-              // Add any other fields that might have changed
-            },
-            { session, new: true, upsert: false }
-          );
+          // For non-routine tasks, try to update existing task or create new one
+          if (aiTask.id) {
+            // Try to update existing task
+            task = await Task.findById(aiTask.id).session(session);
+          }
 
-          if (!task) {
-            console.error(`Task with id ${aiTask.id} not found`);
-            continue; // Skip this task if it doesn't exist
+          if (task) {
+            // Update existing task
+            task.block = block._id;
+            task.name = aiTask.name;
+            task.description = aiTask.description;
+            task.priority = aiTask.priority;
+            task.duration = aiTask.duration;
+            task.isRoutineTask = false;
+            await task.save({ session });
+          } else {
+            // Create new task
+            task = new Task({
+              dayId: day._id,
+              blockId: block._id,
+              name: aiTask.name,
+              description: aiTask.description,
+              status: "pending",
+              priority: aiTask.priority,
+              duration: aiTask.duration,
+              isRoutineTask: false,
+            });
+            await task.save({ session });
           }
         }
 

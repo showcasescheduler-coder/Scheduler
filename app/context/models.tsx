@@ -51,6 +51,8 @@ export interface Routine {
   days: string[];
   tasks: RoutineTask[];
   block: string;
+  startTime: string;
+  endTime: string;
 }
 
 // New UserData interface

@@ -76,7 +76,12 @@ export async function PUT(
       blockId,
       { $set: updateData },
       { new: true, runValidators: true }
-    );
+    ).populate({
+      path: "tasks",
+      model: Task,
+      select:
+        "name description duration priority completed isRoutineTask projectId deadline",
+    });
 
     if (!updatedBlock) {
       return NextResponse.json({ message: "Block not found" }, { status: 404 });

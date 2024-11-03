@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, CheckCircle } from "lucide-react";
-import { Task, Project, Block } from "@/app/context/models";
+import { PlusCircle, CheckCircle, Loader2 } from "lucide-react";
+import { Task, Project, Block, Day } from "@/app/context/models";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
@@ -34,6 +34,7 @@ interface AddTaskModalProps {
   onAddTask: (task: Task) => void;
   blockId: string | null;
   updateDay: () => void; // New prop to update the day state
+  day: Day; // This prop was missing
 }
 
 const projectsData = [
@@ -116,6 +117,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   onClose,
   blockId,
   updateDay,
+  day,
 }) => {
   const [selectedProject, setSelectedProject] = useState(projectsData[0].id);
   const [activeTab, setActiveTab] = useState<string>("newTask");
@@ -127,6 +129,75 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     priority: "",
     duration: 5, // Default duration of 5 minutes
   });
+  const [todaySchedule, setTodaySchedule] = useState<Day | null>(null);
+  const [isLoadingTodaySchedule, setIsLoadingTodaySchedule] = useState(false);
+
+  // Check if selected day is tomorrow and get today's date in YYYY-MM-DD format
+  const { isTomorrow, todayDate } = useMemo(() => {
+    const selectedDate = new Date(day.date);
+    const today = new Date();
+    const isTomorrow = selectedDate.getDate() === today.getDate() + 1;
+
+    // Format today's date as YYYY-MM-DD
+    const todayDate = today.toISOString().split("T")[0];
+
+    return { isTomorrow, todayDate };
+  }, [day.date]);
+
+  useEffect(() => {
+    const fetchTodaySchedule = async () => {
+      if (isTomorrow && !todaySchedule) {
+        setIsLoadingTodaySchedule(true);
+        try {
+          const response = await fetch("/api/get-today", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId,
+              date: todayDate,
+            }),
+          });
+          if (!response.ok) {
+            throw new Error("Failed to fetch today's schedule");
+          }
+          const data = await response.json();
+          console.log("Fetched today's schedule:", data);
+          setTodaySchedule(data);
+        } catch (error) {
+          console.error("Error fetching today's schedule:", error);
+        } finally {
+          setIsLoadingTodaySchedule(false);
+        }
+      }
+    };
+
+    fetchTodaySchedule();
+  }, [isTomorrow, userId, todayDate]);
+
+  // // Fetch today's schedule if needed
+  // useEffect(() => {
+  //   const fetchTodaySchedule = async () => {
+  //     if (isTomorrow && !todaySchedule) {
+  //       setIsLoadingTodaySchedule(true);
+  //       try {
+  //         const response = await fetch(`/api/get-today`);
+  //         if (!response.ok) {
+  //           throw new Error("Failed to fetch today's schedule");
+  //         }
+  //         const data = await response.json();
+  //         setTodaySchedule(data);
+  //       } catch (error) {
+  //         console.error("Error fetching today's schedule:", error);
+  //       } finally {
+  //         setIsLoadingTodaySchedule(false);
+  //       }
+  //     }
+  //   };
+
+  //   fetchTodaySchedule();
+  // }, [isTomorrow, userId, todayDate]);
 
   // const fetchTasks = async () => {
   //   try {
@@ -221,6 +292,44 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     }
   };
 
+  // Simplified synchronous isTaskAssigned function
+  const isTaskAssigned = (task: Task) => {
+    // If task has no block, it's not assigned
+    if (!task.block) return false;
+
+    // Get block IDs from the current day
+    const currentDayBlockIds = day.blocks.map((block: any) => block._id);
+
+    // If it's tomorrow and we have today's schedule, check both days
+    if (isTomorrow && todaySchedule?.blocks) {
+      console.log("its tommorow");
+      const todayBlockIds = todaySchedule.blocks.map((block: any) => block._id);
+
+      // If the task is assigned to any block in today's schedule,
+      // it cannot be assigned to tomorrow's schedule
+      if (todayBlockIds.includes(task.block)) {
+        return true;
+      }
+    }
+
+    // Check if it's assigned in the current day's schedule
+    return currentDayBlockIds.includes(task.block);
+  };
+
+  // const isTaskAssigned = (task: Task) => {
+  //   // If task has no block, it's not assigned
+  //   if (!task.block) return false;
+
+  //   console.log(task);
+  //   console.log(day);
+
+  //   // Get all block IDs from the current day
+  //   const dayBlockIds = day.blocks.map((block: any) => block._id);
+
+  //   // Check if the task's block ID is in today's blocks
+  //   return dayBlockIds.includes(task.block);
+  // };
+
   const handleNewTaskSubmit = async () => {
     console.log("Creating new task:");
     try {
@@ -272,6 +381,14 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
         <DialogHeader>
           <DialogTitle>Add Task to Block</DialogTitle>
         </DialogHeader>
+        {isLoadingTodaySchedule && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-50">
+            <div className="flex items-center space-x-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Loading schedule...</span>
+            </div>
+          </div>
+        )}
         <Tabs
           defaultValue="newTask"
           onValueChange={setActiveTab}
@@ -282,6 +399,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
             <TabsTrigger value="existingTask">Task Bank</TabsTrigger>
             <TabsTrigger value="projectTask">Project Task</TabsTrigger>
           </TabsList>
+
+          {/* New Task Tab */}
           <TabsContent value="newTask">
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -341,15 +460,17 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
               </div>
             </div>
           </TabsContent>
+
+          {/* Existing Task Tab */}
           <TabsContent value="existingTask">
             <ScrollArea className="h-72 w-full rounded-md border">
               <div className="p-4 space-y-4">
                 {tasks
-                  .filter((task) => task.completed === false) // Only include tasks where completed is false
+                  .filter((task) => task.completed === false)
                   .map((task) => (
                     <Card
                       key={task._id}
-                      className={task.block ? "opacity-50" : ""}
+                      className={isTaskAssigned(task) ? "opacity-50" : ""}
                     >
                       <CardContent className="p-3 flex items-center justify-between">
                         <div className="space-y-1">
@@ -358,8 +479,15 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                             {task.description}
                           </p>
                           <div className="flex items-center space-x-2">
-                            {task.block && (
-                              <Badge variant="outline">Assigned</Badge>
+                            {isTaskAssigned(task) && (
+                              <Badge variant="outline">
+                                {isTomorrow &&
+                                todaySchedule?.blocks.some(
+                                  (b) => b._id === task.block
+                                )
+                                  ? "Assigned Today"
+                                  : "Assigned"}
+                              </Badge>
                             )}
                           </div>
                         </div>
@@ -368,47 +496,19 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                           variant="outline"
                           className="shrink-0"
                           onClick={() => addTaskToBlock(task._id)}
-                          disabled={!!task.block}
+                          disabled={isTaskAssigned(task)}
                         >
                           <PlusCircle className="h-4 w-4 mr-1" />
-                          {task.block ? "Assigned" : "Add"}
+                          {isTaskAssigned(task) ? "Assigned" : "Add"}
                         </Button>
                       </CardContent>
                     </Card>
                   ))}
               </div>
             </ScrollArea>
-            {/* <ScrollArea className="h-[300px] w-full rounded-md border">
-              <div className="p-4 space-y-4">
-                {tasks.map((task) => (
-                  <Card key={task._id}>
-                    <CardContent className="p-3 flex items-center justify-between">
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-medium">{task.name}</h4>
-                        <p className="text-xs text-muted-foreground">
-                          {task.description}
-                        </p>
-                        <Badge
-                          variant={
-                            task.priority.toLowerCase() as
-                              | "default"
-                              | "secondary"
-                              | "destructive"
-                          }
-                        >
-                          {task.priority}
-                        </Badge>
-                      </div>
-                      <Button size="sm" variant="outline" className="shrink-0">
-                        <PlusCircle className="h-4 w-4 mr-1" />
-                        Add
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea> */}
           </TabsContent>
+
+          {/* Project Task Tab */}
           <TabsContent value="projectTask">
             <div className="space-y-4">
               <Select
@@ -432,11 +532,11 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 <div className="p-4 space-y-4">
                   {projects
                     .find((p) => p._id === selectedProject)
-                    ?.tasks.filter((task) => task.completed === false) // Only include tasks where completed is false
+                    ?.tasks.filter((task) => task.completed === false)
                     .map((task) => (
                       <Card
                         key={task._id}
-                        className={task.block ? "opacity-50" : ""}
+                        className={isTaskAssigned(task) ? "opacity-50" : ""}
                       >
                         <CardContent className="p-3 flex items-center justify-between">
                           <div className="space-y-1">
@@ -455,8 +555,15 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                               >
                                 {task.priority}
                               </Badge>
-                              {task.block && (
-                                <Badge variant="outline">Assigned</Badge>
+                              {isTaskAssigned(task) && (
+                                <Badge variant="outline">
+                                  {isTomorrow &&
+                                  todaySchedule?.blocks.some(
+                                    (b) => b._id === task.block
+                                  )
+                                    ? "Assigned Today"
+                                    : "Assigned"}
+                                </Badge>
                               )}
                             </div>
                           </div>
@@ -465,10 +572,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                             variant="outline"
                             className="shrink-0"
                             onClick={() => addTaskToBlock(task._id)}
-                            disabled={!!task.block}
+                            disabled={isTaskAssigned(task)}
                           >
                             <PlusCircle className="h-4 w-4 mr-1" />
-                            {task.block ? "Assigned" : "Add"}
+                            {isTaskAssigned(task) ? "Assigned" : "Add"}
                           </Button>
                         </CardContent>
                       </Card>
@@ -482,10 +589,12 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleNewTaskSubmit}>
-            <CheckCircle className="mr-2 h-4 w-4" />
-            Add Task
-          </Button>
+          {activeTab === "newTask" && (
+            <Button onClick={handleNewTaskSubmit}>
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Add Task
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

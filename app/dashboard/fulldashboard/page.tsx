@@ -1500,7 +1500,7 @@ const DashboardPage = () => {
           ))}
         </div>
       </ScrollArea> */}
-      <AddTaskModal
+      {/* <AddTaskModal
         isOpen={isAddTaskModalOpen}
         onClose={() => setIsAddTaskModalOpen(false)}
         onAddTask={handleAddTaskToBlock}
@@ -1520,7 +1520,7 @@ const DashboardPage = () => {
         updateDay={updateDay}
       />
       {/* Add EditBlockDialog and EditTaskDialog components */}
-      {editingBlock && (
+      {/* {editingBlock && (
         <EditBlockDialog
           block={editingBlock}
           isOpen={!!editingBlock}
@@ -1535,7 +1535,7 @@ const DashboardPage = () => {
           onClose={() => setEditingTask(null)}
           onSave={handleSaveTask}
         />
-      )}
+      )} */}
       {/* {availableuserInformation && (
         <Card className="mt-8">
           <CardHeader>

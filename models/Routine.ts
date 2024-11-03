@@ -6,6 +6,8 @@ const RoutineSchema = new mongoose.Schema(
     name: { type: String, required: true },
     description: { type: String },
     days: [{ type: String }],
+    startTime: { type: String },
+    endTime: { type: String },
     tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Task" }],
   },
   { timestamps: true }

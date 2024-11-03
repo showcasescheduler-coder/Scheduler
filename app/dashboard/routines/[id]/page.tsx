@@ -324,6 +324,28 @@ const RoutineDetailsPage = ({ params: { id } }: Props) => {
                     />
                   </div>
                   <div className="grid gap-3">
+                    <Label htmlFor="startTime">Start Time</Label>
+                    <Input
+                      id="startTime"
+                      name="startTime"
+                      type="time"
+                      value={routine.startTime || ""}
+                      onChange={handleInputChange}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="grid gap-3">
+                    <Label htmlFor="endTime">End Time</Label>
+                    <Input
+                      id="endTime"
+                      name="endTime"
+                      type="time"
+                      value={routine.endTime || ""}
+                      onChange={handleInputChange}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="grid gap-3">
                     <Label>Routine Days</Label>
                     <div className="flex flex-wrap gap-4">
                       {days.map((day) => (
