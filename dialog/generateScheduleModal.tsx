@@ -49,7 +49,7 @@ export const ScheduleGenerationDialog: React.FC<
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="schedule-input">Your preferences</Label>
+            <Label htmlFor="schedule-input">Your Schedule Preferences</Label>
             <Textarea
               id="schedule-input"
               placeholder="E.g., I want to focus on work in the morning, exercise in the afternoon, and have some free time in the evening."
