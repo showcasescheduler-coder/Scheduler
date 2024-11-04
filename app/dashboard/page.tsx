@@ -2551,14 +2551,14 @@ Use the toolbar to access these sections and input your information.`);
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <div className="bg-muted rounded-lg p-4">
+                    {/* <div className="bg-muted rounded-lg p-4">
                       <h3 className="font-medium text-base mb-2">
                         Schedule Rationale:
                       </h3>
                       <p className="text-muted-foreground">
                         {previewScheduleRationale}
                       </p>
-                    </div>
+                    </div> */}
 
                     <div className="space-y-4">
                       <h3 className="font-semibold text-lg border-b pb-2">
@@ -2586,6 +2586,16 @@ Use the toolbar to access these sections and input your information.`);
                               )}
                             </div>
                           </CardHeader>
+                          {block.description && (
+                            <div className="mx-6 my-3 p-3 rounded-lg bg-card shadow-sm border border-border/50">
+                              <div className="flex gap-3 items-start">
+                                <InfoIcon className="h-4 w-4 text-primary/60 mt-0.5 flex-shrink-0" />
+                                <p className="text-sm leading-relaxed">
+                                  {block.description}
+                                </p>
+                              </div>
+                            </div>
+                          )}
                           <CardContent>
                             {block.tasks && block.tasks.length > 0 && (
                               <div className="space-y-2">
@@ -3087,6 +3097,7 @@ Use the toolbar to access these sections and input your information.`);
             isOpen={isGeneratingScheduleDialogOpen}
             onClose={() => setIsGeneratingScheduleDialogOpen(false)}
             onGenerateSchedule={generateScheduleTest}
+            isPreviewMode={isPreviewMode}
           />
           {/* Add EditBlockDialog and EditTaskDialog components */}
           {editingBlock && (

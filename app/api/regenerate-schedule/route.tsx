@@ -81,6 +81,7 @@ Return ONLY a JSON object with this structure:
       "name": "Block name (specific if context given, generic if not)",
       "startTime": "HH:MM format",
       "endTime": "HH:MM format",
+      "description": "A clear explanation of why this block is placed here and how it serves the user's productivity. Include energy level considerations, task grouping logic, and how it fits into the overall flow of the day.",
       "isEvent": boolean,
       "isRoutine": boolean,
       "isStandaloneBlock": boolean,
@@ -88,7 +89,7 @@ Return ONLY a JSON object with this structure:
       "routineId": string or null,
       "tasks": [
         {
-          "id": string,
+          "id": existing-id-if-found or null,
           "name": string,
           "description": string,
           "duration": "High" | "Medium" | "Low",
