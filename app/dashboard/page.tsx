@@ -173,9 +173,13 @@ const DashboardPage = () => {
   const [scheduleStatus, setScheduleStatus] = useState<string | null>(null);
   const [isGeneratingScheduleDialogOpen, setIsGeneratingScheduleDialogOpen] =
     useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStep, setGenerationStep] = useState("");
   const MINIMUM_TASKS_REQUIRED = 5; // Adjust this number as needed
 
   const [apiResponse, setApiResponse] = useState<string | null>(null);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleEditBlock = (block: Block) => {
     setEditingBlock(block);
@@ -286,6 +290,14 @@ const DashboardPage = () => {
 
     fetchTasks();
   }, [setTasks]);
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const getPerformanceRating = async (updatedDay: Day) => {
     if (
@@ -641,8 +653,13 @@ const DashboardPage = () => {
     startTime: string,
     endTime: string
   ) => {
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
     setIsGeneratingSchedule(true); // Add this li
     setIsGeneratingScheduleDialogOpen(false);
+    setGenerationProgress(0);
+    setGenerationStep("Initializing...");
 
     // console.log("Projects:", projects);
     // console.log("Original Tasks:", tasks);
@@ -769,7 +786,13 @@ const DashboardPage = () => {
     console.log("Optimized Routines:", optimizedRoutines);
 
     try {
+      // Initial setup
+      setGenerationProgress(5);
+      setGenerationStep("Preparing data for analysis...");
+
       if (isPreviewMode) {
+        setGenerationProgress(20);
+        setGenerationStep("Analyzing intent and requirements...");
         const regeneratedSchedule = await fetch("/api/regenerate-schedule", {
           method: "POST",
           headers: {
@@ -785,8 +808,11 @@ const DashboardPage = () => {
             startTime: startTime,
             endTime: endTime,
           }),
+          signal, // Add abort signal
         });
-
+        // After first API response
+        setGenerationProgress(40);
+        setGenerationStep("Processing schedule structure...");
         const regeneratedScedhuleJson = await regeneratedSchedule.json();
         console.log(regeneratedScedhuleJson);
         if (regeneratedScedhuleJson.blocks) {
@@ -798,6 +824,9 @@ const DashboardPage = () => {
           );
         }
       } else {
+        // First API call
+        setGenerationProgress(20);
+        setGenerationStep("Analyzing intent and requirements...");
         const baseSchedule = await fetch("/api/intent-analysis", {
           method: "POST",
           headers: {
@@ -812,8 +841,11 @@ const DashboardPage = () => {
             startTime: startTime,
             endTime: endTime,
           }),
+          signal, // Add abort signal
         });
-
+        // After first API response
+        setGenerationProgress(40);
+        setGenerationStep("Processing schedule structure...");
         const baseSchedulejson = await baseSchedule.json();
         console.log("Generated Initial Schedule:", baseSchedulejson);
         console.log(
@@ -826,6 +858,8 @@ const DashboardPage = () => {
           baseSchedulejson.hasSpecificInstructions === false
         ) {
           console.log("running the default schedule");
+          setGenerationProgress(60);
+          setGenerationStep("Generating default schedule...");
           const defaultScedhule = await fetch("/api/default-schedule", {
             method: "POST",
             headers: {
@@ -840,12 +874,17 @@ const DashboardPage = () => {
               startTime: startTime,
               endTime: endTime,
             }),
+            signal, // Add abort signal
           });
+          setGenerationProgress(80);
+          setGenerationStep("Finalizing schedule...");
 
           const defaultScedhuleJson = await defaultScedhule.json();
           console.log(defaultScedhuleJson);
 
           if (defaultScedhuleJson.blocks) {
+            setGenerationProgress(90);
+            setGenerationStep("Preparing preview...");
             setpreviewSchedule(defaultScedhuleJson);
             setPreviewBlocks(defaultScedhuleJson.blocks);
             setIsPreviewMode(true);
@@ -858,6 +897,8 @@ const DashboardPage = () => {
           baseSchedulejson.hasSpecificInstructions === true
         ) {
           console.log("running the specific schedule");
+          setGenerationProgress(60);
+          setGenerationStep("Generating Specific schedule...");
           const userSpecificScedhule = await fetch(
             "/api/user-specific-prompt",
             {
@@ -874,12 +915,16 @@ const DashboardPage = () => {
                 startTime: startTime,
                 endTime: endTime,
               }),
+              signal, // Add abort signal
             }
           );
-
+          setGenerationProgress(80);
+          setGenerationStep("Finalizing schedule...");
           const userSpecificScedhuleJson = await userSpecificScedhule.json();
           console.log(userSpecificScedhuleJson);
           if (userSpecificScedhuleJson.blocks) {
+            setGenerationProgress(90);
+            setGenerationStep("Preparing preview...");
             setpreviewSchedule(userSpecificScedhuleJson);
             setPreviewBlocks(userSpecificScedhuleJson.blocks);
             setIsPreviewMode(true);
@@ -893,6 +938,8 @@ const DashboardPage = () => {
           baseSchedulejson.hasEnoughData === true &&
           baseSchedulejson.hasSpecificInstructions === false
         ) {
+          setGenerationProgress(60);
+          setGenerationStep("Generating default schedule...");
           console.log("running the fully automated schedule generation");
           const automatedSchedule = await fetch(
             "/api/non-specific-full-backlog",
@@ -910,12 +957,16 @@ const DashboardPage = () => {
                 startTime: startTime,
                 endTime: endTime,
               }),
+              signal, // Add abort signal
             }
           );
-
+          setGenerationProgress(80);
+          setGenerationStep("Finalizing schedule...");
           const automatedScheduleJson = await automatedSchedule.json();
           console.log(automatedScheduleJson);
           if (automatedScheduleJson.blocks) {
+            setGenerationProgress(90);
+            setGenerationStep("Preparing preview...");
             setpreviewSchedule(automatedScheduleJson);
             setPreviewBlocks(automatedScheduleJson.blocks);
             setIsPreviewMode(true);
@@ -930,6 +981,8 @@ const DashboardPage = () => {
           baseSchedulejson.hasSpecificInstructions === true
         ) {
           console.log("running the specific schedule with full blocks");
+          setGenerationProgress(60);
+          setGenerationStep("Generating specific schedule...");
           const userSpecificFullBacklog = await fetch(
             "/api/specific-full-backlog",
             {
@@ -946,13 +999,17 @@ const DashboardPage = () => {
                 startTime: startTime,
                 endTime: endTime,
               }),
+              signal, // Add abort signal
             }
           );
-
+          setGenerationProgress(80);
+          setGenerationStep("Finalizing schedule...");
           const userSpecificFullBacklogJson =
             await userSpecificFullBacklog.json();
           console.log(userSpecificFullBacklogJson);
           if (userSpecificFullBacklogJson.blocks) {
+            setGenerationProgress(90);
+            setGenerationStep("Preparing preview...");
             setpreviewSchedule(userSpecificFullBacklogJson);
             setPreviewBlocks(userSpecificFullBacklogJson.blocks);
             setIsPreviewMode(true);
@@ -1041,10 +1098,17 @@ const DashboardPage = () => {
         // // For example:
         // // setSchedule(finalSchedule);
       }
+
+      setGenerationProgress(100);
+      setGenerationStep("Schedule generated successfully!");
     } catch (error) {
       console.error("Error in schedule generation process:", error);
     } finally {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setIsGeneratingSchedule(false);
+      setGenerationProgress(0);
       setIsGeneratingSchedule(false); // Add this line
+      abortControllerRef.current = null;
     }
   };
 
@@ -2166,6 +2230,14 @@ Use the toolbar to access these sections and input your information.`);
     }
   };
 
+  // Add the cancel handler
+  const handleCancelGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsGeneratingSchedule(false);
+  };
   // console.log("is this even working");
   // console.log(day);
 
@@ -2513,11 +2585,13 @@ Use the toolbar to access these sections and input your information.`);
             )}
 
             {isGeneratingSchedule && (
-              <Card className="mt-4 mb-4">
-                <CardContent className="pt-6">
-                  <LoadingMessages isLoading={isGeneratingSchedule} />
-                </CardContent>
-              </Card>
+              <LoadingMessages
+                isLoading={isGeneratingSchedule}
+                onCancel={handleCancelGeneration}
+                isCancellable={true}
+                progress={generationProgress}
+                currentStep={generationStep}
+              />
             )}
 
             <TabsContent value="active" className="space-y-4">
