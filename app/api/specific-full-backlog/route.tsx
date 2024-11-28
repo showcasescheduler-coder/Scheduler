@@ -109,8 +109,8 @@ Return ONLY a JSON object with this structure:
       "isEvent": boolean,
       "isRoutine": boolean,
       "isStandaloneBlock": boolean,
-      "eventId": string or null,
-      "routineId": string or null,
+      "eventId": existing-id-if-found or null,
+      "routineId": existing-id-if-found or null,
       "tasks": [
         {
           "id": "existing-id-if-found or null,

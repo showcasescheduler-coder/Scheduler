@@ -1,334 +1,193 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
-  File,
-  ListFilter,
-  MoreHorizontal,
-  PlusCircle,
+  Plus,
   Calendar,
-  CheckCircle,
+  Brain,
+  LayoutDashboard,
+  FolderKanban,
+  ListTodo,
+  Repeat,
+  BarChart2,
+  Clock,
+  CalendarRange,
+  PlayCircle,
+  History,
 } from "lucide-react";
-import Link from "next/link";
-import { Routine, Task } from "@/app/context/models";
-import { useAppContext } from "@/app/context/AppContext";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from "@clerk/nextjs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-type NewRoutineForm = Omit<Routine, "id" | "tasks">;
+function SidebarContent() {
+  return (
+    <div className="flex flex-col items-center py-6 space-y-8">
+      <div className="flex flex-col items-center gap-2">
+        <Brain className="h-8 w-8 text-blue-600" />
+      </div>
+      <nav className="space-y-8">
+        <LayoutDashboard className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <FolderKanban className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <ListTodo className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <Calendar className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <Repeat className="h-5 w-5 text-blue-600" />
+        <BarChart2 className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+      </nav>
+    </div>
+  );
+}
 
-const RoutinePage = () => {
-  const { setRoutines, routines, addRoutine } = useAppContext();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const { userId } = useAuth();
-  const router = useRouter();
-  const [newRoutine, setNewRoutine] = useState<NewRoutineForm>({
-    _id: "",
-    name: "",
-    description: "",
-    days: [],
-    block: "",
-    startTime: "",
-    endTime: "",
-  });
-
-  useEffect(() => {
-    const fetchRoutines = async () => {
-      if (!userId) return;
-      try {
-        const response = await fetch(`/api/routines?userId=${userId}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch routines");
-        }
-        const data = await response.json();
-        setRoutines(data);
-      } catch (error) {
-        console.error("Error fetching routines:", error);
-        alert("Failed to fetch routines. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchRoutines();
-  }, [userId, setRoutines]);
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setNewRoutine((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleDayToggle = (day: string) => {
-    setNewRoutine((prev) => ({
-      ...prev,
-      days: prev.days.includes(day)
-        ? prev.days.filter((d) => d !== day)
-        : [...prev.days, day],
-    }));
-  };
-
-  const handleAddRoutine = async () => {
-    if (!userId) return;
-    console.log("Creating routine:", newRoutine);
-    try {
-      const response = await fetch("/api/routines", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ...newRoutine, userId }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create routine");
-      }
-
-      const createdRoutine = await response.json();
-      addRoutine(createdRoutine);
-      setIsDialogOpen(false);
-      setNewRoutine({
-        _id: "",
-        name: "",
-        description: "",
-        days: [],
-        block: "",
-        startTime: "",
-        endTime: "",
-      });
-      alert("Routine created successfully!");
-    } catch (error) {
-      console.error("Error creating routine:", error);
-      alert("Failed to create routine. Please try again.");
-    }
-  };
-
-  const handleEdit = (routineId: string) => {
-    router.push(`/dashboard/routines/${routineId}`);
-  };
-
-  const handleDelete = async (routineId: string) => {
-    if (!confirm("Are you sure you want to delete this routine?")) return;
-
-    try {
-      const response = await fetch(`/api/routines/${routineId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete routine");
-      }
-
-      setRoutines((prevRoutines) =>
-        prevRoutines.filter((routine) => routine._id !== routineId)
-      );
-      alert("Routine deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting routine:", error);
-      alert("Failed to delete routine. Please try again.");
-    }
-  };
-
-  if (isLoading) {
-    return <div>Loading routines...</div>;
-  }
+export default function RoutinesPage() {
+  const routines = [
+    {
+      id: 1,
+      title: "Morning Routine",
+      description: "Start the day right",
+      schedule: "Weekdays",
+      time: "06:00 - 07:30",
+      streak: 15,
+      completion: 85,
+      lastCompleted: "Today",
+      tasks: { completed: 6, total: 7 },
+      status: "Active",
+    },
+    {
+      id: 2,
+      title: "Evening Workout",
+      description: "Stay fit and healthy",
+      schedule: "Mon, Wed, Fri",
+      time: "18:00 - 19:00",
+      streak: 8,
+      completion: 100,
+      lastCompleted: "Yesterday",
+      tasks: { completed: 5, total: 5 },
+      status: "Active",
+    },
+    {
+      id: 3,
+      title: "Weekly Review",
+      description: "Review goals and plan ahead",
+      schedule: "Sunday",
+      time: "19:00 - 20:00",
+      streak: 4,
+      completion: 0,
+      lastCompleted: "Last Week",
+      tasks: { completed: 0, total: 8 },
+      status: "Active",
+    },
+  ];
 
   return (
-    <main className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Routines</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="h-9">
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Routine
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Routine</DialogTitle>
-              <DialogDescription>
-                Enter the details for the new routine.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Name
-                </Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={newRoutine.name}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="description" className="text-right">
-                  Description
-                </Label>
-                <Input
-                  id="description"
-                  name="description"
-                  value={newRoutine.description}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="startTime" className="text-right">
-                  Start Time
-                </Label>
-                <Input
-                  id="startTime"
-                  name="startTime"
-                  type="time"
-                  value={newRoutine.startTime}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="endTime" className="text-right">
-                  End Time
-                </Label>
-                <Input
-                  id="endTime"
-                  name="endTime"
-                  type="time"
-                  value={newRoutine.endTime}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Days</Label>
-                <div className="col-span-3 flex flex-wrap gap-2">
-                  {[
-                    "Monday",
-                    "Tuesday",
-                    "Wednesday",
-                    "Thursday",
-                    "Friday",
-                    "Saturday",
-                    "Sunday",
-                  ].map((day) => (
-                    <div key={day} className="flex items-center">
-                      <Checkbox
-                        id={day}
-                        checked={newRoutine.days.includes(day)}
-                        onCheckedChange={() => handleDayToggle(day)}
-                      />
-                      <Label htmlFor={day} className="ml-2">
-                        {day}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleAddRoutine}>Add Routine</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {routines.map((routine) => (
-          <Card key={routine._id} className="flex flex-col">
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>{routine.name}</CardTitle>
-                  <CardDescription>{routine.description}</CardDescription>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => handleEdit(routine._id)}>
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDelete(routine._id)}>
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </CardHeader>
-            <CardContent className="flex-grow">
-              <div className="flex items-center mb-4">
-                <Calendar className="h-4 w-4 mr-2" />
-                <span className="text-sm text-gray-600">
-                  {routine.days.join(", ")}
-                </span>
-              </div>
-              {routine.tasks && routine.tasks.length > 0 ? (
-                <div>
-                  <h4 className="font-semibold mb-2">Tasks:</h4>
-                  <ul className="space-y-2">
-                    {routine.tasks.map((task: Task) => (
-                      <li key={task._id} className="flex items-center">
-                        <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                        <span>{task.name}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">No tasks added yet.</p>
-              )}
-            </CardContent>
-            <CardFooter>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => handleEdit(routine._id)}
-              >
-                View Details
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-    </main>
-  );
-};
+    <div className="flex h-screen bg-white">
+      <aside className="hidden md:block w-16 border-r border-gray-200">
+        <SidebarContent />
+      </aside>
 
-export default RoutinePage;
+      <main className="flex-1">
+        <div className="h-full p-8">
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h1 className="text-2xl font-semibold">Routines</h1>
+                <p className="text-sm text-gray-500">
+                  Manage your daily and weekly routines
+                </p>
+              </div>
+              <Button className="h-9">
+                <Plus className="h-4 w-4 mr-2" />
+                New Routine
+              </Button>
+            </div>
+          </div>
+
+          <Tabs defaultValue="all" className="w-full mb-6">
+            <TabsList className="h-9 bg-transparent border border-gray-200 rounded-lg p-1 w-full sm:w-auto">
+              <TabsTrigger
+                value="all"
+                className="flex-1 sm:flex-none text-sm px-8 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
+              >
+                All
+              </TabsTrigger>
+              <TabsTrigger
+                value="daily"
+                className="flex-1 sm:flex-none text-sm px-8 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
+              >
+                Daily
+              </TabsTrigger>
+              <TabsTrigger
+                value="weekly"
+                className="flex-1 sm:flex-none text-sm px-8 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
+              >
+                Weekly
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {routines.map((routine) => (
+              <Card key={routine.id} className="border-gray-200 shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-base font-medium">
+                    {routine.title}
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <PlayCircle className="h-5 w-5 text-blue-600" />
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-gray-500">{routine.description}</p>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Completion Rate</span>
+                      <span className="font-medium">{routine.completion}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full">
+                      <div
+                        className="h-full bg-blue-600 rounded-full transition-all"
+                        style={{ width: `${routine.completion}%` }}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2 text-sm">
+                      <div className="flex justify-between text-gray-500">
+                        <div className="flex items-center gap-2">
+                          <CalendarRange className="h-4 w-4" />
+                          {routine.schedule}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          {routine.time}
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-gray-500">
+                        <div className="flex items-center gap-2">
+                          <Repeat className="h-4 w-4" />
+                          {routine.streak} day streak
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <History className="h-4 w-4" />
+                          {routine.lastCompleted}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                    >
+                      <ListTodo className="h-4 w-4 mr-2" />
+                      {routine.tasks.completed}/{routine.tasks.total} Tasks
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

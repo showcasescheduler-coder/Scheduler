@@ -1,21 +1,21 @@
-"use client";
-import React, { useEffect, useState } from "react";
-import { ChevronLeft } from "lucide-react";
-import { useAppContext } from "@/app/context/AppContext";
-import { Task } from "@/app/context/models";
-
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import React from "react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  ArrowLeft,
+  Calendar,
+  Menu,
+  Brain,
+  LayoutDashboard,
+  FolderKanban,
+  ListTodo,
+  Repeat,
+  BarChart2,
+  CheckCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -23,236 +23,165 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { CalendarIcon } from "@radix-ui/react-icons";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { useRouter } from "next/navigation";
 
-interface Props {
-  params: { id: string };
+function SidebarContent() {
+  return (
+    <div className="flex flex-col items-center py-6 space-y-8">
+      <div className="flex flex-col items-center gap-2">
+        <Brain className="h-8 w-8 text-blue-600" />
+      </div>
+      <nav className="space-y-8">
+        <LayoutDashboard className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <FolderKanban className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <ListTodo className="h-5 w-5 text-blue-600" />
+        <Calendar className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <Repeat className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <BarChart2 className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+      </nav>
+    </div>
+  );
 }
 
-const TaskDetailsPage = ({ params: { id } }: Props) => {
-  const { tasks, updateTask } = useAppContext();
-  const [task, setTask] = useState<Task | null>(null);
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchTaskDetails = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/tasks/${id}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch task details");
-        }
-        const data = await response.json();
-        setTask(data);
-      } catch (error) {
-        console.error("Error fetching task details:", error);
-        // Handle error (e.g., show error message to user)
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTaskDetails();
-  }, [id]);
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setTask((prev) => (prev ? { ...prev, [name]: value } : null));
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setTask((prev) => (prev ? { ...prev, [name]: value } : null));
-  };
-
-  const handleDateChange = (date: Date | null | undefined) => {
-    setTask((prev) => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        deadline: date ? format(date, "yyyy-MM-dd") : prev.deadline,
-      };
-    });
-  };
-
-  const handleSave = async () => {
-    if (task) {
-      try {
-        const response = await fetch(`/api/tasks/stand-alone-tasks`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(task),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to update task");
-        }
-
-        const { task: updatedTask } = await response.json();
-
-        // Update the task in the global state
-        updateTask(id, updatedTask);
-
-        // Optionally, show a success message
-        alert("Task updated successfully!");
-      } catch (error) {
-        console.error("Error updating task:", error);
-        alert("Failed to update task. Please try again.");
-      }
-    }
-  };
-
-  if (!task) return <div>Loading...</div>;
-
+export default function TaskDetails() {
   return (
-    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-      <div className="mx-auto grid max-w-[59rem] flex-1 auto-rows-max gap-4">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => router.push("/dashboard/tasks")}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Back to Projects</span>
-          </Button>
-          <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-            {task.name}
-          </h1>
-          <Badge variant="outline" className="ml-auto sm:ml-0">
-            {/* {task.status} */}
-          </Badge>
-          <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            {/* <Button variant="outline" size="sm">
-              Discard
-            </Button> */}
-            <Button size="sm" onClick={handleSave}>
-              Save Task
-            </Button>
+    <div className="flex h-screen bg-white">
+      <aside className="hidden md:block w-16 border-r border-gray-200">
+        <SidebarContent />
+      </aside>
+
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Header */}
+        <header className="border-b border-gray-200 bg-white sticky top-0 z-10">
+          <div className="px-4 md:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                {/* Mobile Menu */}
+                <div className="md:hidden">
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <Menu className="h-5 w-5" />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-16 p-0">
+                      <SidebarContent />
+                    </SheetContent>
+                  </Sheet>
+                </div>
+                <Button variant="ghost" size="icon" className="hidden md:flex">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl md:text-2xl font-semibold">
+                      Have lunch with mum
+                    </h1>
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                      Upcoming
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Mark Complete
+                </Button>
+                <Button size="sm">Save</Button>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
-          <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
+        </header>
+
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 md:p-8 space-y-6">
+            {/* Task Details */}
             <Card>
-              <CardHeader>
-                <CardTitle>Task Details</CardTitle>
-                <CardDescription>
-                  Update the details of your task
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-6">
-                  <div className="grid gap-3">
-                    <Label htmlFor="name">Task Name</Label>
+              <CardContent className="p-4 md:p-6 space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium">Task Name</label>
                     <Input
-                      id="name"
-                      name="name"
-                      type="text"
-                      className="w-full"
-                      value={task.name}
-                      onChange={handleInputChange}
+                      defaultValue="Have lunch with mum"
+                      className="mt-2"
                     />
                   </div>
-                  <div className="grid gap-3">
-                    <Label htmlFor="description">Task Description</Label>
+                  <div>
+                    <label className="text-sm font-medium">Description</label>
                     <Textarea
-                      id="description"
-                      name="description"
-                      value={task.description}
-                      onChange={handleInputChange}
-                      className="min-h-32"
+                      defaultValue="Meet mum at the coffee shop"
+                      className="mt-2"
                     />
                   </div>
-                  <div className="grid gap-3">
-                    <Label htmlFor="priority">Priority</Label>
-                    <Select
-                      value={task.priority}
-                      onValueChange={(value) =>
-                        handleSelectChange("priority", value)
-                      }
-                    >
-                      <SelectTrigger id="priority">
-                        <SelectValue placeholder="Select priority" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Low">Low</SelectItem>
-                        <SelectItem value="Medium">Medium</SelectItem>
-                        <SelectItem value="High">High</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-3">
-                    <Label htmlFor="duration">Duration</Label>
-                    <Input
-                      id="duration"
-                      name="duration"
-                      type="text"
-                      value={task.duration}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="grid gap-3">
-                    <Label htmlFor="deadline">Deadline</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-[280px] justify-start text-left font-normal",
-                            !task.deadline && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {task.deadline ? (
-                            format(new Date(task.deadline), "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={
-                            task.deadline ? new Date(task.deadline) : undefined
-                          }
-                          onSelect={handleDateChange}
-                          initialFocus
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium">Due Date</label>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Input
+                          type="date"
+                          defaultValue="2024-11-23"
+                          className="flex-1"
                         />
-                      </PopoverContent>
-                    </Popover>
+                        <Button variant="outline" size="icon">
+                          <Calendar className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Duration</label>
+                      <Input defaultValue="1h" className="mt-2" />
+                    </div>
                   </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium">Status</label>
+                      <Select defaultValue="upcoming">
+                        <SelectTrigger className="mt-2">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="upcoming">Upcoming</SelectItem>
+                          <SelectItem value="in-progress">
+                            In Progress
+                          </SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Priority</label>
+                      <Select defaultValue="medium">
+                        <SelectTrigger className="mt-2">
+                          <SelectValue placeholder="Priority" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="low">Low</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Notes or Additional Details */}
+            <Card>
+              <CardContent className="p-4 md:p-6">
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Notes</h3>
+                  <Textarea
+                    placeholder="Add any additional notes or details about this task..."
+                    className="min-h-[100px]"
+                  />
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
-        <div className="flex items-center justify-center gap-2 md:hidden">
-          {/* <Button variant="outline" size="sm">
-            Discard
-          </Button> */}
-          <Button size="sm" onClick={handleSave}>
-            Save Task
-          </Button>
-        </div>
       </div>
-    </main>
+    </div>
   );
-};
-
-export default TaskDetailsPage;
+}

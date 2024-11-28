@@ -1,29 +1,25 @@
-"use client";
-import React, { useState, useEffect } from "react";
-import { format, parseISO, isBefore } from "date-fns";
-import { useAppContext } from "@/app/context/AppContext";
-import { Project, ProjectTask, Task } from "@/app/context/models";
+import React from "react";
 import {
-  ChevronLeft,
-  PlusCircle,
-  Loader2,
+  ArrowLeft,
+  Calendar,
   Sparkles,
-  Edit,
-  MoreVertical,
+  Plus,
+  MoreHorizontal,
+  Brain,
+  LayoutDashboard,
+  FolderKanban,
+  ListTodo,
+  Repeat,
+  BarChart2,
+  Menu,
+  ChevronDown,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -32,6 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Table,
   TableBody,
   TableCell,
@@ -39,835 +40,255 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
-import { CalendarIcon } from "@radix-ui/react-icons";
-import { cn } from "@/lib/utils";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { useRouter } from "next/navigation";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import GeneratingTasksMessages from "@/app/components/GeneratingTaskSpinner";
 
-interface Props {
-  params: { id: string };
+// ... SidebarContent component stays the same ...
+function SidebarContent() {
+  return (
+    <div className="flex flex-col items-center py-6 space-y-8">
+      <div className="flex flex-col items-center gap-2">
+        <Brain className="h-8 w-8 text-blue-600" />
+      </div>
+      <nav className="space-y-8">
+        <LayoutDashboard className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <FolderKanban className="h-5 w-5 text-blue-600" />
+        <ListTodo className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <Calendar className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <Repeat className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <BarChart2 className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+      </nav>
+    </div>
+  );
 }
 
-const ProjectDetailsPage = ({ params: { id } }: Props) => {
-  const { projects, updateProject, addTaskToProject, setProjects } =
-    useAppContext();
-  const [project, setProject] = useState<Project | null>(null);
-  const [newTask, setNewTask] = useState<Partial<Task>>({
-    duration: 5, // Set a default minimum duration
-  });
-  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
-  const [generatingTasks, setGeneratingTasks] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("incomplete");
-  const [isGenerateTasksDialogOpen, setIsGenerateTasksDialogOpen] =
-    useState(false);
-  const [generationContext, setGenerationContext] = useState("");
-
-  useEffect(() => {
-    const fetchProjectDetails = async () => {
-      setLoading(true);
-      try {
-        // First, check if the project is in the global state
-        const projectFromState = projects.find((p) => p._id === id);
-        if (projectFromState) {
-          setProject(projectFromState);
-        } else {
-          // If not in global state, fetch from the server
-          const response = await fetch(`/api/projects/${id}`);
-          if (!response.ok) {
-            throw new Error("Failed to fetch project details");
-          }
-          const data = await response.json();
-          setProject(data);
-          // Optionally update the global state
-          setProjects((prevProjects) => [...prevProjects, data]);
-        }
-      } catch (error) {
-        console.error("Error fetching project details:", error);
-        // Handle error (e.g., show error message to user)
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProjectDetails();
-  }, [id, projects, setProjects]);
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setProject((prev) => (prev ? { ...prev, [name]: value } : null));
-  };
-
-  const handleDateChange = (date: Date | null | undefined) => {
-    setProject((prev) => {
-      if (!prev) return null;
-      return { ...prev, deadline: date ? date : prev.deadline };
-    });
-  };
-
-  const handleSave = async () => {
-    if (!project) return;
-
-    try {
-      const response = await fetch(`/api/projects/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(project),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update project");
-      }
-
-      const updatedProject = await response.json();
-
-      // Update the project in the global state
-      setProjects((prevProjects) =>
-        prevProjects.map((p) => (p._id === id ? updatedProject : p))
-      );
-
-      alert("Project updated successfully!");
-    } catch (error) {
-      console.error("Error updating project:", error);
-      alert("Failed to update project. Please try again.");
-    }
-  };
-
-  // const task = {
-  //   _id: Date.now().toString(),
-  //   name: newTask.name,
-  //   description: newTask.description,
-  //   priority: newTask.priority,
-  //   duration: newTask.duration,
-  //   deadline: newTask.deadline,
-  //   projectId: project?._id,
-  //   status: "Todo" as const,
-  //   block: null,
-  // } as ProjectTask;
-
-  // const handleAddTask = async () => {
-  //   fetch("/api/tasks").then;
-
-  //   // if (project && newTask.name) {
-  //   //   try {
-  //   //     const response = await fetch("/api/tasks", {
-  //   //       method: "POST",
-  //   //       headers: {
-  //   //         "Content-Type": "application/json",
-  //   //       },
-  //   //       body: JSON.stringify({
-  //   //         name: newTask.name,
-  //   //         description: newTask.description || "",
-  //   //         priority: newTask.priority || "Medium", // Changed this line
-  //   //         duration: newTask.duration || "",
-  //   //         deadline: newTask.deadline || new Date(),
-  //   //         projectId: project._id,
-  //   //         status: "todo",
-  //   //       }),
-  //   //     });
-  //   //     if (!response.ok) {
-  //   //       throw new Error("Failed to create task");
-  //   //     }
-  //   //     const createdTask = await response.json();
-  //   //     // Update the local state
-  //   //     setProject((prevProject) => {
-  //   //       if (!prevProject) return null;
-  //   //       return {
-  //   //         ...prevProject,
-  //   //         tasks: [...prevProject.tasks, createdTask],
-  //   //       };
-  //   //     });
-  //   //     // Update the global state
-  //   //     setProjects((prevProjects) =>
-  //   //       prevProjects.map((p) =>
-  //   //         p._id === project._id
-  //   //           ? { ...p, tasks: [...p.tasks, createdTask] }
-  //   //           : p
-  //   //       )
-  //   //     );
-  //   //     setNewTask({});
-  //   //     setIsTaskDialogOpen(false);
-  //   //   } catch (error) {
-  //   //     console.error("Error adding task:", error);
-  //   //     alert("Failed to add task. Please try again.");
-  //   //   }
-  //   // }
-  // };
-
-  const handleGenerateTasks = async () => {
-    if (!project) return;
-
-    // Check if there are existing tasks
-    if (project.tasks.length > 0) {
-      alert("Tasks can only be generated for projects with no existing tasks.");
-      return;
-    }
-
-    setGeneratingTasks(true);
-    console.log("Generating tasks for project:", project);
-    try {
-      const response = await fetch("/api/generateTasks", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          project: {
-            name: project.name,
-            description: project.description,
-            deadline: format(new Date(project.deadline), "yyyy-MM-dd"),
-          },
-          context: generationContext,
-          today: new Date().toISOString().split("T")[0],
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const tasksData = await response.json();
-
-      // Create tasks and add them to the project
-      const newTasks = tasksData.map((task: any) => ({
-        ...task,
-        projectId: project._id,
-      }));
-
-      // Send the new tasks to your API to be saved
-      const saveResponse = await fetch("/api/tasks/bulk", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ tasks: newTasks, projectId: project._id }),
-      });
-
-      if (!saveResponse.ok) {
-        throw new Error("Failed to save generated tasks");
-      }
-
-      const savedTasks = await saveResponse.json();
-
-      // Update the project with new tasks
-      setProject((prevProject) => {
-        if (!prevProject) return null;
-        return {
-          ...prevProject,
-          tasks: [...prevProject.tasks, ...savedTasks.tasks],
-        };
-      });
-
-      // Update the global projects state
-      setProjects((prevProjects) =>
-        prevProjects.map((p) =>
-          p._id === project._id
-            ? { ...p, tasks: [...p.tasks, ...savedTasks.tasks] }
-            : p
-        )
-      );
-      setIsGenerateTasksDialogOpen(false);
-      setGenerationContext("");
-    } catch (error) {
-      console.error("Error generating tasks:", error);
-      alert("Failed to generate tasks. Please try again.");
-    } finally {
-      setGeneratingTasks(false);
-    }
-  };
-
-  // Helper function to format dates for display
-  const formatDate = (date: string | Date | undefined) => {
-    if (!date) return "";
-    if (typeof date === "string") {
-      return format(parseISO(date), "PPP");
-    }
-    return format(date, "PPP");
-  };
-
-  // Function to filter tasks based on the active tab
-  const getFilteredTasks = () => {
-    if (!project) return [];
-    return project.tasks.filter((task) =>
-      activeTab === "completed" ? task.completed : !task.completed
-    );
-  };
-
-  const handleAddTask = async () => {
-    if (project && newTask.name) {
-      try {
-        const taskData = {
-          name: newTask.name,
-          description: newTask.description || "",
-          priority: newTask.priority || "Medium",
-          duration: Number(newTask.duration) || 5, // Ensure duration is a number
-          deadline: newTask.deadline || new Date(),
-          projectId: project._id,
-          status: "Todo",
-        };
-        console.log("Sending task data:", taskData);
-
-        const response = await fetch("/api/tasks", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(taskData),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log("Server response:", result);
-
-        // Update local state
-        setProject((prevProject) => {
-          if (!prevProject) return null;
-          return {
-            ...prevProject,
-            tasks: [...prevProject.tasks, result.task],
-          };
-        });
-
-        // Update global state
-        setProjects((prevProjects) =>
-          prevProjects.map((p) =>
-            p._id === project._id
-              ? { ...p, tasks: [...p.tasks, result.task] }
-              : p
-          )
-        );
-
-        // Clear the form and close the dialog
-        setNewTask({ duration: 5 }); // Reset with default duration
-        setIsTaskDialogOpen(false);
-      } catch (error) {
-        console.error("Error sending task data:", error);
-        alert(
-          `Failed to send task data. ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`
-        );
-      }
-    }
-  };
-
-  const handleEditTask = (task: Task) => {
-    setEditingTask(task);
-    setIsEditTaskDialogOpen(true);
-  };
-
-  // Function to sort tasks by deadline
-  const sortTasksByDeadline = (tasks: Task[]) => {
-    return [...tasks].sort((a, b) => {
-      if (!a.deadline) return 1;
-      if (!b.deadline) return -1;
-      return isBefore(parseISO(a.deadline), parseISO(b.deadline)) ? -1 : 1;
-    });
-  };
-
-  const handleUpdateTask = async () => {
-    if (!editingTask || !project) return;
-
-    try {
-      const response = await fetch(`/api/projects/tasks/${editingTask._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...editingTask,
-          dayId: project._id,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      // Update local state
-      setProject((prevProject) => {
-        if (!prevProject) return null;
-        return {
-          ...prevProject,
-          tasks: prevProject.tasks.map((task) =>
-            task._id === editingTask._id ? result.updatedTask : task
-          ),
-        };
-      });
-
-      // Update global state
-      setProjects((prevProjects) =>
-        prevProjects.map((p) =>
-          p._id === project._id
-            ? {
-                ...p,
-                tasks: p.tasks.map((task) =>
-                  task._id === editingTask._id ? result.updatedTask : task
-                ),
-              }
-            : p
-        )
-      );
-
-      setIsEditTaskDialogOpen(false);
-      setEditingTask(null);
-    } catch (error) {
-      console.error("Error updating task:", error);
-      alert("Failed to update task. Please try again.");
-    }
-  };
-
-  const handleDeleteTask = async (taskId: string, projectId: string) => {
-    if (!project) return;
-    if (!confirm("Are you sure you want to delete this task?")) return;
-
-    try {
-      const response = await fetch(`/api/projects/tasks/${taskId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ projectId }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      // Update local state
-      setProject((prevProject) => {
-        if (!prevProject) return null; // Handle null case
-        return {
-          ...prevProject, // Spread all existing properties
-          tasks: prevProject.tasks.filter((task) => task._id !== taskId),
-        };
-      });
-
-      // Update global state if you're using it
-      setProjects((prevProjects) =>
-        prevProjects.map((p) =>
-          p._id === projectId
-            ? {
-                ...p, // Spread all existing properties
-                tasks: p.tasks.filter((task) => task._id !== taskId),
-              }
-            : p
-        )
-      );
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      alert("Failed to delete task. Please try again.");
-    }
-  };
-
-  if (!project) return <div>Loading...</div>;
-
+export default function ProjectDetails() {
   return (
-    <main className="flex-1 p-4 sm:p-6 md:p-8">
-      <div className="mx-auto max-w-[59rem]">
-        <div className="flex items-center gap-4 mb-4">
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => router.push("/dashboard/projects")}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Back to Projects</span>
-          </Button>
-          <h1 className="flex-1 shrink-0 whitespace-nowrap text-xl font-semibold tracking-tight sm:grow-0">
-            {project.name}
-          </h1>
-          <div className="hidden items-center gap-2 md:ml-auto md:flex">
-            <Button size="sm" onClick={handleSave}>
-              Save Project
-            </Button>
-          </div>
-        </div>
+    <div className="flex h-screen bg-white">
+      <aside className="hidden md:block w-16 border-r border-gray-200">
+        <SidebarContent />
+      </aside>
 
-        <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
-          <div className="grid gap-4 sm:col-span-1 lg:col-span-2 lg:gap-8">
-            <Card className="overflow-hidden">
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle>Project Details</CardTitle>
-                <CardDescription>
-                  Update the details of your project
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 sm:p-6">
-                <div className="grid gap-6">
-                  <div className="grid gap-3">
-                    <Label htmlFor="name">Project Name</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={project.name}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="grid gap-3">
-                    <Label htmlFor="description">Project Description</Label>
-                    <Textarea
-                      id="description"
-                      name="description"
-                      value={project.description}
-                      onChange={handleInputChange}
-                      className="min-h-32"
-                    />
-                  </div>
-                  <div className="grid gap-3">
-                    <Label htmlFor="deadline">Project Deadline</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full sm:w-[280px] justify-start text-left font-normal",
-                            !project.deadline && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {project.deadline ? (
-                            format(new Date(project.deadline), "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={
-                            project.deadline
-                              ? new Date(project.deadline)
-                              : undefined
-                          }
-                          onSelect={handleDateChange}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Header */}
+        <header className="border-b border-gray-200 bg-white sticky top-0 z-10">
+          <div className="px-4 md:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="md:hidden">
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <Menu className="h-5 w-5" />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-16 p-0">
+                      <SidebarContent />
+                    </SheetContent>
+                  </Sheet>
+                </div>
+                <Button variant="ghost" size="icon" className="hidden md:flex">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl md:text-2xl font-semibold">
+                      Q1 Report
+                    </h1>
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                      In Progress
+                    </span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardHeader className="p-4 sm:p-6">
-                <CardTitle>Tasks</CardTitle>
-                <CardDescription>
-                  Manage tasks associated with this project
-                </CardDescription>
-                <div className="flex flex-col gap-4 mt-4">
-                  <Tabs
-                    value={activeTab}
-                    onValueChange={setActiveTab}
-                    className="w-full"
-                  >
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="incomplete">Incomplete</TabsTrigger>
-                      <TabsTrigger value="completed">Completed</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                  {activeTab !== "completed" && (
-                    <Button
-                      onClick={() => setIsGenerateTasksDialogOpen(true)}
-                      disabled={generatingTasks}
-                      className="w-full"
-                    >
-                      {generatingTasks ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="mr-2 h-4 w-4" />
-                      )}
-                      Generate Tasks
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 sm:p-6">
-                {generatingTasks && (
-                  <GeneratingTasksMessages isGenerating={generatingTasks} />
-                )}
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead className="hidden md:table-cell">
-                          Description
-                        </TableHead>
-                        <TableHead className="hidden md:table-cell">
-                          Duration
-                        </TableHead>
-                        <TableHead className="hidden md:table-cell">
-                          Priority
-                        </TableHead>
-                        <TableHead>Deadline</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sortTasksByDeadline(getFilteredTasks()).map((task) => (
-                        <TableRow key={task._id}>
-                          <TableCell>{task.name}</TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {task.description}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {task.duration} minutes
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {task.priority}
-                          </TableCell>
-                          <TableCell>{formatDate(task.deadline)}</TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onSelect={() => handleEditTask(task)}
-                                >
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onSelect={() =>
-                                    handleDeleteTask(task._id, project._id)
-                                  }
-                                >
-                                  Delete
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onSelect={() => {
-                                    const updatedTask = {
-                                      ...task,
-                                      completed: !task.completed,
-                                    };
-                                    setEditingTask(updatedTask);
-                                    handleUpdateTask();
-                                  }}
-                                >
-                                  {task.completed
-                                    ? "Mark as Incomplete"
-                                    : "Mark as Complete"}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-              <CardFooter className="justify-center border-t p-4 sm:p-6">
-                <Dialog
-                  open={isTaskDialogOpen}
-                  onOpenChange={setIsTaskDialogOpen}
-                >
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="ghost" className="gap-1">
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Add Task
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add New Task</DialogTitle>
-                      <DialogDescription>
-                        Enter the details for the new task.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="task-name" className="text-right">
-                          Name
-                        </Label>
-                        <Input
-                          id="task-name"
-                          value={newTask.name || ""}
-                          onChange={(e) =>
-                            setNewTask({ ...newTask, name: e.target.value })
-                          }
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label
-                          htmlFor="task-description"
-                          className="text-right"
-                        >
-                          Description
-                        </Label>
-                        <Input
-                          id="task-description"
-                          value={newTask.description || ""}
-                          onChange={(e) =>
-                            setNewTask({
-                              ...newTask,
-                              description: e.target.value,
-                            })
-                          }
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="deadline" className="text-right">
-                          Deadline
-                        </Label>
-                        <Input
-                          id="deadline"
-                          name="deadline"
-                          type="date"
-                          value={newTask.deadline || ""}
-                          onChange={(e) =>
-                            setNewTask({ ...newTask, deadline: e.target.value })
-                          }
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="task-duration" className="text-right">
-                          Duration (minutes)
-                        </Label>
-                        <Input
-                          id="task-duration"
-                          type="number"
-                          min="5"
-                          max="240"
-                          value={newTask.duration || ""}
-                          onChange={(e) =>
-                            setNewTask({
-                              ...newTask,
-                              duration: Number(e.target.value),
-                            })
-                          }
-                          className="col-span-3"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="task-priority" className="text-right">
-                          Priority
-                        </Label>
-                        <Select
-                          value={newTask.priority}
-                          onValueChange={(value) =>
-                            setNewTask({ ...newTask, priority: value })
-                          }
-                        >
-                          <SelectTrigger className="col-span-3">
-                            <SelectValue placeholder="Select priority" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Low">Low</SelectItem>
-                            <SelectItem value="Medium">Medium</SelectItem>
-                            <SelectItem value="High">High</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button onClick={handleAddTask}>Add Task</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardFooter>
-            </Card>
-          </div>
-        </div>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 md:hidden mt-4">
-          <Button variant="outline" size="sm" className="w-full sm:w-auto">
-            Discard
-          </Button>
-          <Button size="sm" onClick={handleSave} className="w-full sm:w-auto">
-            Save Project
-          </Button>
-        </div>
-      </div>
-      <Dialog
-        open={isGenerateTasksDialogOpen}
-        onOpenChange={setIsGenerateTasksDialogOpen}
-      >
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Generate Project Tasks</DialogTitle>
-            <DialogDescription>
-              Provide additional context to help generate more relevant tasks
-              for your project.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-4">
-              <Label htmlFor="context">Additional Context</Label>
-              <Textarea
-                id="context"
-                value={generationContext}
-                onChange={(e) => setGenerationContext(e.target.value)}
-                placeholder="Add any specific requirements or context for task generation..."
-                className="min-h-[100px]"
-              />
+              </div>
+              <Button size="sm">Save</Button>
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={handleGenerateTasks} disabled={generatingTasks}>
-              {generatingTasks ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate Tasks
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </main>
-  );
-};
+        </header>
 
-export default ProjectDetailsPage;
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 md:p-8 space-y-6">
+            {/* Progress Overview */}
+            <div className="grid md:grid-cols-3 gap-4">
+              <Card className="md:col-span-2">
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Overall Progress</span>
+                      <span className="font-medium">75%</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full">
+                      <div
+                        className="h-full bg-blue-600 rounded-full transition-all"
+                        style={{ width: "75%" }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-sm text-gray-500">
+                      <span>15/20 tasks completed</span>
+                      <span>Due Nov 23, 2024</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="hidden md:block">
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    <Select defaultValue="in-progress">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="planning">Planning</SelectItem>
+                        <SelectItem value="in-progress">In Progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select defaultValue="medium">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="low">Low</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Project Details */}
+            <Card>
+              <CardContent className="p-4 md:p-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium">Project Name</label>
+                    <Input defaultValue="Q1 Report" className="mt-2" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Description</label>
+                    <Textarea
+                      defaultValue="Finish the q1 report"
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Deadline</label>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Input
+                        type="date"
+                        defaultValue="2024-11-23"
+                        className="flex-1"
+                      />
+                      <Button variant="outline" size="icon">
+                        <Calendar className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Mobile-only project settings */}
+                  {/* Mobile-only project settings */}
+                  <div className="md:hidden space-y-4 pt-4 border-t border-gray-100">
+                    <div>
+                      <label className="text-sm font-medium">Status</label>
+                      <Select defaultValue="in-progress">
+                        <SelectTrigger className="mt-2 w-full">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="planning">Planning</SelectItem>
+                          <SelectItem value="in-progress">
+                            In Progress
+                          </SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Priority</label>
+                      <Select defaultValue="medium">
+                        <SelectTrigger className="mt-2 w-full">
+                          <SelectValue placeholder="Priority" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="low">Low</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tasks Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Tasks</h2>
+                <div className="flex items-center gap-2">
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Task
+                  </Button>
+                  <Button variant="outline">
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    AI Generate
+                  </Button>
+                </div>
+              </div>
+
+              {/* Task List */}
+              <Card>
+                <CardContent className="p-0">
+                  <div className="border-b border-gray-200">
+                    <Tabs defaultValue="incomplete">
+                      <TabsList className="h-10 w-full rounded-none">
+                        <TabsTrigger
+                          value="incomplete"
+                          className="flex-1 rounded-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600"
+                        >
+                          Incomplete (5)
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="completed"
+                          className="flex-1 rounded-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600"
+                        >
+                          Completed (15)
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
+
+                  <div className="divide-y divide-gray-100">
+                    {/* Task Item */}
+                    <div className="p-4 hover:bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium">Research Phase</h3>
+                          <p className="text-sm text-gray-500">
+                            Gather market research data
+                          </p>
+                        </div>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
+                        <span>2h</span>
+                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                          Medium
+                        </span>
+                        <span>Due Nov 22</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

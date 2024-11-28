@@ -5,9 +5,16 @@ export default clerkMiddleware((auth, req) => {
   const { userId } = auth();
   const path = req.nextUrl.pathname;
 
-  if (path.startsWith("/dashboard") && !userId) {
-    const homeUrl = new URL("/", req.url);
-    return NextResponse.redirect(homeUrl);
+  const protectedRoutes = [
+    "/dashboard/events",
+    "/dashboard/routines",
+    "/dashboard/tasks",
+    "/dashboard/projects",
+    "/dashboard/analytics",
+  ];
+
+  if (protectedRoutes.some((route) => path.startsWith(route)) && !userId) {
+    return NextResponse.redirect(new URL("/", req.url));
   }
 });
 

@@ -89,3 +89,41 @@ export interface User {
   name: string;
   days: Day[];
 }
+
+export interface Schedule {
+  currentTime: string;
+  scheduleRationale: string;
+  userStartTime: string;
+  userEndTime: string;
+  blocks: Block[];
+}
+
+export interface PreviewTask {
+  name: string;
+  description: string;
+  duration: number;
+  priority: "High" | "Medium" | "Low";
+  isRoutineTask: boolean;
+}
+
+export interface PreviewBlock {
+  _id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  description: string;
+  isEvent: boolean;
+  isRoutine: boolean;
+  isStandaloneBlock: boolean;
+  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  energyLevel: "high" | "medium" | "low";
+  tasks: PreviewTask[];
+}
+
+export interface PreviewSchedule {
+  currentTime: string;
+  scheduleRationale: string;
+  userStartTime: string;
+  userEndTime: string;
+  blocks: PreviewBlock[];
+}

@@ -1,39 +1,26 @@
-"use client";
-import React, { use, useEffect, useState, useMemo } from "react";
-import { File, ListFilter, MoreHorizontal, PlusCircle } from "lucide-react";
-import Link from "next/link";
-import { Task } from "@/app/context/models";
-import { useAppContext } from "@/app/context/AppContext";
+import React from "react";
+import {
+  Brain,
+  LayoutDashboard,
+  FolderKanban,
+  ListTodo,
+  Calendar,
+  Repeat,
+  BarChart2,
+  Plus,
+  MoreHorizontal,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { format, parseISO } from "date-fns";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -42,383 +29,168 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { set } from "mongoose";
-import { useAuth } from "@clerk/nextjs";
-type NewTaskForm = Omit<Task, "id" | "status">;
-import { useRouter } from "next/navigation";
 
-const Page = () => {
-  const { userId } = useAuth();
-  const router = useRouter();
-  const { tasks, addTask, setTasks } = useAppContext();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newTask, setNewTask] = useState<Task>({
-    _id: "",
-    name: "",
-    description: "",
-    priority: "Medium", // Set a default value
-    duration: 5,
-    deadline: "",
-    completed: false,
-    block: null,
-    routine: null,
-    isRoutineTask: false,
-    project: null,
-    projectId: null,
-  });
-  const [isLoading, setIsLoading] = useState(true);
+function SidebarContent() {
+  return (
+    <div className="flex flex-col items-center py-6 space-y-8">
+      <div className="flex flex-col items-center gap-2">
+        <Brain className="h-8 w-8 text-blue-600" />
+      </div>
+      <nav className="space-y-8">
+        <LayoutDashboard className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <FolderKanban className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <ListTodo className="h-5 w-5 text-blue-600" />
+        <Calendar className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <Repeat className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+        <BarChart2 className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+      </nav>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    const fetchTasks = async () => {
-      if (!userId) return;
-      try {
-        const response = await fetch(`/api/tasks?userId=${userId}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch tasks");
-        }
-        const data = await response.json();
-        setTasks(data);
-      } catch (error) {
-        console.error("Error fetching tasks:", error);
-        alert("Failed to fetch tasks. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
+export default function StandaloneTasks() {
+  const tasks = [
+    {
+      id: 1,
+      name: "Have lunch with mum",
+      description: "Meet mum at the coffe shop",
+      deadline: "Today at 12:00 PM",
+      priority: "Medium",
+      duration: "1h",
+      status: "upcoming",
+    },
+    {
+      id: 2,
+      name: "Review project proposal",
+      description: "Go through the Q4 marketing proposal",
+      deadline: "Today at 3:00 PM",
+      priority: "High",
+      duration: "2h",
+      status: "in-progress",
+    },
+    // Add more tasks as needed
+  ];
+
+  const getPriorityColor = (priority: string) => {
+    const colors = {
+      High: "text-red-800 bg-red-100",
+      Medium: "text-yellow-800 bg-yellow-100",
+      Low: "text-green-800 bg-green-100",
     };
-
-    fetchTasks();
-  }, [userId, setTasks]);
-
-  const handlePriorityChange = (value: string) => {
-    setNewTask((prev) => ({ ...prev, priority: value }));
+    return colors[priority];
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setNewTask((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // To add a new task
-  const handleAddTask = async () => {
-    if (!userId) return;
-    try {
-      const response = await fetch("/api/tasks/stand-alone-tasks", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...newTask,
-          userId,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create task");
-      }
-
-      const createdTask = await response.json();
-
-      // Add the new task to the local state
-      addTask(createdTask.task);
-
-      setIsDialogOpen(false); // Close the dialog after adding
-      setNewTask({
-        _id: "",
-        name: "",
-        description: "",
-        priority: "Medium", // Set a default value
-        duration: 5,
-        deadline: "",
-        completed: false,
-        block: null,
-        routine: null,
-        isRoutineTask: false,
-        project: null,
-        projectId: null,
-      });
-
-      alert("Task created successfully!");
-    } catch (error) {
-      console.error("Error creating task:", error);
-      alert("Failed to create task. Please try again.");
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "completed":
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "in-progress":
+        return <Clock className="h-4 w-4 text-blue-600" />;
+      default:
+        return null;
     }
   };
-
-  const handleDelete = async (taskId: string) => {
-    if (!userId) return;
-    try {
-      const response = await fetch(
-        `/api/tasks/stand-alone-tasks?id=${taskId}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to delete task");
-      }
-
-      const deletedTask = await response.json();
-
-      // Remove the deleted task from the local state
-      setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
-
-      setIsDialogOpen(false); // Close the dialog after deleting
-      setNewTask({
-        _id: "",
-        name: "",
-        description: "",
-        priority: "Medium",
-        duration: 5,
-        deadline: "",
-        completed: false,
-        block: null,
-        routine: null,
-        isRoutineTask: false,
-        project: null,
-        projectId: null,
-      });
-
-      alert("Task deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      alert("Failed to delete task. Please try again.");
-    }
-  };
-
-  const handleEdit = (taskId: string) => {
-    router.push(`/dashboard/tasks/${taskId}`);
-  };
-
-  const standaloneTasks = useMemo(() => {
-    return tasks.filter(
-      (task) =>
-        !task.projectId && !task.isRoutineTask && task.completed !== true
-    );
-  }, [tasks]);
-
-  console.log("All tasks:", tasks);
-
-  console.log("Standalone tasks:", standaloneTasks);
-
-  if (isLoading) {
-    return (
-      <main className="flex-1 flex items-center justify-center">
-        <p className="text-lg text-center">Loading...</p>
-      </main>
-    );
-  }
 
   return (
-    <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-      <Tabs defaultValue="all">
-        <div className="flex items-center">
-          <TabsList>
-            <TabsTrigger value="all">Active</TabsTrigger>
-            <TabsTrigger value="active">Completed</TabsTrigger>
-            {/* <TabsTrigger value="draft">Draft</TabsTrigger>
-            <TabsTrigger value="archived" className="hidden sm:flex">
-              Archived
-            </TabsTrigger> */}
-          </TabsList>
-          <div className="ml-auto flex items-center gap-2">
-            {/* <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 gap-1">
-                  <ListFilter className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Filter
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Filter by</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuCheckboxItem checked>
-                  Active
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>Draft</DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem>Archived</DropdownMenuCheckboxItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button size="sm" variant="outline" className="h-7 gap-1">
-              <File className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Export
-              </span>
-            </Button> */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="h-7 gap-1">
-                  <PlusCircle className="h-3.5 w-3.5" />
-                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                    Add Task
-                  </span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New Task</DialogTitle>
-                  <DialogDescription>
-                    Enter the details for the new standalone task.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                      Name
-                    </Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={newTask.name || ""}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="description" className="text-right">
-                      Description
-                    </Label>
-                    <Input
-                      id="description"
-                      name="description"
-                      value={newTask.description || ""}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="deadline" className="text-right">
-                      Deadline
-                    </Label>
-                    <Input
-                      id="deadline"
-                      name="deadline"
-                      type="date"
-                      value={newTask.deadline || ""}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="priority" className="text-right">
-                      Priority
-                    </Label>
-                    <Select
-                      value={newTask.priority}
-                      onValueChange={handlePriorityChange}
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select priority" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Low">Low</SelectItem>
-                        <SelectItem value="Medium">Medium</SelectItem>
-                        <SelectItem value="High">High</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="duration" className="text-right">
-                      Duration (minutes)
-                    </Label>
-                    <Input
-                      id="duration"
-                      name="duration"
-                      type="number"
-                      min="5"
-                      max="240"
-                      value={newTask.duration}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleAddTask}>Add Task</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+    <div className="flex h-screen bg-white">
+      <aside className="hidden md:block w-16 border-r border-gray-200">
+        <SidebarContent />
+      </aside>
+
+      <main className="flex-1">
+        <div className="p-4 md:p-8">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-2xl font-semibold">Tasks</h1>
+              <p className="text-sm text-gray-500">
+                Manage your standalone tasks
+              </p>
+            </div>
+            <Button>
+              <Plus className="h-4 w-4 md:mr-2" />
+              <span className="hidden md:inline">Add Task</span>
+            </Button>
           </div>
-        </div>
-        <TabsContent value="all">
-          <Card>
-            <CardHeader>
-              <CardTitle>Stand Alone Tasks</CardTitle>
-              <CardDescription>Manage your standalone tasks.</CardDescription>
-            </CardHeader>
-            <CardContent>
+
+          {/* Tabs */}
+          <div className="mb-6">
+            <Tabs defaultValue="active" className="w-full">
+              <TabsList className="h-9 bg-transparent border border-gray-200 rounded-lg p-1">
+                <TabsTrigger
+                  value="active"
+                  className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
+                >
+                  Active
+                </TabsTrigger>
+                <TabsTrigger
+                  value="completed"
+                  className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
+                >
+                  Completed
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          {/* Task List - Desktop */}
+          <div className="hidden md:block">
+            <Card>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="hidden sm:table-cell">
-                      Description
-                    </TableHead>
-                    <TableHead>Deadline</TableHead>
-                    <TableHead className="hidden sm:table-cell">
-                      Priority
-                    </TableHead>
-                    <TableHead className="hidden sm:table-cell">
-                      Duration
-                    </TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="w-[250px]">Task</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Due</TableHead>
+                    <TableHead className="w-[100px]">Priority</TableHead>
+                    <TableHead className="w-[100px]">Duration</TableHead>
+                    <TableHead className="w-[70px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {standaloneTasks.map((task) => (
-                    <TableRow key={task._id}>
+                  {tasks.map((task) => (
+                    <TableRow key={task.id} className="group">
                       <TableCell className="font-medium">
-                        <Link href={`/dashboard/tasks/${task._id}`}>
-                          {task.name}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(task.status)}
+                          <span>{task.name}</span>
+                        </div>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">
+                      <TableCell className="text-gray-500">
                         {task.description}
                       </TableCell>
+                      <TableCell className="text-gray-500">
+                        {task.deadline}
+                      </TableCell>
                       <TableCell>
-                        {task.deadline &&
-                          format(parseISO(task.deadline), "yyyy-MM-dd")}
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
+                            task.priority
+                          )}`}
+                        >
+                          {task.priority}
+                        </span>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        {task.priority}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
+                      <TableCell className="text-gray-500">
                         {task.duration}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
-                              aria-haspopup="true"
-                              size="icon"
                               variant="ghost"
+                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100"
                             >
                               <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Toggle menu</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() => handleEdit(task._id)}
-                            >
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(task._id)}
-                            >
+                            <DropdownMenuItem>Edit</DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600">
                               Delete
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              Mark as Complete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -427,18 +199,77 @@ const Page = () => {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-            <CardFooter>
-              <div className="text-xs text-muted-foreground">
-                Showing <strong>1-{tasks.length}</strong> of{" "}
-                <strong>{tasks.length}</strong> tasks
-              </div>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </main>
-  );
-};
+            </Card>
+          </div>
 
-export default Page;
+          {/* Task List - Mobile */}
+          <div className="md:hidden space-y-4">
+            {tasks.map((task) => (
+              <Card key={task.id} className="group">
+                <div className="p-4 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(task.status)}
+                        <span className="font-medium">{task.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Clock className="h-4 w-4" />
+                        {task.deadline}
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>Edit</DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-600">
+                          Delete
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>Mark as Complete</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
+                        task.priority
+                      )}`}
+                    >
+                      {task.priority}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      {task.duration}
+                    </span>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Empty State stays the same */}
+          {tasks.length === 0 && (
+            <div className="text-center py-12">
+              <div className="rounded-full bg-gray-50 p-4 w-12 h-12 mx-auto mb-4">
+                <ListTodo className="h-6 w-6 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">
+                No tasks
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Get started by creating a new task
+              </p>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Task
+              </Button>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}

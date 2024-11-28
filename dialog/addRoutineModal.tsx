@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, CheckCircle, Circle } from "lucide-react";
+import { PlusCircle, CheckCircle, Circle, Repeat } from "lucide-react";
 import { Routine, Task } from "@/app/context/models";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
@@ -99,28 +99,37 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Add Routine to Schedule</DialogTitle>
+      <DialogContent className="sm:max-w-[400px] p-0">
+        <DialogHeader className="p-6 pb-2">
+          <div className="flex items-center gap-2">
+            <Repeat className="h-4 w-4 text-blue-600" />
+            <DialogTitle className="text-base font-medium">
+              {selectedRoutine ? "Set Routine Time" : "Add Routine"}
+            </DialogTitle>
+          </div>
         </DialogHeader>
+
         {!selectedRoutine ? (
-          <ScrollArea className="h-72 w-100 rounded-md border">
-            <div className="p-4 space-y-4">
+          <ScrollArea className="h-[400px] border-t border-b">
+            <div className="p-6 space-y-3">
               {routines.map((routine) => (
                 <Card
                   key={routine._id}
-                  className="cursor-pointer hover:bg-gray-100"
+                  className="cursor-pointer hover:bg-gray-50 transition-colors"
                   onClick={() => handleRoutineSelect(routine)}
                 >
-                  <CardContent className="p-3">
+                  <CardContent className="p-4">
                     <h4 className="text-sm font-medium">{routine.name}</h4>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-gray-500 mt-1">
                       {routine.description}
                     </p>
-                    <ul className="mt-2 space-y-1">
+                    <ul className="mt-3 space-y-1.5">
                       {routine.tasks.map((task: Task) => (
-                        <li key={task._id} className="flex items-start text-xs">
-                          <Circle className="h-2 w-2 mr-2 mt-1 text-muted-foreground" />
+                        <li
+                          key={task._id}
+                          className="flex items-start text-xs text-gray-600"
+                        >
+                          <Circle className="h-2 w-2 mr-2 mt-1 text-gray-400" />
                           <span>{task.name}</span>
                         </li>
                       ))}
@@ -131,66 +140,69 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
             </div>
           </ScrollArea>
         ) : (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Set Time for Routine</h3>
-            <p className="text-sm text-muted-foreground">
-              Selected Routine:{" "}
-              <span className="font-medium">{selectedRoutine.name}</span>
-            </p>
-            <ul className="text-sm space-y-1 mb-4">
-              {selectedRoutine.tasks.map((task: Task) => (
-                <li key={task._id} className="flex items-start">
-                  <Circle className="h-2 w-2 mr-2 mt-1 text-muted-foreground" />
-                  <span>{task.name}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="space-y-2">
-              <label htmlFor="startTime" className="text-sm font-medium">
-                Start Time
-              </label>
-              <Input
-                id="startTime"
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
+          <div className="p-6 space-y-4">
+            <div className="space-y-1 pb-3 border-b">
+              <h3 className="text-sm font-medium">{selectedRoutine.name}</h3>
+              <ul className="mt-2 space-y-1.5">
+                {selectedRoutine.tasks.map((task: Task) => (
+                  <li
+                    key={task._id}
+                    className="flex items-start text-xs text-gray-600"
+                  >
+                    <Circle className="h-2 w-2 mr-2 mt-1 text-gray-400" />
+                    <span>{task.name}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="space-y-2">
-              <label htmlFor="endTime" className="text-sm font-medium">
-                End Time
-              </label>
-              <Input
-                id="endTime"
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-              />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Input
+                  id="startTime"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="h-8"
+                />
+              </div>
+              <div className="space-y-2">
+                <Input
+                  id="endTime"
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="h-8"
+                />
+              </div>
             </div>
           </div>
         )}
-        <DialogFooter>
+
+        <div className="p-4 border-t flex justify-end gap-2">
           {selectedRoutine ? (
             <>
               <Button
                 variant="outline"
                 onClick={() => setSelectedRoutine(null)}
+                className="h-8"
               >
                 Back
               </Button>
               <Button
                 onClick={handleAddRoutineToSchedule}
                 disabled={!startTime || !endTime}
+                className="h-8 bg-blue-600 hover:bg-blue-700"
               >
                 Add to Schedule
               </Button>
             </>
           ) : (
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={onClose} className="h-8">
               Cancel
             </Button>
           )}
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

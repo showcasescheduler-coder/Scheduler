@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+} from "react";
 import {
   Event,
   Project,
@@ -11,9 +17,25 @@ import {
   UserData,
   Day,
   Block,
+  PreviewSchedule, // Impo
 } from "./models";
 
 type SelectedDay = "today" | "tomorrow";
+export interface QuestionnaireData {
+  wakeTime: string;
+  sleepTime: string; // Add thi
+  focusDuration: string;
+  peakEnergyTimes: string[]; // Add this new field
+  workSituation: string; // Add this new field
+  timeAbsorption: string; // Add this new field
+  interruptionRecovery: string; // Add this new field
+  workIntensity: string; // Add this new field
+  personalStandards: string; // Add this new field
+  scheduleAdherence: string; // Add this new field
+  procrastinationTendency: string; // Add this new field
+  breakDuration: string; // Add this if it's not already present
+  flowCapacity: Number;
+}
 
 type AppContextType = {
   events: Event[];
@@ -58,6 +80,21 @@ type AppContextType = {
   selectedDay: SelectedDay;
   setSelectedDay: React.Dispatch<React.SetStateAction<SelectedDay>>;
   fetchDayData: (date: SelectedDay) => Promise<void>;
+  questionnaireData: QuestionnaireData;
+  updateQuestionnaireData: (
+    field: keyof QuestionnaireData,
+    value: string | string[]
+  ) => void;
+  currentQuestionStep: number;
+  setCurrentQuestionStep: (step: number) => void;
+  promptText: string;
+  setPromptText: React.Dispatch<React.SetStateAction<string>>;
+  previewSchedule: PreviewSchedule | null;
+  setPreviewSchedule: React.Dispatch<
+    React.SetStateAction<PreviewSchedule | null>
+  >;
+  isPreviewMode: boolean;
+  setIsPreviewMode: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -82,7 +119,70 @@ export function AppProvider({ children }: { children: ReactNode }) {
     routines: [],
   });
   const [selectedDay, setSelectedDay] = useState<SelectedDay>("today");
+  const [questionnaireData, setQuestionnaireData] = useState<QuestionnaireData>(
+    {
+      wakeTime: "",
+      sleepTime: "", //
+      focusDuration: "",
+      peakEnergyTimes: [], // Initialize as empty array,
+      workSituation: "", // Initialize as empty string,
+      timeAbsorption: "", // Initialize as empty string
+      interruptionRecovery: "", // Initialize as empty string
+      workIntensity: "", // Initialize as empty string
+      personalStandards: "", // Initialize as empty string
+      scheduleAdherence: "", // Initialize as empty string
+      procrastinationTendency: "", // Initialize as empty string
+      breakDuration: "", // Initialize as empty string
+      flowCapacity: 0,
+    }
+  );
+  const [currentQuestionStep, setCurrentQuestionStep] = useState<number>(0);
+  const [mounted, setMounted] = useState(false);
+  const [promptText, setPromptText] = useState("");
+  // Inside AppProvider function
+  // Initialize previewSchedule from localStorage
+  const [previewSchedule, setPreviewSchedule] =
+    useState<PreviewSchedule | null>(null);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
+  useEffect(() => {
+    setMounted(true);
+
+    // Only try to access localStorage after component is mounted
+    if (typeof window !== "undefined") {
+      const storedSchedule = localStorage.getItem("schedule");
+      const storedPreviewMode = localStorage.getItem("isPreviewMode");
+
+      if (storedSchedule) {
+        setPreviewSchedule(JSON.parse(storedSchedule));
+      }
+      if (storedPreviewMode) {
+        setIsPreviewMode(JSON.parse(storedPreviewMode));
+      }
+    }
+  }, []);
+
+  // Save to localStorage when values change
+  useEffect(() => {
+    if (mounted) {
+      if (previewSchedule) {
+        localStorage.setItem("schedule", JSON.stringify(previewSchedule));
+      } else {
+        localStorage.removeItem("schedule");
+      }
+    }
+  }, [previewSchedule, mounted]);
+
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem("isPreviewMode", JSON.stringify(isPreviewMode));
+    }
+  }, [isPreviewMode, mounted]);
+
+  // Prevent hydration mismatch by not rendering until mounted
+  if (!mounted) {
+    return null;
+  }
   const addEvent = (event: Event) => {
     setEvents((prev) => [...prev, event]);
   };
@@ -97,6 +197,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const deleteEvent = (id: string) => {
     setEvents((prev) => prev.filter((event) => event._id !== id));
+  };
+  // Add new questionnaire function
+  const updateQuestionnaireData = (
+    field: keyof QuestionnaireData,
+    value: string | string[]
+  ) => {
+    setQuestionnaireData((prev) => ({ ...prev, [field]: value }));
   };
 
   const addProject = (project: Project) => {
@@ -287,6 +394,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         selectedDay,
         setSelectedDay,
         fetchDayData,
+        questionnaireData,
+        updateQuestionnaireData,
+        currentQuestionStep,
+        setCurrentQuestionStep,
+        promptText,
+        setPromptText,
+        previewSchedule,
+        setPreviewSchedule,
+        isPreviewMode,
+        setIsPreviewMode,
       }}
     >
       {children}
