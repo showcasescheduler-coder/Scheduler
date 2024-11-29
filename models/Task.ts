@@ -12,6 +12,7 @@ export interface ITask {
   project?: mongoose.Types.ObjectId;
   routine?: mongoose.Types.ObjectId;
   block?: mongoose.Types.ObjectId;
+  type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
 }
 
 const TaskSchema = new mongoose.Schema(
@@ -34,6 +35,11 @@ const TaskSchema = new mongoose.Schema(
     routine: { type: mongoose.Schema.Types.ObjectId, ref: "Routine" },
     block: { type: mongoose.Schema.Types.ObjectId, ref: "Block" },
     isRoutineTask: { type: Boolean, default: false },
+    type: {
+      type: String,
+      enum: ["deep-work", "planning", "break", "admin", "collaboration"],
+      required: true,
+    },
   },
   { timestamps: true, strict: false }
 );

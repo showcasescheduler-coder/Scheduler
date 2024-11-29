@@ -67,6 +67,7 @@ Return ONLY a JSON object with this structure:
           "description": "Brief explanation of this type of task",
           "duration": number (in minutes),
           "priority": "High" | "Medium" | "Low",
+          "type": "deep-work" | "planning" | "break" | "admin" | "collaboration",
           "isRoutineTask": false
         }
       ]
@@ -84,7 +85,10 @@ IMPORTANT GUIDELINES:
 7. Focus on demonstrating schedule optimization
 8. Use clear, professional language
 9. Make block transitions logical
-10. Ensure schedule feels balanced and achievable`;
+10. Ensure schedule feels balanced and achievable
+11. Consider task types independently from block types - while they often match, some tasks within a block may have different types based on their specific nature and requirements
+12. Ensure task type assignments reflect the actual work involved, not just the containing block's type
+`;
 
   try {
     const schedule = await getAnthropicResponse(apiKey, createSchedulePrompt);

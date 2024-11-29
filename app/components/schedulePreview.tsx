@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/tooltip";
 import AuthModal from "@/dialog/authModal";
 import { useAppContext } from "../context/AppContext";
+import toast from "react-hot-toast";
 
 // interface Task {
 //   id: string;
@@ -60,6 +61,9 @@ interface SchedulePreviewProps {
   onConfirm?: () => void;
   title?: string;
   description?: string;
+  dayId?: string; // Make optional since guest users won't have this
+  userId?: string; // Make optional since guest users won't have this
+  mutate: () => Promise<any>; // Update the type to match SWR's mutate
 }
 
 interface Schedule {
@@ -78,19 +82,39 @@ interface Task {
   isRoutineTask: boolean;
 }
 
+const LoadingSpinner = () => (
+  <div className="flex-1 flex flex-col items-center justify-center">
+    <div className="relative">
+      <Brain className="h-12 w-12 text-blue-600 animate-pulse" />
+      <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
+        <div className="flex gap-1">
+          {[...Array(3)].map((_, i) => (
+            <div
+              key={i}
+              className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"
+              style={{ animationDelay: `${i * 0.15}s` }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+    <p className="mt-12 text-sm text-gray-500">Saving your schedule...</p>
+  </div>
+);
+
 const SchedulePreview: React.FC<SchedulePreviewProps> = ({
   schedule,
-  onModify,
-  onConfirm,
-  title = "schedule preview",
-  description = "review your proposed schedule",
+  dayId,
+  userId,
+  mutate,
 }) => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authAction, setAuthAction] = useState<"accept" | "regenerate">(
     "accept"
   );
+  const [isGeneratingSchedule, setIsGeneratingSchedule] = useState(false);
   const { setIsPreviewMode, setPreviewSchedule } = useAppContext();
-  const { isLoaded, userId } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth(); // Add this to check auth status
 
   const handleAcceptClick = () => {
     setAuthAction("accept");
@@ -102,71 +126,53 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
     setShowAuthModal(true);
   };
 
-  const previewBlocks = [
-    {
-      id: 1,
-      name: "Morning Power Hour",
-      time: "09:00 - 10:30",
-      description:
-        "High-energy period optimized for creative and analytical tasks",
-      energyLevel: "high",
-      isAiSuggested: true,
-      tasks: [
-        {
-          name: "Review and prioritize daily goals",
-          duration: 15,
-          priority: "high",
-          type: "planning",
+  const handleSaveGeneratedSchedule = async () => {
+    // First check if user is authenticated
+    if (!isSignedIn) {
+      setAuthAction("accept");
+      setShowAuthModal(true);
+      return;
+    }
+
+    // Proceed with save if user is authenticated
+    if (!dayId || !userId) {
+      toast.error("Missing required information. Please try again.");
+      return;
+    }
+
+    try {
+      setIsGeneratingSchedule(true);
+      const schedulerResponse = await fetch("/api/scheduler", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        {
-          name: "Work on main project deliverables",
-          duration: 75,
-          priority: "high",
-          type: "deep-work",
-        },
-      ],
-    },
-    {
-      id: 2,
-      name: "Team Sync",
-      time: "11:00 - 12:00",
-      description:
-        "Scheduled during moderate energy period for collaborative work",
-      energyLevel: "medium",
-      isEvent: true,
-      tasks: [
-        {
-          name: "Weekly team standup",
-          duration: 60,
-          priority: "medium",
-          type: "meeting",
-        },
-      ],
-    },
-    {
-      id: 3,
-      name: "Focus Block",
-      time: "13:30 - 15:00",
-      description:
-        "Post-lunch recovery period optimized for steady, focused work",
-      energyLevel: "medium",
-      isAiSuggested: true,
-      tasks: [
-        {
-          name: "Documentation update",
-          duration: 45,
-          priority: "medium",
-          type: "deep-work",
-        },
-        {
-          name: "Code review",
-          duration: 45,
-          priority: "high",
-          type: "deep-work",
-        },
-      ],
-    },
-  ];
+        body: JSON.stringify({
+          dayId,
+          schedule,
+          userId,
+        }),
+      });
+
+      if (!schedulerResponse.ok) {
+        throw new Error(`Scheduler error! status: ${schedulerResponse.status}`);
+      }
+
+      // Call mutate without arguments to trigger a refetch
+      await mutate();
+
+      // Reset the preview mode
+      setIsPreviewMode(false);
+      setPreviewSchedule(null);
+
+      toast.success("Schedule saved successfully!");
+    } catch (error) {
+      console.error("Error saving schedule:", error);
+      toast.error("Failed to save schedule. Please try again.");
+    } finally {
+      setIsGeneratingSchedule(false);
+    }
+  };
 
   const insights = schedule.scheduleRationale
     .split(".")
@@ -218,7 +224,7 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
                 <Button
                   size="default"
                   className="bg-blue-600 hover:bg-blue-700 min-w-[140px]"
-                  onClick={handleAcceptClick}
+                  onClick={handleSaveGeneratedSchedule}
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Apply Schedule

@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useAppContext } from "@/app/context/AppContext";
 import {
-  FolderOpen,
   Clock,
   Plus,
   Sparkles,
@@ -16,6 +15,7 @@ import {
   Check,
   Repeat,
   Brain,
+  Info,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
@@ -36,9 +36,47 @@ import { AddEventModal } from "@/dialog/addEventModal";
 import { AddRoutineModal } from "@/dialog/addRoutineModal";
 import { AddBlockDialog } from "@/dialog/addBlockModal";
 import SchedulePreview from "@/app/components/schedulePreview";
-import { PreviewSchedule } from "@/app/context/models";
-import { useAuth } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useUserAndDay } from "@/hooks/useUserAndDay";
+
+interface Task {
+  _id: string;
+  blockId: string;
+  dayId: string;
+  name: string;
+  description: string;
+  duration: string;
+  priority: "High" | "Medium" | "Low";
+  status: "pending" | "in_progress" | "completed";
+  type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  isRoutineTask: boolean;
+  completed: boolean;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
+interface Block {
+  _id: string;
+  dayId: string;
+  name: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  status: "pending" | "in_progress" | "completed";
+  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  event: string | null;
+  tasks: Task[];
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+  isStandaloneBlock?: boolean;
+}
 
 export default function Component() {
   const [selectedDay, setSelectedDay] = React.useState<"today" | "tomorrow">(
@@ -52,7 +90,6 @@ export default function Component() {
   const [isAddRoutineModalOpen, setIsAddRoutineModalOpen] = useState(false);
   const [isAddBlockDialogOpen, setIsAddBlockDialogOpen] = useState(false);
   const { promptText, setPromptText } = useAppContext();
-  const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const {
     isPreviewMode,
@@ -60,12 +97,9 @@ export default function Component() {
     previewSchedule,
     setPreviewSchedule,
   } = useAppContext();
-  // const [isPreviewMode, setIsPreviewMode] = useState(false);
-  // const [previewSchedule, setPreviewSchedule] = useState(null);
-  const requestMadeRef = React.useRef(false);
+
   const [hasProcessedPrompt, setHasProcessedPrompt] = useState(false);
-  const { isSignedIn, isLoaded } = useAuth();
-  const router = useRouter();
+  const { user, day, mutate, isError } = useUserAndDay();
 
   const LoadingSpinner = () => (
     <div className="flex-1 flex flex-col items-center justify-center">
@@ -86,38 +120,6 @@ export default function Component() {
       <p className="mt-12 text-sm text-gray-500">Generating your schedule...</p>
     </div>
   );
-  // Define your dummy schedule data
-  const dummySchedule: PreviewSchedule = {
-    currentTime: "08:00 AM",
-    scheduleRationale:
-      "Your schedule is optimized for peak productivity periods.",
-    userStartTime: "09:00 AM",
-    userEndTime: "05:00 PM",
-    blocks: [
-      {
-        _id: "block-1",
-        name: "Morning Deep Work",
-        startTime: "09:00 AM",
-        endTime: "11:00 AM",
-        description: "High-energy tasks during your peak hours.",
-        isEvent: false,
-        isRoutine: false,
-        isStandaloneBlock: true,
-        blockType: "deep-work",
-        energyLevel: "high",
-        tasks: [
-          {
-            name: "Complete Project Proposal",
-            description: "Draft the proposal for the new client project.",
-            duration: 120,
-            priority: "High",
-            isRoutineTask: false,
-          },
-        ],
-      },
-      // Add more blocks as needed
-    ],
-  };
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-US", {
@@ -187,68 +189,6 @@ export default function Component() {
     }
   }, [promptText]);
 
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    if (!isSignedIn && !isPreviewMode) {
-      router.push("/");
-    }
-  }, [isLoaded, isSignedIn, isPreviewMode, router]);
-
-  // useEffect(() => {
-  //   // Only run if we have a promptText and haven't processed it yet
-  //   if (promptText && !hasProcessedPrompt) {
-  //     const generateSchedule = async () => {
-  //       setIsLoading(true);
-  //       try {
-  //         const intentResponse = await fetch("/api/home-page-intent-analysis", {
-  //           method: "POST",
-  //           headers: { "Content-Type": "application/json" },
-  //           body: JSON.stringify({
-  //             userInput: promptText,
-  //             startTime: "09:00",
-  //             endTime: "17:00",
-  //           }),
-  //         });
-
-  //         const intentAnalysis = await intentResponse.json();
-  //         const endpoint = intentAnalysis.isSpecificRequest
-  //           ? "/api/home-page-specific"
-  //           : "/api/home-page-non-specific";
-
-  //         const scheduleResponse = await fetch(endpoint, {
-  //           method: "POST",
-  //           headers: { "Content-Type": "application/json" },
-  //           body: JSON.stringify({
-  //             userInput: promptText,
-  //             startTime: "09:00",
-  //             endTime: "17:00",
-  //           }),
-  //         });
-
-  //         const schedule = await scheduleResponse.json();
-
-  //         if (schedule.blocks) {
-  //           setPreviewSchedule(schedule);
-  //           setIsPreviewMode(true);
-  //         }
-  //       } catch (error) {
-  //         console.error("Failed to generate schedule:", error);
-  //       } finally {
-  //         setIsLoading(false);
-  //         setHasProcessedPrompt(true); // Mark that we've processed this prompt
-  //         setPromptText(""); // Clear the prompt after processing
-  //       }
-  //     };
-
-  //     generateSchedule();
-  //   }
-  // }, [promptText]);
-
-  // if (isLoading) {
-  //   return <LoadingSpinner />;
-  // }
-
   const OpenNewBlockModal = () => {
     setIsAddBlockDialogOpen(true);
   };
@@ -261,6 +201,9 @@ export default function Component() {
     setIsAddRoutineModalOpen(true);
   };
 
+  console.log(user, day);
+  console.log(previewSchedule);
+
   return (
     <div className="flex h-screen bg-white font-sans text-gray-900">
       {/* Desktop Sidebar */}
@@ -271,7 +214,12 @@ export default function Component() {
       {isLoading ? (
         <LoadingSpinner />
       ) : isPreviewMode && previewSchedule ? (
-        <SchedulePreview schedule={previewSchedule} />
+        <SchedulePreview
+          schedule={previewSchedule}
+          dayId={day?._id} // Use optional chaining
+          userId={user?._id} // Use optional chaining
+          mutate={mutate}
+        />
       ) : (
         <main className="flex-1 overflow-y-auto">
           {/* Mobile Header */}
@@ -306,7 +254,6 @@ export default function Component() {
           </div>
 
           <div className="p-4 md:px-8 md:pt-8">
-            {/* Desktop Header */}
             <div className="hidden md:block mb-6">
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
@@ -395,38 +342,194 @@ export default function Component() {
 
             {/* Cards */}
             <div className="space-y-4">
+              {day?.blocks.map((block: Block) => (
+                <Card key={block._id} className="border-gray-200 shadow-sm">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-base font-medium">
+                      <div className="flex items-center gap-2">
+                        {block.name}
+                        {block.isStandaloneBlock && (
+                          <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                            <Sparkles className="mr-1 h-3 w-3" />
+                            AI Optimized
+                          </span>
+                        )}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Info className="h-4 w-4 text-gray-400" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="max-w-xs">{block.description}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </CardTitle>
+                    <div className="flex items-center space-x-2">
+                      <div className="flex items-center text-sm text-gray-500">
+                        <Clock className="mr-1.5 h-3.5 w-3.5" />
+                        {block.startTime} - {block.endTime}
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 p-0"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <Edit className="mr-2 h-4 w-4" />
+                            <span>Edit Block</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Delete Block</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {block.tasks.map((task: Task) => (
+                      <Card
+                        key={task._id}
+                        className="mb-3 border-gray-200 bg-gradient-to-br from-white to-slate-50 relative overflow-hidden"
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-4">
+                            <GripVertical className="h-5 w-5 text-gray-400 cursor-move flex-shrink-0" />
+                            <Checkbox
+                              id={`task-${task._id}`}
+                              checked={task.completed}
+                              className="flex-shrink-0 mt-0.5"
+                            />
+                            <div className="flex-grow min-w-0">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2 min-w-0">
+                                  <label
+                                    htmlFor={`task-${task._id}`}
+                                    className="text-sm font-medium text-gray-900 truncate leading-none pt-0.5"
+                                  >
+                                    {task.name}
+                                  </label>
+                                  <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 flex-shrink-0">
+                                    {task.duration}min
+                                  </span>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 flex-shrink-0">
+                                          {task.type}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="max-w-xs">
+                                          {task.description}
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger className="focus:outline-none">
+                                    <MoreVertical className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem>
+                                      Edit Task
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem>
+                                      Remove from Block
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="text-red-600">
+                                      Delete Task
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                        <div
+                          className={`absolute top-0 right-0 bottom-0 w-1 ${
+                            task.priority === "High"
+                              ? "bg-red-500"
+                              : task.priority === "Medium"
+                              ? "bg-yellow-500"
+                              : "bg-green-500"
+                          }`}
+                          aria-label="Priority Indicator"
+                        />
+                      </Card>
+                    ))}
+                    <div className="flex justify-between items-center mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-sm"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Task
+                      </Button>
+                      <div className="space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-sm text-green-600 hover:bg-green-50 hover:text-green-700"
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Complete
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                        >
+                          <Clock className="h-4 w-4 mr-1" />
+                          Start
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="space-y-4">
               <Card className="border-gray-200 shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-base font-medium">
-                    Review Documentation
+                    <div className="flex items-center gap-2">
+                      Review Documentation
+                      <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                        <Sparkles className="mr-1 h-3 w-3" />
+                        AI Optimized
+                      </span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="h-4 w-4 text-gray-400" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-xs">Review App documentation</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </CardTitle>
                   <div className="flex items-center space-x-2">
                     <div className="flex items-center text-sm text-gray-500">
                       <Clock className="mr-1.5 h-3.5 w-3.5" />
-                      11:30 - 12:30
+                      8:00 - 12:00
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 p-0"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Edit className="mr-2 h-4 w-4" />
-                          <span>Edit Block</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          <span>Delete Block</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -434,56 +537,53 @@ export default function Component() {
                     <CardContent className="p-4">
                       <div className="flex items-center space-x-4">
                         <GripVertical className="h-5 w-5 text-gray-400 cursor-move flex-shrink-0" />
-                        <Checkbox
-                          id="task-checkbox"
-                          className="flex-shrink-0 mt-0.5"
-                        />
+                        <Checkbox className="flex-shrink-0 mt-0.5" disabled />
                         <div className="flex-grow min-w-0">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2 min-w-0">
-                              <label
-                                htmlFor="task-checkbox"
-                                className="text-sm font-medium text-gray-900 truncate leading-none pt-0.5"
-                              >
+                              <span className="text-sm font-medium text-gray-900 truncate leading-none pt-0.5">
                                 Update API endpoints documentation
-                              </label>
-                              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 flex-shrink-0">
-                                Project
                               </span>
+                              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 flex-shrink-0">
+                                30 min
+                              </span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 flex-shrink-0">
+                                      Project
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="max-w-xs">Needs doingtoday</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger className="focus:outline-none">
-                                <MoreVertical className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>Edit Task</DropdownMenuItem>
-                                <DropdownMenuItem>
-                                  Remove from Block
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-red-600">
-                                  Delete Task
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
                           </div>
                         </div>
                       </div>
                     </CardContent>
                     <div
-                      className="absolute top-0 right-0 bottom-0 w-1 bg-red-500"
-                      aria-label="High Priority"
+                      className="absolute top-0 right-0 bottom-0 w-1bg-red-500"
+                      aria-label="Priority Indicator"
                     />
                   </Card>
                   <div className="flex justify-between items-center mt-4">
-                    <Button variant="outline" size="sm" className="h-8 text-sm">
-                      <Plus className="h-4 w-4 mr-1" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-sm text-gray-400 cursor-not-allowed"
+                      disabled
+                    >
                       Add Task
                     </Button>
                     <div className="space-x-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 text-sm text-green-600 hover:bg-green-50 hover:text-green-700"
+                        className="h-8 text-sm text-gray-400 cursor-not-allowed"
+                        disabled
                       >
                         <Check className="h-4 w-4 mr-1" />
                         Complete
@@ -491,7 +591,8 @@ export default function Component() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                        className="h-8 text-sm text-gray-400 cursor-not-allowed"
+                        disabled
                       >
                         <Clock className="h-4 w-4 mr-1" />
                         Start
@@ -500,168 +601,8 @@ export default function Component() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* <Card className="border-gray-200 shadow-sm">
-              <CardHeader className="space-y-0 pb-2">
-                <div className="flex items-center justify-between mb-1">
-                  <CardTitle className="text-base font-medium">
-                    Review Documentation
-                  </CardTitle>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 p-0"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Edit className="mr-2 h-4 w-4" />
-                        <span>Edit Block</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        <span>Delete Block</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <div className="flex items-center text-sm text-gray-500">
-                  <Clock className="mr-1.5 h-3.5 w-3.5" />
-                  11:30 - 12:30
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Card className="mb-3 border-gray-200 bg-gradient-to-br from-white to-slate-50 relative overflow-hidden">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-4">
-                      <GripVertical className="h-5 w-5 text-gray-400 cursor-move flex-shrink-0" />
-                      <Checkbox
-                        id="task-checkbox"
-                        className="flex-shrink-0 mt-0.5"
-                      />
-                      <div className="flex-grow min-w-0">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2 min-w-0">
-                            <label
-                              htmlFor="task-checkbox"
-                              className="text-sm font-medium text-gray-900 truncate leading-none pt-0.5"
-                            >
-                              Update API endpoints documentation
-                            </label>
-                            <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 flex-shrink-0">
-                              Project
-                            </span>
-                          </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger className="focus:outline-none">
-                              <MoreVertical className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>Edit Task</DropdownMenuItem>
-                              <DropdownMenuItem>
-                                Remove from Block
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600">
-                                Delete Task
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <div
-                    className="absolute top-0 right-0 bottom-0 w-1 bg-red-500"
-                    aria-label="High Priority"
-                  />
-                </Card>
-                <div className="flex justify-between items-center mt-4">
-                  <Button variant="outline" size="sm" className="h-8 text-sm">
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Task
-                  </Button>
-                  <div className="space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-sm text-green-600 hover:bg-green-50 hover:text-green-700"
-                    >
-                      <Check className="h-4 w-4 mr-1" />
-                      Complete
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                    >
-                      <Clock className="h-4 w-4 mr-1" />
-                      Start
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card> */}
-
-              <Card className="border-gray-200 shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-base font-medium">
-                    Team Meeting
-                  </CardTitle>
-                  <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full font-medium">
-                    Upcoming
-                  </span>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-500 mb-3">14:00 - 15:00</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                  >
-                    <FolderOpen className="h-4 w-4 md:mr-1" />
-                    <span className="hidden md:inline">Join</span>
-                  </Button>
-                </CardContent>
-              </Card>
             </div>
           </div>
-
-          {/* Empty state with container and margins
-        <div className="mx-4 my-8 md:mx-8">
-          <div className="border border-gray-200 rounded-lg p-8 bg-white">
-            <div className="flex flex-col items-center justify-center h-[calc(100vh-24rem)] max-w-md mx-auto text-center space-y-6">
-              <div className="bg-gray-50 p-4 rounded-full">
-                <Sparkles className="h-8 w-8 text-blue-600" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">No scheduled blocks</h3>
-                <p className="text-sm text-gray-500">
-                  Get started by adding tasks and events, or let AI generate a
-                  schedule for you
-                </p>
-              </div>
-              <div className="flex flex-col w-full gap-3">
-                <Button className="w-full" variant="outline" size="lg">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Block
-                </Button>
-                <Button className="w-full" variant="outline" size="lg">
-                  <Clock className="h-4 w-4 mr-2" />
-                  Add Event
-                </Button>
-                <Button className="w-full" size="lg">
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate Schedule
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div> */}
 
           <footer className="mt-8 pt-4 border-t border-gray-200 px-4 md:px-8">
             <p className="text-xs text-gray-500">

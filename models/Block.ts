@@ -3,11 +3,13 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IBlock extends Document {
   dayId: mongoose.Types.ObjectId;
   name: string;
+  description: string;
   status: "pending" | "in_progress" | "completed";
   startTime: string;
   endTime: string;
   tasks: mongoose.Types.ObjectId[];
   event?: mongoose.Types.ObjectId;
+  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
 }
 
 const BlockSchema: Schema = new Schema(
@@ -20,6 +22,9 @@ const BlockSchema: Schema = new Schema(
     name: {
       type: String,
       required: true,
+    },
+    description: {
+      type: String,
     },
     status: {
       type: String,
@@ -44,6 +49,11 @@ const BlockSchema: Schema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Event",
       default: null,
+    },
+    blockType: {
+      type: String,
+      enum: ["deep-work", "planning", "break", "admin", "collaboration"],
+      required: true,
     },
   },
   { timestamps: true }

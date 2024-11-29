@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
         isRoutine: aiBlock.isRoutine,
         isStandaloneBlock: aiBlock.isStandaloneBlock,
         status: "pending",
+        blockType: aiBlock.blockType, // The type of work this block represents
+        description: aiBlock.description,
       });
 
       if (aiBlock.isEvent && aiBlock.eventId) {
@@ -78,6 +80,7 @@ export async function POST(request: NextRequest) {
             priority: aiTask.priority,
             duration: aiTask.duration,
             isRoutineTask: true,
+            type: aiTask.type, // Add the task type
           });
           await task.save({ session });
         } else {
@@ -95,6 +98,7 @@ export async function POST(request: NextRequest) {
             task.priority = aiTask.priority;
             task.duration = aiTask.duration;
             task.isRoutineTask = false;
+            task.type = aiTask.type; // Add the task type to updates
             await task.save({ session });
           } else {
             // Create new task
@@ -107,6 +111,7 @@ export async function POST(request: NextRequest) {
               priority: aiTask.priority,
               duration: aiTask.duration,
               isRoutineTask: false,
+              type: aiTask.type, // Add the task typ
             });
             await task.save({ session });
           }

@@ -71,6 +71,7 @@ Return ONLY a JSON object with this structure:
           "description": "Task context and relevance",
           "duration": number (in minutes),
           "priority": "High" | "Medium" | "Low",
+          "type": "deep-work" | "planning" | "break" | "admin" | "collaboration",
           "isUserSpecified": boolean,
           "aiInsight": "How this task fits into the overall schedule flow"
         }
@@ -89,7 +90,10 @@ IMPORTANT GUIDELINES:
 7. Use professional, confident language
 8. Ensure schedule remains achievable
 9. Add breaks only where they don't disrupt user requests
-10. Balance respecting user wishes with gentle optimization suggestions`;
+10. Balance respecting user wishes with gentle optimization suggestions
+11. Consider task types independently from block types - while they often match, some tasks within a block may have different types based on their specific nature and requirements
+12. Ensure task type assignments reflect the actual work involved, not just the containing block's type
+`;
 
   try {
     const schedule = await getAnthropicResponse(apiKey, createSchedulePrompt);
