@@ -1536,7 +1536,6 @@ Use the toolbar to access these sections and input your information.`);
   };
 
   const handleAddTask = (blockId: string) => {
-    console.log("Adding task to block:", blockId);
     setSelectedBlockId(blockId);
     setIsAddTaskModalOpen(true);
   };

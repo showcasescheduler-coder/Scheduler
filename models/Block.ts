@@ -53,7 +53,7 @@ const BlockSchema: Schema = new Schema(
     blockType: {
       type: String,
       enum: ["deep-work", "planning", "break", "admin", "collaboration"],
-      required: true,
+      required: false,
     },
   },
   { timestamps: true }

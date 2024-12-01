@@ -38,15 +38,23 @@ export function AddBlockDialog({
   });
 
   const handleAddBlock = () => {
+    if (!newBlock.name || !newBlock.startTime || !newBlock.endTime) {
+      return; // Add validation if needed
+    }
     onAddBlock(newBlock);
-    setNewBlock({ name: "", startTime: "", endTime: "" });
-    onOpenChange(false);
+    setNewBlock({ name: "", startTime: "", endTime: "" }); // Reset form
+    onOpenChange(false); // Close dialog
+  };
+
+  const handleClose = () => {
+    setNewBlock({ name: "", startTime: "", endTime: "" }); // Reset form
+    onOpenChange(false); // Close dialog
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px] p-0">
-        <DialogHeader className="p-6 pb-2">
+        <div className="px-6 py-4 space-y-1.5">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-blue-600" />
             <DialogTitle className="text-base font-medium">
@@ -56,9 +64,9 @@ export function AddBlockDialog({
           <DialogDescription className="text-sm text-gray-500">
             Create a new time block for your schedule.
           </DialogDescription>
-        </DialogHeader>
+        </div>
 
-        <div className="p-6 pt-2 space-y-4">
+        <div className="px-6 pb-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name" className="text-sm font-medium">
               Block Name
@@ -70,7 +78,7 @@ export function AddBlockDialog({
               onChange={(e) =>
                 setNewBlock({ ...newBlock, name: e.target.value })
               }
-              className="h-8"
+              className="h-9"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -88,7 +96,7 @@ export function AddBlockDialog({
                     startTime: e.target.value,
                   })
                 }
-                className="h-8"
+                className="h-9"
               />
             </div>
             <div className="space-y-2">
@@ -105,25 +113,25 @@ export function AddBlockDialog({
                     endTime: e.target.value,
                   })
                 }
-                className="h-8"
+                className="h-9"
               />
             </div>
           </div>
         </div>
 
-        <DialogFooter className="p-4 border-t gap-2">
+        <DialogFooter className="px-6 py-4 border-t gap-2">
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="h-8"
+            onClick={handleClose}
+            className="h-9"
           >
             Cancel
           </Button>
           <Button
             type="submit"
             onClick={handleAddBlock}
-            className="h-8 bg-blue-600 hover:bg-blue-700"
+            className="h-9 bg-blue-600 hover:bg-blue-700"
           >
             Add Block
           </Button>

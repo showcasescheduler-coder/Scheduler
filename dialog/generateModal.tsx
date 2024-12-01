@@ -14,7 +14,11 @@ import { Textarea } from "@/components/ui/textarea";
 interface ScheduleGenerationDialogProps {
   isOpen: boolean;
   onClose: (open: boolean) => void;
-  onGenerateSchedule: (userInput: string) => void;
+  onGenerateSchedule: (
+    userInput: string,
+    startTime: string,
+    endTime: string
+  ) => void;
   isPreviewMode: boolean;
 }
 
@@ -56,7 +60,7 @@ End Time: 10:00 PM
   }, [isOpen, userInput]);
 
   const handleComplete = () => {
-    onGenerateSchedule(userInput);
+    onGenerateSchedule(userInput, getCurrentTimeBlock(), "10:00 PM");
     setUserInput("");
   };
 

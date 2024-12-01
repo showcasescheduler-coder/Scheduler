@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, CheckCircle, Loader2 } from "lucide-react";
+import { PlusCircle, CheckCircle, Loader2, ListTodo } from "lucide-react";
 import { Task, Project, Block, Day } from "@/app/context/models";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -127,8 +127,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     name: "",
     description: "",
     priority: "",
-    duration: 5, // Default duration of 5 minutes
+    duration: 5,
+    type: "", // Add this new field
   });
+
   const [todaySchedule, setTodaySchedule] = useState<Day | null>(null);
   const [isLoadingTodaySchedule, setIsLoadingTodaySchedule] = useState(false);
 
@@ -359,7 +361,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       setTasks((prevTasks) => [...prevTasks, data.task]);
 
       // Clear the form
-      setNewTask({ name: "", description: "", priority: "", duration: 5 });
+      setNewTask({
+        name: "",
+        description: "",
+        priority: "",
+        type: "",
+        duration: 5,
+      });
 
       // Close the modal
       onClose();
@@ -377,10 +385,16 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Add Task to Block</DialogTitle>
+      <DialogContent className="sm:max-w-[425px] p-0">
+        <DialogHeader className="p-6 pb-2">
+          <div className="flex items-center gap-2">
+            <ListTodo className="h-4 w-4 text-blue-600" />
+            <DialogTitle className="text-base font-medium">
+              Add Task
+            </DialogTitle>
+          </div>
         </DialogHeader>
+
         {isLoadingTodaySchedule && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-50">
             <div className="flex items-center space-x-2">
@@ -389,20 +403,28 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
             </div>
           </div>
         )}
+
         <Tabs
           defaultValue="newTask"
           onValueChange={setActiveTab}
-          className="w-[400px]"
+          className="w-full"
         >
-          <TabsList>
-            <TabsTrigger value="newTask">New Task</TabsTrigger>
-            <TabsTrigger value="existingTask">Task Bank</TabsTrigger>
-            <TabsTrigger value="projectTask">Project Task</TabsTrigger>
-          </TabsList>
+          <div className="px-6">
+            <TabsList className="w-full">
+              <TabsTrigger value="newTask" className="flex-1">
+                New Task
+              </TabsTrigger>
+              <TabsTrigger value="existingTask" className="flex-1">
+                Task Bank
+              </TabsTrigger>
+              <TabsTrigger value="projectTask" className="flex-1">
+                Project Task
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          {/* New Task Tab */}
           <TabsContent value="newTask">
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 px-6">
               <div className="space-y-2">
                 <Input
                   id="task-name"
@@ -458,59 +480,78 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Select
+                  value={newTask.type}
+                  onValueChange={(value) =>
+                    setNewTask({ ...newTask, type: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select task type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="deep-work">Deep Work</SelectItem>
+                    <SelectItem value="planning">Planning</SelectItem>
+                    <SelectItem value="break">Break</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="collaboration">Collaboration</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </TabsContent>
 
-          {/* Existing Task Tab */}
           <TabsContent value="existingTask">
-            <ScrollArea className="h-72 w-full rounded-md border">
-              <div className="p-4 space-y-4">
-                {tasks
-                  .filter((task) => task.completed === false)
-                  .map((task) => (
-                    <Card
-                      key={task._id}
-                      className={isTaskAssigned(task) ? "opacity-50" : ""}
-                    >
-                      <CardContent className="p-3 flex items-center justify-between">
-                        <div className="space-y-1">
-                          <h4 className="text-sm font-medium">{task.name}</h4>
-                          <p className="text-xs text-muted-foreground">
-                            {task.description}
-                          </p>
-                          <div className="flex items-center space-x-2">
-                            {isTaskAssigned(task) && (
-                              <Badge variant="outline">
-                                {isTomorrow &&
-                                todaySchedule?.blocks.some(
-                                  (b) => b._id === task.block
-                                )
-                                  ? "Assigned Today"
-                                  : "Assigned"}
-                              </Badge>
-                            )}
+            <div className="px-6">
+              <ScrollArea className="h-72 w-full rounded-md border">
+                <div className="p-4 space-y-4">
+                  {tasks
+                    .filter((task) => task.completed === false)
+                    .map((task) => (
+                      <Card
+                        key={task._id}
+                        className={isTaskAssigned(task) ? "opacity-50" : ""}
+                      >
+                        <CardContent className="p-3 flex items-center justify-between">
+                          <div className="space-y-1">
+                            <h4 className="text-sm font-medium">{task.name}</h4>
+                            <p className="text-xs text-muted-foreground">
+                              {task.description}
+                            </p>
+                            <div className="flex items-center space-x-2">
+                              {isTaskAssigned(task) && (
+                                <Badge variant="outline">
+                                  {isTomorrow &&
+                                  todaySchedule?.blocks.some(
+                                    (b) => b._id === task.block
+                                  )
+                                    ? "Assigned Today"
+                                    : "Assigned"}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="shrink-0"
-                          onClick={() => addTaskToBlock(task._id)}
-                          disabled={isTaskAssigned(task)}
-                        >
-                          <PlusCircle className="h-4 w-4 mr-1" />
-                          {isTaskAssigned(task) ? "Assigned" : "Add"}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-              </div>
-            </ScrollArea>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="shrink-0"
+                            onClick={() => addTaskToBlock(task._id)}
+                            disabled={isTaskAssigned(task)}
+                          >
+                            <PlusCircle className="h-4 w-4 mr-1" />
+                            {isTaskAssigned(task) ? "Assigned" : "Add"}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                </div>
+              </ScrollArea>
+            </div>
           </TabsContent>
 
-          {/* Project Task Tab */}
           <TabsContent value="projectTask">
-            <div className="space-y-4">
+            <div className="space-y-4 px-6 py-4">
               <Select
                 value={selectedProject}
                 onValueChange={setSelectedProject}
@@ -528,7 +569,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                   ))}
                 </SelectContent>
               </Select>
-              <ScrollArea className="h-72 w-100 rounded-md border">
+              <ScrollArea className="h-72 w-full rounded-md border">
                 <div className="p-4 space-y-4">
                   {projects
                     .find((p) => p._id === selectedProject)
@@ -585,12 +626,16 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
             </div>
           </TabsContent>
         </Tabs>
-        <DialogFooter>
+
+        <DialogFooter className="px-6 py-4">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
           {activeTab === "newTask" && (
-            <Button onClick={handleNewTaskSubmit}>
+            <Button
+              onClick={handleNewTaskSubmit}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
               <CheckCircle className="mr-2 h-4 w-4" />
               Add Task
             </Button>
