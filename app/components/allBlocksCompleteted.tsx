@@ -10,7 +10,36 @@ import { Separator } from "@/components/ui/separator";
 import { AlertCircle, CheckCircle, ChevronDown, RotateCcw } from "lucide-react";
 import React from "react";
 
-const CompletedDayView = () => {
+// Types shared between components
+interface Block {
+  _id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  tasks: {
+    _id: string;
+    name: string;
+    completed: boolean;
+  }[];
+  status: "pending" | "complete";
+}
+
+interface PerformanceRating {
+  level: string;
+  score: number;
+  comment: string;
+}
+
+// AllBlocksCompleted.tsx
+interface AllBlocksCompletedProps {
+  onCompleteDay: () => void;
+  onAddNewBlock: () => void;
+}
+
+const AllBlocksCompleted: React.FC<AllBlocksCompletedProps> = ({
+  onCompleteDay,
+  onAddNewBlock,
+}) => {
   return (
     <Card className="w-full border-2 border-primary/10 shadow-md">
       <CardHeader className="pb-3">
@@ -29,14 +58,14 @@ const CompletedDayView = () => {
         </div>
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4">
           <Button
-            onClick={handleCompleteDay}
+            onClick={onCompleteDay}
             className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             Complete Day
           </Button>
           <Button
             variant="outline"
-            onClick={() => setIsDialogOpen(true)}
+            onClick={onAddNewBlock}
             className="w-full sm:w-auto border-primary/20 hover:bg-primary/10 transition-colors"
           >
             Add New Block
@@ -47,4 +76,4 @@ const CompletedDayView = () => {
   );
 };
 
-export default CompletedDayView;
+export default AllBlocksCompleted;

@@ -54,6 +54,8 @@ import { EditBlockDialog } from "@/dialog/editBlockModal";
 import { useAuth } from "@clerk/nextjs";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DialogTrigger } from "@radix-ui/react-dialog";
+import CompletedDayView from "@/app/components/completedDayComponent";
+import AllBlocksCompleted from "../components/allBlocksCompleteted";
 
 interface Task {
   _id: string;
@@ -1196,6 +1198,35 @@ export default function Component() {
     }
   };
 
+  // With this:
+  const allBlocksCompleted = day?.blocks
+    ? day.blocks.length > 0 &&
+      day.blocks.every(
+        (block: { status: string }) => block.status === "complete"
+      )
+    : false;
+
+  // Calculate completion rates
+  const calculateTaskCompletionRate = (blocks: Block[]) => {
+    let totalTasks = 0;
+    let completedTasks = 0;
+    blocks.forEach((block) => {
+      if (block.tasks) {
+        totalTasks += block.tasks.length;
+        completedTasks += block.tasks.filter((task) => task.completed).length;
+      }
+    });
+    return totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+  };
+
+  const calculateBlockCompletionRate = (blocks: Block[]) => {
+    return (
+      (blocks.filter((block) => block.status === "complete").length /
+        blocks.length) *
+      100
+    );
+  };
+
   const handleGenerateSchedule = async () => {
     const activeBlocks = sortedBlocks.filter(
       (block) => block.status === "pending"
@@ -1222,25 +1253,16 @@ export default function Component() {
       return;
     }
 
-    // Check if all blocks are completed
-    const allBlocksCompleted = sortedBlocks.every(
-      (block) => block.status === "complete"
-    );
-
-    if (day.completed) {
-      return (
-        <CompletedDayView
-          completedBlocks={sortedBlocks}
-          taskCompletionRate={taskCompletionRate}
-          blockCompletionRate={blockCompletionRate}
-          performanceRating={day.performanceRating}
-          onReactivateDay={handleReactivateDay}
-        />
-      );
-    }
-
     setIsDialogOpen(true);
   };
+
+  if (!day) {
+    return (
+      <div className="flex h-screen w-full">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-white font-sans text-gray-900">
@@ -1331,7 +1353,7 @@ export default function Component() {
                       </TabsTrigger>
                     </TabsList>
                   </Tabs>
-                  <UserButton afterSignOutUrl="/" />
+                  <UserButton />
                 </div>
               </div>
             </div>
@@ -1339,383 +1361,401 @@ export default function Component() {
             {day.completed ? (
               <CompletedDayView
                 completedBlocks={sortedBlocks}
-                taskCompletionRate={taskCompletionRate}
-                blockCompletionRate={blockCompletionRate}
+                taskCompletionRate={calculateTaskCompletionRate(day.blocks)}
+                blockCompletionRate={calculateBlockCompletionRate(day.blocks)}
                 performanceRating={day.performanceRating}
                 onReactivateDay={handleReactivateDay}
               />
             ) : (
               <>
-                {allBlocksCompleted && sortedBlocks.length > 0 ? (
-                  <DayCompletionComponent onCompleteDay={handleCompleteDay} />
+                {allBlocksCompleted ? (
+                  <AllBlocksCompleted
+                    onCompleteDay={handleCompleteDay}
+                    onAddNewBlock={() => setIsAddBlockDialogOpen(true)}
+                  />
                 ) : (
-                  // Your existing block rendering logic
-                )}
-              </>
-            )}
-
-
-            {/* Action Bar */}
-            <div className="flex items-center justify-between gap-4 mb-6">
-              <div className="flex items-center space-x-4">
-                <button
-                  className={`text-sm font-medium pb-1 border-b-2 ${
-                    activeTab === "active"
-                      ? "text-blue-600 border-blue-600"
-                      : "text-gray-500 border-transparent hover:text-blue-600 transition-colors"
-                  }`}
-                  onClick={() => setActiveTab("active")}
-                >
-                  Active
-                </button>
-                <button
-                  className={`text-sm font-medium pb-1 border-b-2 ${
-                    activeTab === "completed"
-                      ? "text-blue-600 border-blue-600"
-                      : "text-gray-500 border-transparent hover:text-blue-600 transition-colors"
-                  }`}
-                  onClick={() => setActiveTab("completed")}
-                >
-                  Completed
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8"
-                  onClick={OpenNewBlockModal}
-                >
-                  <Plus className="h-4 w-4 md:mr-1" />
-                  <span className="hidden md:inline">New Block</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8"
-                  onClick={OpenNewEventModal}
-                >
-                  <Clock className="h-4 w-4 md:mr-1" />
-                  <span className="hidden md:inline">Add Event</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8"
-                  onClick={OpenNewRoutineModal}
-                >
-                  <Repeat className="h-4 w-4 md:mr-1" />
-                  <span className="hidden md:inline">Add Routine</span>
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="h-8 md:bg-blue-600 md:hover:bg-blue-700 md:text-white border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 hover:text-blue-800 transition-all md:border-transparent"
-                  onClick={handleGenerateSchedule}
-                >
-                  <Sparkles className="h-4 w-4 md:mr-1" />
-                  <span className="hidden md:inline">Generate Schedule</span>
-                </Button>
-              </div>
-            </div>
-            <Separator className="mb-6" />
-            {sortedBlocks.length === 0 ? (
-              <div className="flex h-[600px] w-full max-w-[100vw] px-2 md:px-0">
-                <Card className="flex w-full bg-gray-50">
-                  {" "}
-                  {/* Changed from bg-muted/50 to bg-gray-50 for softer background */}
-                  <CardContent className="flex flex-1 flex-col items-center justify-center py-10 text-center">
-                    <ClipboardList className="mb-4 h-16 w-16 text-blue-600" />{" "}
-                    {/* Changed from text-muted-foreground to text-blue-600 to match app accent color */}
-                    <h3 className="mb-2 text-2xl font-semibold text-gray-900">
-                      {activeTab === "active"
-                        ? "No Blocks Scheduled"
-                        : "No Completed Blocks"}
-                    </h3>
-                    <p className="mb-4 max-w-md text-gray-500">
-                      {activeTab === "active"
-                        ? "Start planning your day by adding time blocks, routines, or events. You can also generate a schedule based on your tasks and preferences."
-                        : "Complete some blocks to see them here. You can mark a block as complete when you've finished all its tasks."}
-                    </p>
-                    {activeTab === "active" && (
-                      <div className="flex flex-col gap-4 sm:flex-row">
-                        <Button
-                          onClick={handleGenerateSchedule}
-                          className="bg-blue-600 hover:bg-blue-700"
+                  <>
+                    <div className="flex items-center justify-between gap-4 mb-6">
+                      <div className="flex items-center space-x-4">
+                        <button
+                          className={`text-sm font-medium pb-1 border-b-2 ${
+                            activeTab === "active"
+                              ? "text-blue-600 border-blue-600"
+                              : "text-gray-500 border-transparent hover:text-blue-600 transition-colors"
+                          }`}
+                          onClick={() => setActiveTab("active")}
                         >
-                          <Sparkles className="mr-2 h-4 w-4" />
-                          Generate Schedule
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => setIsDialogOpen(true)}
-                          className="border-gray-200 hover:bg-gray-50"
+                          Active
+                        </button>
+                        <button
+                          className={`text-sm font-medium pb-1 border-b-2 ${
+                            activeTab === "completed"
+                              ? "text-blue-600 border-blue-600"
+                              : "text-gray-500 border-transparent hover:text-blue-600 transition-colors"
+                          }`}
+                          onClick={() => setActiveTab("completed")}
                         >
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Add First Block
-                        </Button>
+                          Completed
+                        </button>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {sortedBlocks.map((block: Block) => (
-                  <Card key={block._id} className="border-gray-200 shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-base font-medium">
-                        <div className="flex items-center gap-2">
-                          {block.name}
-                          {block.isStandaloneBlock && (
-                            <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-                              <Sparkles className="mr-1 h-3 w-3" />
-                              AI Optimized
-                            </span>
-                          )}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Info className="h-4 w-4 text-gray-400" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs">{block.description}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </CardTitle>
-                      <div className="flex items-center space-x-2">
-                        <div className="flex items-center text-sm text-gray-500">
-                          <Clock className="mr-1.5 h-3.5 w-3.5" />
-                          {block.startTime} - {block.endTime}
-                        </div>
-                        <Dialog
-                          open={isEditBlockDialogOpen}
-                          onOpenChange={setIsEditBlockDialogOpen}
-                        >
-                          <DropdownMenu modal={false}>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 p-0"
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DialogTrigger asChild>
-                                <DropdownMenuItem
-                                  onSelect={(e) => {
-                                    e.preventDefault();
-                                    setSelectedBlock(block);
-                                    setIsEditBlockDialogOpen(true); // Added this line
-                                  }}
-                                >
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  <span>Edit Block</span>
-                                </DropdownMenuItem>
-                              </DialogTrigger>
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteBlock(block)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                <span>Delete Block</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-
-                          <DialogContent>
-                            {selectedBlock && (
-                              <EditBlockDialog
-                                block={selectedBlock}
-                                onClose={() => setIsEditBlockDialogOpen(false)}
-                                onSave={async (updatedBlock) => {
-                                  await handleSaveBlock(updatedBlock);
-                                  setIsEditBlockDialogOpen(false);
-                                }}
-                              />
-                            )}
-                          </DialogContent>
-                        </Dialog>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {block.tasks.map((task: Task) => (
-                        <Card
-                          key={task._id}
-                          className="mb-3 border-gray-200 bg-gradient-to-br from-white to-slate-50 relative overflow-hidden"
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-center space-x-4">
-                              <GripVertical className="h-5 w-5 text-gray-400 cursor-move flex-shrink-0" />
-                              <Checkbox
-                                id={`task-${task._id}`}
-                                checked={task.completed}
-                                onCheckedChange={(checked) =>
-                                  handleTaskCompletion(
-                                    task._id,
-                                    checked as boolean
-                                  )
-                                }
-                                className="flex-shrink-0 mt-0.5"
-                                disabled={
-                                  updatingTasks && updatingTaskId === task._id
-                                }
-                              />
-
-                              <div className="flex-grow min-w-0">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-2 min-w-0">
-                                    <label
-                                      htmlFor={`task-${task._id}`}
-                                      className="text-sm font-medium text-gray-900 truncate leading-none pt-0.5"
-                                    >
-                                      {task.name}
-                                    </label>
-                                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 flex-shrink-0">
-                                      {task.duration}min
-                                    </span>
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger>
-                                          <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 flex-shrink-0">
-                                            {task.type}
-                                          </span>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p className="max-w-xs">
-                                            {task.description}
-                                          </p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                  </div>
-                                  <Dialog
-                                    open={isEditDialogOpen}
-                                    onOpenChange={setIsEditDialogOpen}
-                                  >
-                                    <DropdownMenu modal={false}>
-                                      <DropdownMenuTrigger className="focus:outline-none">
-                                        <MoreVertical className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                        <DialogTrigger asChild>
-                                          <DropdownMenuItem
-                                            onSelect={(e) => {
-                                              e.preventDefault(); // Prevent the dropdown from closing immediately
-                                              setIsEditDialogOpen(true); // Open the dialog
-                                            }}
-                                          >
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            Edit Task
-                                          </DropdownMenuItem>
-                                        </DialogTrigger>
-                                        <DropdownMenuItem
-                                          onClick={() =>
-                                            handleRemoveTaskFromBlock(
-                                              task,
-                                              block
-                                            )
-                                          }
-                                        >
-                                          <Clock className="mr-2 h-4 w-4" />
-                                          Remove from Block
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={() =>
-                                            handleDeleteTask(task, block)
-                                          }
-                                          className="text-red-600"
-                                        >
-                                          <Trash2 className="mr-2 h-4 w-4" />
-                                          Delete Task
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    <DialogContent>
-                                      <EditTaskDialog
-                                        task={task}
-                                        onClose={() =>
-                                          setIsEditDialogOpen(false)
-                                        }
-                                        onSave={async (updatedTask) => {
-                                          await handleSaveTask(updatedTask);
-                                          setIsEditDialogOpen(false); // Close the dialog after saving
-                                        }}
-                                      />
-                                    </DialogContent>
-                                  </Dialog>
-                                </div>
-                              </div>
-                            </div>
-                          </CardContent>
-                          <div
-                            className={`absolute top-0 right-0 bottom-0 w-1 ${
-                              task.priority === "High"
-                                ? "bg-red-500"
-                                : task.priority === "Medium"
-                                ? "bg-yellow-500"
-                                : "bg-green-500"
-                            }`}
-                            aria-label="Priority Indicator"
-                          />
-                        </Card>
-                      ))}
-                      <div className="flex justify-between items-center mt-4">
+                      <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-8 text-sm"
-                          onClick={() => handleAddTask(block._id)}
+                          className="h-8"
+                          onClick={OpenNewBlockModal}
                         >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add Task
+                          <Plus className="h-4 w-4 md:mr-1" />
+                          <span className="hidden md:inline">New Block</span>
                         </Button>
-                        <div className="space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 text-sm text-green-600 hover:bg-green-50 hover:text-green-700"
-                            onClick={() => handleCompleteBlock(block._id)}
-                          >
-                            <Check className="h-4 w-4 mr-1" />
-                            Complete
-                          </Button>
-                          {block.meetingLink ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                              asChild
-                            >
-                              <a
-                                href={block.meetingLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center"
-                              >
-                                <LinkIcon className="h-4 w-4 mr-1" />
-                                Join Meeting
-                              </a>
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                            >
-                              <Clock className="h-4 w-4 mr-1" />
-                              Start
-                            </Button>
-                          )}
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8"
+                          onClick={OpenNewEventModal}
+                        >
+                          <Clock className="h-4 w-4 md:mr-1" />
+                          <span className="hidden md:inline">Add Event</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8"
+                          onClick={OpenNewRoutineModal}
+                        >
+                          <Repeat className="h-4 w-4 md:mr-1" />
+                          <span className="hidden md:inline">Add Routine</span>
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="h-8 md:bg-blue-600 md:hover:bg-blue-700 md:text-white border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 hover:text-blue-800 transition-all md:border-transparent"
+                          onClick={handleGenerateSchedule}
+                        >
+                          <Sparkles className="h-4 w-4 md:mr-1" />
+                          <span className="hidden md:inline">
+                            Generate Schedule
+                          </span>
+                        </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                    </div>
+                    <Separator className="mb-6" />
+                    {sortedBlocks.length === 0 ? (
+                      <div className="flex h-[600px] w-full max-w-[100vw] px-2 md:px-0">
+                        <Card className="flex w-full bg-gray-50">
+                          {" "}
+                          {/* Changed from bg-muted/50 to bg-gray-50 for softer background */}
+                          <CardContent className="flex flex-1 flex-col items-center justify-center py-10 text-center">
+                            <ClipboardList className="mb-4 h-16 w-16 text-blue-600" />{" "}
+                            {/* Changed from text-muted-foreground to text-blue-600 to match app accent color */}
+                            <h3 className="mb-2 text-2xl font-semibold text-gray-900">
+                              {activeTab === "active"
+                                ? "No Blocks Scheduled"
+                                : "No Completed Blocks"}
+                            </h3>
+                            <p className="mb-4 max-w-md text-gray-500">
+                              {activeTab === "active"
+                                ? "Start planning your day by adding time blocks, routines, or events. You can also generate a schedule based on your tasks and preferences."
+                                : "Complete some blocks to see them here. You can mark a block as complete when you've finished all its tasks."}
+                            </p>
+                            {activeTab === "active" && (
+                              <div className="flex flex-col gap-4 sm:flex-row">
+                                <Button
+                                  onClick={handleGenerateSchedule}
+                                  className="bg-blue-600 hover:bg-blue-700"
+                                >
+                                  <Sparkles className="mr-2 h-4 w-4" />
+                                  Generate Schedule
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setIsDialogOpen(true)}
+                                  className="border-gray-200 hover:bg-gray-50"
+                                >
+                                  <PlusCircle className="mr-2 h-4 w-4" />
+                                  Add First Block
+                                </Button>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {sortedBlocks.map((block: Block) => (
+                          <Card
+                            key={block._id}
+                            className="border-gray-200 shadow-sm"
+                          >
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                              <CardTitle className="text-base font-medium">
+                                <div className="flex items-center gap-2">
+                                  {block.name}
+                                  {block.isStandaloneBlock && (
+                                    <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                                      <Sparkles className="mr-1 h-3 w-3" />
+                                      AI Optimized
+                                    </span>
+                                  )}
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <Info className="h-4 w-4 text-gray-400" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="max-w-xs">
+                                          {block.description}
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
+                              </CardTitle>
+                              <div className="flex items-center space-x-2">
+                                <div className="flex items-center text-sm text-gray-500">
+                                  <Clock className="mr-1.5 h-3.5 w-3.5" />
+                                  {block.startTime} - {block.endTime}
+                                </div>
+                                <Dialog
+                                  open={isEditBlockDialogOpen}
+                                  onOpenChange={setIsEditBlockDialogOpen}
+                                >
+                                  <DropdownMenu modal={false}>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 p-0"
+                                      >
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DialogTrigger asChild>
+                                        <DropdownMenuItem
+                                          onSelect={(e) => {
+                                            e.preventDefault();
+                                            setSelectedBlock(block);
+                                            setIsEditBlockDialogOpen(true); // Added this line
+                                          }}
+                                        >
+                                          <Edit className="mr-2 h-4 w-4" />
+                                          <span>Edit Block</span>
+                                        </DropdownMenuItem>
+                                      </DialogTrigger>
+                                      <DropdownMenuItem
+                                        onClick={() => handleDeleteBlock(block)}
+                                      >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        <span>Delete Block</span>
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+
+                                  <DialogContent>
+                                    {selectedBlock && (
+                                      <EditBlockDialog
+                                        block={selectedBlock}
+                                        onClose={() =>
+                                          setIsEditBlockDialogOpen(false)
+                                        }
+                                        onSave={async (updatedBlock) => {
+                                          await handleSaveBlock(updatedBlock);
+                                          setIsEditBlockDialogOpen(false);
+                                        }}
+                                      />
+                                    )}
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              {block.tasks.map((task: Task) => (
+                                <Card
+                                  key={task._id}
+                                  className="mb-3 border-gray-200 bg-gradient-to-br from-white to-slate-50 relative overflow-hidden"
+                                >
+                                  <CardContent className="p-4">
+                                    <div className="flex items-center space-x-4">
+                                      <GripVertical className="h-5 w-5 text-gray-400 cursor-move flex-shrink-0" />
+                                      <Checkbox
+                                        id={`task-${task._id}`}
+                                        checked={task.completed}
+                                        onCheckedChange={(checked) =>
+                                          handleTaskCompletion(
+                                            task._id,
+                                            checked as boolean
+                                          )
+                                        }
+                                        className="flex-shrink-0 mt-0.5"
+                                        disabled={
+                                          updatingTasks &&
+                                          updatingTaskId === task._id
+                                        }
+                                      />
+
+                                      <div className="flex-grow min-w-0">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center space-x-2 min-w-0">
+                                            <label
+                                              htmlFor={`task-${task._id}`}
+                                              className="text-sm font-medium text-gray-900 truncate leading-none pt-0.5"
+                                            >
+                                              {task.name}
+                                            </label>
+                                            <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 flex-shrink-0">
+                                              {task.duration}min
+                                            </span>
+                                            <TooltipProvider>
+                                              <Tooltip>
+                                                <TooltipTrigger>
+                                                  <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 flex-shrink-0">
+                                                    {task.type}
+                                                  </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                  <p className="max-w-xs">
+                                                    {task.description}
+                                                  </p>
+                                                </TooltipContent>
+                                              </Tooltip>
+                                            </TooltipProvider>
+                                          </div>
+                                          <Dialog
+                                            open={isEditDialogOpen}
+                                            onOpenChange={setIsEditDialogOpen}
+                                          >
+                                            <DropdownMenu modal={false}>
+                                              <DropdownMenuTrigger className="focus:outline-none">
+                                                <MoreVertical className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                              </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end">
+                                                <DialogTrigger asChild>
+                                                  <DropdownMenuItem
+                                                    onSelect={(e) => {
+                                                      e.preventDefault(); // Prevent the dropdown from closing immediately
+                                                      setIsEditDialogOpen(true); // Open the dialog
+                                                    }}
+                                                  >
+                                                    <Edit className="mr-2 h-4 w-4" />
+                                                    Edit Task
+                                                  </DropdownMenuItem>
+                                                </DialogTrigger>
+                                                <DropdownMenuItem
+                                                  onClick={() =>
+                                                    handleRemoveTaskFromBlock(
+                                                      task,
+                                                      block
+                                                    )
+                                                  }
+                                                >
+                                                  <Clock className="mr-2 h-4 w-4" />
+                                                  Remove from Block
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                  onClick={() =>
+                                                    handleDeleteTask(
+                                                      task,
+                                                      block
+                                                    )
+                                                  }
+                                                  className="text-red-600"
+                                                >
+                                                  <Trash2 className="mr-2 h-4 w-4" />
+                                                  Delete Task
+                                                </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                            </DropdownMenu>
+                                            <DialogContent>
+                                              <EditTaskDialog
+                                                task={task}
+                                                onClose={() =>
+                                                  setIsEditDialogOpen(false)
+                                                }
+                                                onSave={async (updatedTask) => {
+                                                  await handleSaveTask(
+                                                    updatedTask
+                                                  );
+                                                  setIsEditDialogOpen(false); // Close the dialog after saving
+                                                }}
+                                              />
+                                            </DialogContent>
+                                          </Dialog>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                  <div
+                                    className={`absolute top-0 right-0 bottom-0 w-1 ${
+                                      task.priority === "High"
+                                        ? "bg-red-500"
+                                        : task.priority === "Medium"
+                                        ? "bg-yellow-500"
+                                        : "bg-green-500"
+                                    }`}
+                                    aria-label="Priority Indicator"
+                                  />
+                                </Card>
+                              ))}
+                              <div className="flex justify-between items-center mt-4">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 text-sm"
+                                  onClick={() => handleAddTask(block._id)}
+                                >
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Add Task
+                                </Button>
+                                <div className="space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-sm text-green-600 hover:bg-green-50 hover:text-green-700"
+                                    onClick={() =>
+                                      handleCompleteBlock(block._id)
+                                    }
+                                  >
+                                    <Check className="h-4 w-4 mr-1" />
+                                    Complete
+                                  </Button>
+                                  {block.meetingLink ? (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                      asChild
+                                    >
+                                      <a
+                                        href={block.meetingLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center"
+                                      >
+                                        <LinkIcon className="h-4 w-4 mr-1" />
+                                        Join Meeting
+                                      </a>
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                    >
+                                      <Clock className="h-4 w-4 mr-1" />
+                                      Start
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
             )}
           </div>
 
