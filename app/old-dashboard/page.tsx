@@ -3254,14 +3254,14 @@ Use the toolbar to access these sections and input your information.`);
             isPreviewMode={isPreviewMode}
           />
           {/* Add EditBlockDialog and EditTaskDialog components */}
-          {editingBlock && (
+          {/* {editingBlock && (
             <EditBlockDialog
               block={editingBlock}
               isOpen={!!editingBlock}
               onClose={() => setEditingBlock(null)}
               onSave={handleSaveBlock}
             />
-          )}
+          )} */}
           {editingTask && (
             <EditTaskDialog
               task={editingTask}

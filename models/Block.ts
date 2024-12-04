@@ -10,6 +10,7 @@ export interface IBlock extends Document {
   tasks: mongoose.Types.ObjectId[];
   event?: mongoose.Types.ObjectId;
   blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  meetingLink?: string; // Add optional meeting link field
 }
 
 const BlockSchema: Schema = new Schema(
@@ -54,6 +55,11 @@ const BlockSchema: Schema = new Schema(
       type: String,
       enum: ["deep-work", "planning", "break", "admin", "collaboration"],
       required: false,
+    },
+    meetingLink: {
+      type: String,
+      required: false,
+      trim: true, // Remove whitespace from both ends of the string
     },
   },
   { timestamps: true }

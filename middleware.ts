@@ -5,7 +5,14 @@ export default clerkMiddleware((auth, req) => {
   const { userId } = auth();
   const path = req.nextUrl.pathname;
 
+  // Check if user is on homepage
+  if (path === "/" && userId) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+
+  // List of routes that require authentication
   const protectedRoutes = [
+    "/dashboard",
     "/dashboard/events",
     "/dashboard/routines",
     "/dashboard/tasks",
@@ -13,6 +20,7 @@ export default clerkMiddleware((auth, req) => {
     "/dashboard/analytics",
   ];
 
+  // Redirect to homepage if trying to access protected routes while not logged in
   if (protectedRoutes.some((route) => path.startsWith(route)) && !userId) {
     return NextResponse.redirect(new URL("/", req.url));
   }

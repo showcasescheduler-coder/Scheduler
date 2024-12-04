@@ -1,89 +1,157 @@
-import React, { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import React from "react";
+import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Block } from "@/app/context/models";
+// import { Block } from "@/app/context/models";
 
-interface EditBlockDialogProps {
-  block: Block;
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (updatedBlock: Block) => void;
+// Define a type for the editable fields
+type EditableBlockFields = {
+  _id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  description: string;
+  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  status: "pending" | "complete" | "incomplete";
+  meetingLink?: string;
+};
+
+// Create a form data type that includes only the fields we want to edit
+interface BlockFormData extends EditableBlockFields {
+  _id: string;
 }
 
-export const EditBlockDialog: React.FC<EditBlockDialogProps> = ({
+interface EditBlockDialogProps {
+  block: EditableBlockFields;
+  onClose: () => void;
+  onSave: (updatedBlock: EditableBlockFields) => void;
+}
+
+export function EditBlockDialog({
   block,
-  isOpen,
   onClose,
   onSave,
-}) => {
-  const [editedBlock, setEditedBlock] = useState(block);
+}: EditBlockDialogProps) {
+  // Initialize form data with only the fields we want to edit
+  const [formData, setFormData] = React.useState<BlockFormData>({
+    _id: block._id,
+    name: block.name,
+    startTime: block.startTime,
+    endTime: block.endTime,
+    description: block.description,
+    blockType: block.blockType,
+    status: block.status,
+    meetingLink: block.meetingLink,
+  });
 
-  const handleSave = () => {
-    onSave(editedBlock);
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Merge the form data with the original block to preserve other fields
+    const updatedBlock: EditableBlockFields = {
+      ...block,
+      ...formData,
+    };
+    onSave(updatedBlock);
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Block</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Name
-            </Label>
-            <Input
-              id="name"
-              value={editedBlock.name}
-              onChange={(e) =>
-                setEditedBlock({ ...editedBlock, name: e.target.value })
-              }
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="startTime" className="text-right">
-              Start Time
-            </Label>
-            <Input
-              id="startTime"
-              type="time"
-              value={editedBlock.startTime}
-              onChange={(e) =>
-                setEditedBlock({ ...editedBlock, startTime: e.target.value })
-              }
-              className="col-span-3"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="endTime" className="text-right">
-              End Time
-            </Label>
-            <Input
-              id="endTime"
-              type="time"
-              value={editedBlock.endTime}
-              onChange={(e) =>
-                setEditedBlock({ ...editedBlock, endTime: e.target.value })
-              }
-              className="col-span-3"
-            />
-          </div>
+    <>
+      <DialogHeader>
+        <DialogTitle>Edit Block</DialogTitle>
+      </DialogHeader>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Block Name</Label>
+          <Input
+            id="name"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            required
+          />
         </div>
-        <DialogFooter>
-          <Button onClick={handleSave}>Save changes</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+
+        <div className="space-y-2">
+          <Label htmlFor="description">Description</Label>
+          <Input
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="blockType">Block Type</Label>
+          <select
+            id="blockType"
+            name="blockType"
+            value={formData.blockType}
+            onChange={handleChange}
+            className="w-full rounded-md border border-gray-300 px-3 py-2"
+            required
+          >
+            <option value="deep-work">Deep Work</option>
+            <option value="planning">Planning</option>
+            <option value="break">Break</option>
+            <option value="admin">Admin</option>
+            <option value="collaboration">Collaboration</option>
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="startTime">Start Time</Label>
+          <Input
+            id="startTime"
+            name="startTime"
+            type="time"
+            value={formData.startTime}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="endTime">End Time</Label>
+          <Input
+            id="endTime"
+            name="endTime"
+            type="time"
+            value={formData.endTime}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="meetingLink">Meeting Link (Optional)</Label>
+          <Input
+            id="meetingLink"
+            name="meetingLink"
+            type="url"
+            value={formData.meetingLink || ""}
+            onChange={handleChange}
+            placeholder="https://..."
+          />
+        </div>
+
+        <div className="flex justify-end space-x-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit">Save Changes</Button>
+        </div>
+      </form>
+    </>
   );
-};
+}

@@ -17,6 +17,9 @@ import {
   Repeat,
   Brain,
   Info,
+  PlusCircle,
+  ClipboardList,
+  LinkIcon,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
@@ -47,7 +50,10 @@ import { useUserAndDay } from "@/hooks/useUserAndDay";
 import { AddTaskModal } from "@/dialog/addTaskModal";
 import toast from "react-hot-toast";
 import { EditTaskDialog } from "@/dialog/editTask";
+import { EditBlockDialog } from "@/dialog/editBlockModal";
 import { useAuth } from "@clerk/nextjs";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { DialogTrigger } from "@radix-ui/react-dialog";
 
 interface Task {
   _id: string;
@@ -66,6 +72,17 @@ interface Task {
   __v: number;
 }
 
+type EditableBlockFields = {
+  _id: string;
+  name: string;
+  startTime: string;
+  endTime: string;
+  description: string;
+  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  status: "pending" | "complete" | "incomplete";
+  meetingLink?: string;
+};
+
 interface Block {
   _id: string;
   dayId: string;
@@ -81,12 +98,12 @@ interface Block {
   updatedAt: string;
   __v: number;
   isStandaloneBlock?: boolean;
+  meetingLink: string;
 }
 
 export default function Component() {
-  const [selectedDay, setSelectedDay] = React.useState<"today" | "tomorrow">(
-    "today"
-  );
+  const { selectedDay, setSelectedDay: setContextSelectedDay } =
+    useAppContext();
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -117,6 +134,11 @@ export default function Component() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [sortedBlocks, setSortedBlocks] = useState<Block[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isEditBlockDialogOpen, setIsEditBlockDialogOpen] = useState(false);
+  const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
 
   const { isLoaded, userId } = useAuth();
 
@@ -156,24 +178,38 @@ export default function Component() {
     });
   };
 
+  // Then modify how you handle day selection in both mobile and desktop views:
+  const handleDayChange = (value: "today" | "tomorrow") => {
+    setContextSelectedDay(value); // This triggers the useUserAndDay hook to fetch/create the day
+  };
+
   const currentDate = selectedDay === "today" ? today : tomorrow;
+
+  const getFilteredBlocks = () => {
+    if (!day || !day.blocks) return [];
+
+    const blocks = [...day.blocks].sort((a: Block, b: Block) => {
+      const timeA = a.startTime
+        ? new Date(`1970-01-01T${a.startTime}:00`)
+        : new Date(0);
+      const timeB = b.startTime
+        ? new Date(`1970-01-01T${b.startTime}:00`)
+        : new Date(0);
+      return timeA.getTime() - timeB.getTime();
+    });
+
+    return blocks.filter((block: Block) =>
+      activeTab === "active"
+        ? block.status !== "complete"
+        : block.status === "complete"
+    );
+  };
 
   useEffect(() => {
     if (day && day.blocks) {
-      const sorted = [...day.blocks]
-        .filter((block: Block) => block.status !== "complete")
-        .sort((a: Block, b: Block) => {
-          const timeA = a.startTime
-            ? new Date(`1970-01-01T${a.startTime}:00`)
-            : new Date(0);
-          const timeB = b.startTime
-            ? new Date(`1970-01-01T${b.startTime}:00`)
-            : new Date(0);
-          return timeA.getTime() - timeB.getTime();
-        });
-      setSortedBlocks(sorted);
+      setSortedBlocks(getFilteredBlocks());
     }
-  }, [day]);
+  }, [day, activeTab]);
 
   useEffect(() => {
     // Only run if we have a promptText and haven't processed it yet
@@ -432,39 +468,6 @@ export default function Component() {
       );
     } catch (error) {
       console.error("Error updating task:", error);
-      // Handle error (e.g., show an error message to the user)
-    }
-  };
-
-  // Modify handleSaveBlock to use mutate without manual sorting
-  const handleSaveBlock = async (updatedBlock: Block) => {
-    console.log("Saving block:", updatedBlock);
-    try {
-      const response = await fetch(`/api/blocks/${updatedBlock._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updatedBlock),
-      });
-      console.log("response", response);
-      if (!response.ok) {
-        throw new Error("Failed to update block");
-      }
-
-      // Update the local state
-      mutate(
-        (currentDay: Day) => ({
-          ...currentDay,
-          blocks: currentDay.blocks.map((block) => {
-            if (typeof block === "string") return block;
-            return block._id === updatedBlock._id ? updatedBlock : block;
-          }),
-        }),
-        false
-      );
-    } catch (error) {
-      console.error("Error updating block:", error);
       // Handle error (e.g., show an error message to the user)
     }
   };
@@ -1041,6 +1044,158 @@ export default function Component() {
     }
   };
 
+  const handleCompleteBlock = async (blockId: string) => {
+    console.log("Completing block:", blockId);
+    try {
+      const response = await fetch(`/api/blocks/${blockId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "complete" }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to complete block");
+      }
+
+      const { updatedBlock } = await response.json();
+
+      // Construct the updated day with the new block
+      const updatedDay = {
+        ...day,
+        blocks: day.blocks.map((block: { _id: string }) => {
+          if (typeof block === "string") return block;
+          return block._id === blockId ? updatedBlock : block;
+        }),
+      };
+
+      // Update the local state immediately with the completed block
+      mutate(
+        (currentDay: Day) => {
+          // Create new blocks array with the updated block
+          const updatedBlocks = currentDay.blocks.map((block) => {
+            if (typeof block === "string") return block;
+            return block._id === blockId ? updatedBlock : block;
+          });
+
+          // Create new sorted blocks for active tab
+          const newSortedBlocks = sortedBlocks.filter(
+            (block) => block._id !== blockId
+          );
+          setSortedBlocks(newSortedBlocks);
+
+          return {
+            ...currentDay,
+            blocks: updatedBlocks,
+          };
+        },
+        false // Don't revalidate immediately
+      );
+
+      // Show success message
+      toast.success("Block completed successfully");
+
+      // Finally, trigger a revalidation to ensure everything is in sync
+      mutate();
+    } catch (error) {
+      console.error("Error completing block:", error);
+      toast.error("Failed to complete block. Please try again.");
+    }
+  };
+
+  const handleCompleteDay = async () => {
+    try {
+      const response = await fetch("/api/complete-day", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ dayId: day._id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to complete day");
+      }
+
+      // Update the local state
+      mutate(
+        (currentDay: any) => ({
+          ...currentDay,
+          completed: true,
+        }),
+        false
+      );
+
+      toast.success("Day completed successfully!");
+    } catch (error) {
+      console.error("Error completing day:", error);
+      toast.error("Failed to complete day. Please try again.");
+    }
+  };
+
+  const handleReactivateDay = async () => {
+    try {
+      const response = await fetch("/api/reactivate-day", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ dayId: day._id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to reactivate day");
+      }
+
+      // Update the local state
+      mutate(
+        (currentDay: any) => ({
+          ...currentDay,
+          completed: false,
+        }),
+        false
+      );
+
+      toast.success("Day reactivated successfully!");
+    } catch (error) {
+      console.error("Error reactivating day:", error);
+      toast.error("Failed to reactivate day. Please try again.");
+    }
+  };
+
+  const handleSaveBlock = async (updatedBlock: EditableBlockFields) => {
+    console.log("Saving block:", updatedBlock);
+    try {
+      const response = await fetch(`/api/blocks/${updatedBlock._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedBlock),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update block");
+      }
+
+      // Update the local state
+      mutate(
+        (currentDay: Day) => ({
+          ...currentDay,
+          blocks: currentDay.blocks.map((block) => {
+            if (typeof block === "string") return block;
+            return block._id === updatedBlock._id ? updatedBlock : block;
+          }),
+        }),
+        false
+      );
+    } catch (error) {
+      console.error("Error updating block:", error);
+      // Handle error (e.g., show an error message to the user)
+    }
+  };
+
   const handleGenerateSchedule = async () => {
     const activeBlocks = sortedBlocks.filter(
       (block) => block.status === "pending"
@@ -1067,6 +1222,23 @@ export default function Component() {
       return;
     }
 
+    // Check if all blocks are completed
+    const allBlocksCompleted = sortedBlocks.every(
+      (block) => block.status === "complete"
+    );
+
+    if (day.completed) {
+      return (
+        <CompletedDayView
+          completedBlocks={sortedBlocks}
+          taskCompletionRate={taskCompletionRate}
+          blockCompletionRate={blockCompletionRate}
+          performanceRating={day.performanceRating}
+          onReactivateDay={handleReactivateDay}
+        />
+      );
+    }
+
     setIsDialogOpen(true);
   };
 
@@ -1088,34 +1260,42 @@ export default function Component() {
       ) : (
         <main className="flex-1 overflow-y-auto">
           {/* Mobile Header */}
-          <div className="md:hidden flex items-center justify-between px-4 py-2 border-b border-gray-200">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-16 p-0">
-                <SidebarContent />
-              </SheetContent>
-            </Sheet>
+          <div className="md:hidden px-4 py-2 border-b border-gray-200">
+            {/* Three column layout */}
+            <div className="flex items-center justify-between">
+              {/* Left: Menu button */}
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-16 p-0">
+                  <SidebarContent />
+                </SheetContent>
+              </Sheet>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8">
-                  {formatShortDate(currentDate)}
-                  <ChevronDown className="ml-1 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setSelectedDay("today")}>
-                  Today ({formatShortDate(today)})
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSelectedDay("tomorrow")}>
-                  Tomorrow ({formatShortDate(tomorrow)})
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              {/* Center: Date selector */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8">
+                    {formatShortDate(currentDate)}
+                    <ChevronDown className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                  <DropdownMenuItem onClick={() => handleDayChange("today")}>
+                    Today ({formatShortDate(today)})
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleDayChange("tomorrow")}>
+                    Tomorrow ({formatShortDate(tomorrow)})
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Right: User button */}
+              <UserButton />
+            </div>
           </div>
 
           <div className="p-4 md:px-8 md:pt-8">
@@ -1127,39 +1307,75 @@ export default function Component() {
                     {formatDate(currentDate)}
                   </p>
                 </div>
-                <Tabs
-                  value={selectedDay}
-                  onValueChange={(value) =>
-                    setSelectedDay(value as "today" | "tomorrow")
-                  }
-                  className="border border-gray-200 rounded-lg"
-                >
-                  <TabsList className="h-9 bg-transparent">
-                    <TabsTrigger
-                      value="today"
-                      className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-l-md"
-                    >
-                      Today
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="tomorrow"
-                      className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-r-md"
-                    >
-                      Tomorrow
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                {/* <UserButton /> */}
+                <div className="flex items-center gap-4">
+                  {/* Desktop Date Selector */}
+                  <Tabs
+                    value={selectedDay}
+                    onValueChange={(value) =>
+                      setContextSelectedDay(value as "today" | "tomorrow")
+                    }
+                    className="border border-gray-200 rounded-lg"
+                  >
+                    <TabsList className="h-9 bg-transparent">
+                      <TabsTrigger
+                        value="today"
+                        className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-l-md"
+                      >
+                        Today
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="tomorrow"
+                        className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-r-md"
+                      >
+                        Tomorrow
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  <UserButton afterSignOutUrl="/" />
+                </div>
               </div>
             </div>
+
+            {day.completed ? (
+              <CompletedDayView
+                completedBlocks={sortedBlocks}
+                taskCompletionRate={taskCompletionRate}
+                blockCompletionRate={blockCompletionRate}
+                performanceRating={day.performanceRating}
+                onReactivateDay={handleReactivateDay}
+              />
+            ) : (
+              <>
+                {allBlocksCompleted && sortedBlocks.length > 0 ? (
+                  <DayCompletionComponent onCompleteDay={handleCompleteDay} />
+                ) : (
+                  // Your existing block rendering logic
+                )}
+              </>
+            )}
+
 
             {/* Action Bar */}
             <div className="flex items-center justify-between gap-4 mb-6">
               <div className="flex items-center space-x-4">
-                <button className="text-sm font-medium text-blue-600 pb-1 border-b-2 border-blue-600">
+                <button
+                  className={`text-sm font-medium pb-1 border-b-2 ${
+                    activeTab === "active"
+                      ? "text-blue-600 border-blue-600"
+                      : "text-gray-500 border-transparent hover:text-blue-600 transition-colors"
+                  }`}
+                  onClick={() => setActiveTab("active")}
+                >
                   Active
                 </button>
-                <button className="text-sm font-medium text-gray-500 hover:text-blue-600 transition-colors">
+                <button
+                  className={`text-sm font-medium pb-1 border-b-2 ${
+                    activeTab === "completed"
+                      ? "text-blue-600 border-blue-600"
+                      : "text-gray-500 border-transparent hover:text-blue-600 transition-colors"
+                  }`}
+                  onClick={() => setActiveTab("completed")}
+                >
                   Completed
                 </button>
               </div>
@@ -1202,198 +1418,305 @@ export default function Component() {
                 </Button>
               </div>
             </div>
-
             <Separator className="mb-6" />
-
-            {/* Cards */}
-            <div className="space-y-4">
-              {sortedBlocks.map((block: Block) => (
-                <Card key={block._id} className="border-gray-200 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-base font-medium">
-                      <div className="flex items-center gap-2">
-                        {block.name}
-                        {block.isStandaloneBlock && (
-                          <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-                            <Sparkles className="mr-1 h-3 w-3" />
-                            AI Optimized
-                          </span>
-                        )}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Info className="h-4 w-4 text-gray-400" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="max-w-xs">{block.description}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </CardTitle>
-                    <div className="flex items-center space-x-2">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Clock className="mr-1.5 h-3.5 w-3.5" />
-                        {block.startTime} - {block.endTime}
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 p-0"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>Edit Block</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteBlock(block)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            <span>Delete Block</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {block.tasks.map((task: Task) => (
-                      <Card
-                        key={task._id}
-                        className="mb-3 border-gray-200 bg-gradient-to-br from-white to-slate-50 relative overflow-hidden"
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-center space-x-4">
-                            <GripVertical className="h-5 w-5 text-gray-400 cursor-move flex-shrink-0" />
-                            <Checkbox
-                              id={`task-${task._id}`}
-                              checked={task.completed}
-                              onCheckedChange={(checked) =>
-                                handleTaskCompletion(
-                                  task._id,
-                                  checked as boolean
-                                )
-                              }
-                              className="flex-shrink-0 mt-0.5"
-                              disabled={
-                                updatingTasks && updatingTaskId === task._id
-                              }
-                            />
-
-                            <div className="flex-grow min-w-0">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2 min-w-0">
-                                  <label
-                                    htmlFor={`task-${task._id}`}
-                                    className="text-sm font-medium text-gray-900 truncate leading-none pt-0.5"
-                                  >
-                                    {task.name}
-                                  </label>
-                                  <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 flex-shrink-0">
-                                    {task.duration}min
-                                  </span>
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger>
-                                        <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 flex-shrink-0">
-                                          {task.type}
-                                        </span>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p className="max-w-xs">
-                                          {task.description}
-                                        </p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </div>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger className="focus:outline-none">
-                                    <MoreVertical className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                      onSelect={(e) => {
-                                        e.preventDefault(); // Prevent any default menu behavior
-                                        handleEditTask(task);
-                                      }}
-                                    >
-                                      <Edit className="mr-2 h-4 w-4" />
-                                      Edit Task
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        handleRemoveTaskFromBlock(task, block)
-                                      }
-                                    >
-                                      <Clock className="mr-2 h-4 w-4" />
-                                      Remove from Block
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        handleDeleteTask(task, block)
-                                      }
-                                      className="text-red-600"
-                                    >
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      Delete Task
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                        <div
-                          className={`absolute top-0 right-0 bottom-0 w-1 ${
-                            task.priority === "High"
-                              ? "bg-red-500"
-                              : task.priority === "Medium"
-                              ? "bg-yellow-500"
-                              : "bg-green-500"
-                          }`}
-                          aria-label="Priority Indicator"
-                        />
-                      </Card>
-                    ))}
-                    <div className="flex justify-between items-center mt-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-sm"
-                        onClick={() => handleAddTask(block._id)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Task
-                      </Button>
-                      <div className="space-x-2">
+            {sortedBlocks.length === 0 ? (
+              <div className="flex h-[600px] w-full max-w-[100vw] px-2 md:px-0">
+                <Card className="flex w-full bg-gray-50">
+                  {" "}
+                  {/* Changed from bg-muted/50 to bg-gray-50 for softer background */}
+                  <CardContent className="flex flex-1 flex-col items-center justify-center py-10 text-center">
+                    <ClipboardList className="mb-4 h-16 w-16 text-blue-600" />{" "}
+                    {/* Changed from text-muted-foreground to text-blue-600 to match app accent color */}
+                    <h3 className="mb-2 text-2xl font-semibold text-gray-900">
+                      {activeTab === "active"
+                        ? "No Blocks Scheduled"
+                        : "No Completed Blocks"}
+                    </h3>
+                    <p className="mb-4 max-w-md text-gray-500">
+                      {activeTab === "active"
+                        ? "Start planning your day by adding time blocks, routines, or events. You can also generate a schedule based on your tasks and preferences."
+                        : "Complete some blocks to see them here. You can mark a block as complete when you've finished all its tasks."}
+                    </p>
+                    {activeTab === "active" && (
+                      <div className="flex flex-col gap-4 sm:flex-row">
                         <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-sm text-green-600 hover:bg-green-50 hover:text-green-700"
+                          onClick={handleGenerateSchedule}
+                          className="bg-blue-600 hover:bg-blue-700"
                         >
-                          <Check className="h-4 w-4 mr-1" />
-                          Complete
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Generate Schedule
                         </Button>
                         <Button
                           variant="outline"
-                          size="sm"
-                          className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                          onClick={() => setIsDialogOpen(true)}
+                          className="border-gray-200 hover:bg-gray-50"
                         >
-                          <Clock className="h-4 w-4 mr-1" />
-                          Start
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Add First Block
                         </Button>
                       </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {sortedBlocks.map((block: Block) => (
+                  <Card key={block._id} className="border-gray-200 shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-base font-medium">
+                        <div className="flex items-center gap-2">
+                          {block.name}
+                          {block.isStandaloneBlock && (
+                            <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                              <Sparkles className="mr-1 h-3 w-3" />
+                              AI Optimized
+                            </span>
+                          )}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="h-4 w-4 text-gray-400" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="max-w-xs">{block.description}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </CardTitle>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex items-center text-sm text-gray-500">
+                          <Clock className="mr-1.5 h-3.5 w-3.5" />
+                          {block.startTime} - {block.endTime}
+                        </div>
+                        <Dialog
+                          open={isEditBlockDialogOpen}
+                          onOpenChange={setIsEditBlockDialogOpen}
+                        >
+                          <DropdownMenu modal={false}>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 p-0"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DialogTrigger asChild>
+                                <DropdownMenuItem
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    setSelectedBlock(block);
+                                    setIsEditBlockDialogOpen(true); // Added this line
+                                  }}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  <span>Edit Block</span>
+                                </DropdownMenuItem>
+                              </DialogTrigger>
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteBlock(block)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete Block</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
+                          <DialogContent>
+                            {selectedBlock && (
+                              <EditBlockDialog
+                                block={selectedBlock}
+                                onClose={() => setIsEditBlockDialogOpen(false)}
+                                onSave={async (updatedBlock) => {
+                                  await handleSaveBlock(updatedBlock);
+                                  setIsEditBlockDialogOpen(false);
+                                }}
+                              />
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {block.tasks.map((task: Task) => (
+                        <Card
+                          key={task._id}
+                          className="mb-3 border-gray-200 bg-gradient-to-br from-white to-slate-50 relative overflow-hidden"
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center space-x-4">
+                              <GripVertical className="h-5 w-5 text-gray-400 cursor-move flex-shrink-0" />
+                              <Checkbox
+                                id={`task-${task._id}`}
+                                checked={task.completed}
+                                onCheckedChange={(checked) =>
+                                  handleTaskCompletion(
+                                    task._id,
+                                    checked as boolean
+                                  )
+                                }
+                                className="flex-shrink-0 mt-0.5"
+                                disabled={
+                                  updatingTasks && updatingTaskId === task._id
+                                }
+                              />
+
+                              <div className="flex-grow min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2 min-w-0">
+                                    <label
+                                      htmlFor={`task-${task._id}`}
+                                      className="text-sm font-medium text-gray-900 truncate leading-none pt-0.5"
+                                    >
+                                      {task.name}
+                                    </label>
+                                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 flex-shrink-0">
+                                      {task.duration}min
+                                    </span>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger>
+                                          <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 flex-shrink-0">
+                                            {task.type}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p className="max-w-xs">
+                                            {task.description}
+                                          </p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </div>
+                                  <Dialog
+                                    open={isEditDialogOpen}
+                                    onOpenChange={setIsEditDialogOpen}
+                                  >
+                                    <DropdownMenu modal={false}>
+                                      <DropdownMenuTrigger className="focus:outline-none">
+                                        <MoreVertical className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DialogTrigger asChild>
+                                          <DropdownMenuItem
+                                            onSelect={(e) => {
+                                              e.preventDefault(); // Prevent the dropdown from closing immediately
+                                              setIsEditDialogOpen(true); // Open the dialog
+                                            }}
+                                          >
+                                            <Edit className="mr-2 h-4 w-4" />
+                                            Edit Task
+                                          </DropdownMenuItem>
+                                        </DialogTrigger>
+                                        <DropdownMenuItem
+                                          onClick={() =>
+                                            handleRemoveTaskFromBlock(
+                                              task,
+                                              block
+                                            )
+                                          }
+                                        >
+                                          <Clock className="mr-2 h-4 w-4" />
+                                          Remove from Block
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() =>
+                                            handleDeleteTask(task, block)
+                                          }
+                                          className="text-red-600"
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          Delete Task
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    <DialogContent>
+                                      <EditTaskDialog
+                                        task={task}
+                                        onClose={() =>
+                                          setIsEditDialogOpen(false)
+                                        }
+                                        onSave={async (updatedTask) => {
+                                          await handleSaveTask(updatedTask);
+                                          setIsEditDialogOpen(false); // Close the dialog after saving
+                                        }}
+                                      />
+                                    </DialogContent>
+                                  </Dialog>
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                          <div
+                            className={`absolute top-0 right-0 bottom-0 w-1 ${
+                              task.priority === "High"
+                                ? "bg-red-500"
+                                : task.priority === "Medium"
+                                ? "bg-yellow-500"
+                                : "bg-green-500"
+                            }`}
+                            aria-label="Priority Indicator"
+                          />
+                        </Card>
+                      ))}
+                      <div className="flex justify-between items-center mt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-sm"
+                          onClick={() => handleAddTask(block._id)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add Task
+                        </Button>
+                        <div className="space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-sm text-green-600 hover:bg-green-50 hover:text-green-700"
+                            onClick={() => handleCompleteBlock(block._id)}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Complete
+                          </Button>
+                          {block.meetingLink ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                              asChild
+                            >
+                              <a
+                                href={block.meetingLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center"
+                              >
+                                <LinkIcon className="h-4 w-4 mr-1" />
+                                Join Meeting
+                              </a>
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                            >
+                              <Clock className="h-4 w-4 mr-1" />
+                              Start
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
 
           <footer className="mt-8 pt-4 border-t border-gray-200 px-4 md:px-8">
@@ -1425,14 +1748,6 @@ export default function Component() {
         blockId={"selectedBlockId && selectedBlockId"}
         updateDay={() => {}}
       />
-      {selectedTask && (
-        <EditTaskDialog
-          task={selectedTask}
-          isOpen={isEditTaskDialogOpen}
-          onClose={() => setIsEditTaskDialogOpen(false)}
-          onSave={handleSaveTask}
-        />
-      )}
 
       <AddBlockDialog
         isOpen={isAddBlockDialogOpen}

@@ -28,6 +28,7 @@ export interface Event {
   priority: string;
   isRecurring: boolean;
   days: string[];
+  meetingLink: string | null;
 }
 
 export interface Project {

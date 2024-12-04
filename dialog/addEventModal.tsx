@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, CheckCircle, Clock } from "lucide-react";
+import { PlusCircle, CheckCircle, Clock, LinkIcon } from "lucide-react";
 import { Event } from "@/app/context/models";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
@@ -49,6 +49,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
     priority: "",
     startTime: "",
     endTime: "",
+    meetingLink: "", // New field for meeting link
   });
   const { userId } = useAuth();
 
@@ -129,6 +130,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
         startTime: "",
         endTime: "",
         priority: "",
+        meetingLink: "", // New field for meeting link
       });
 
       // Close the modal
@@ -258,6 +260,18 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                 />
               </div>
             </div>
+            <div className="space-y-2">
+              <div className="relative flex items-center">
+                <LinkIcon className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <Input
+                  name="meetingLink"
+                  placeholder="Meeting link (optional)"
+                  value={newEvent.meetingLink}
+                  onChange={handleInputChange}
+                  className="h-8 pl-8"
+                />
+              </div>
+            </div>
             <Select
               value={newEvent.priority}
               onValueChange={handleSelectChange("priority")}
@@ -271,7 +285,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                 <SelectItem value="High">High</SelectItem>
               </SelectContent>
             </Select>
-            <div className="flex justify-end gap-2 pt-2 border-t">
+            <div className="flex justify-end gap-2 pt-4 mt-4 border-t">
               <Button variant="outline" onClick={onClose} className="h-8">
                 Cancel
               </Button>
@@ -302,6 +316,17 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                           <p className="text-xs text-gray-500">
                             {event.startTime} - {event.endTime}
                           </p>
+                          {event.meetingLink && (
+                            <a
+                              href={event.meetingLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                            >
+                              <LinkIcon className="h-3 w-3" />
+                              Join Meeting
+                            </a>
+                          )}
                         </div>
                         <Button
                           size="sm"

@@ -7,10 +7,11 @@ export interface IEvent extends Document {
   date: Date;
   startTime: string;
   endTime: string;
-  block?: mongoose.Types.ObjectId; // Make block optional
+  block?: mongoose.Types.ObjectId;
   priority?: string;
   isRecurring?: boolean;
   days?: string[];
+  meetingLink?: string;
 }
 
 const EventSchema: Schema = new Schema(
@@ -24,16 +25,16 @@ const EventSchema: Schema = new Schema(
     block: {
       type: Schema.Types.ObjectId,
       ref: "Block",
-      required: false, // Make block not required
+      required: false,
     },
     priority: { type: String, enum: ["Low", "Medium", "High"] },
     isRecurring: { type: Boolean, default: false },
     days: [String],
+    meetingLink: { type: String, required: false },
   },
   { timestamps: true }
 );
 
-// Delete the model if it exists to force a reload
 if (mongoose.models.Event) {
   delete mongoose.models.Event;
 }
