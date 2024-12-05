@@ -79,6 +79,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAppContext } from "@/app/context/AppContext";
 import { useRouter } from "next/navigation";
+import {
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+  useAuth,
+} from "@clerk/nextjs";
 
 export default function Component() {
   const [inputValue, setInputValue] = React.useState("");
@@ -128,18 +136,22 @@ export default function Component() {
               </Link>
             ))}
             <div className="flex items-center gap-2">
-              <Button
-                className="bg-blue-600 text-white hover:bg-blue-700"
-                size="sm"
-              >
-                Sign Up
-              </Button>
-              <Button
-                className="bg-white text-blue-600 hover:bg-blue-50 border border-blue-600"
-                size="sm"
-              >
-                Sign In
-              </Button>
+              <SignUpButton mode="modal">
+                <Button
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  size="sm"
+                >
+                  Sign Up
+                </Button>
+              </SignUpButton>
+              <SignInButton mode="modal">
+                <Button
+                  className="bg-white text-blue-600 hover:bg-blue-50 border border-blue-600"
+                  size="sm"
+                >
+                  Sign In
+                </Button>
+              </SignInButton>
             </div>
           </nav>
         </div>

@@ -11,6 +11,7 @@ export interface Task {
   project: string | null; // Allow project to be null
   routine: string | null; // Allow routine to be
   projectId: string | null;
+  type: "deep-work" | "planning" | "break" | "admin" | "collaboration"; //
 }
 
 export interface ProjectTask extends Task {

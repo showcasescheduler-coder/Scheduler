@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
       duration: taskData.duration,
       deadline: taskData.deadline,
       userId: userId,
+      type: taskData.type,
     };
 
     const task = new Task(taskToCreate);

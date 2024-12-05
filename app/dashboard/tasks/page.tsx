@@ -1,4 +1,5 @@
-import React from "react";
+"use client";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Brain,
   LayoutDashboard,
@@ -29,56 +30,190 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SidebarContent } from "@/app/components/SideBar";
+import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useAppContext } from "@/app/context/AppContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { format, parseISO } from "date-fns";
 
-function SidebarContent() {
-  return (
-    <div className="flex flex-col items-center py-6 space-y-8">
-      <div className="flex flex-col items-center gap-2">
-        <Brain className="h-8 w-8 text-blue-600" />
-      </div>
-      <nav className="space-y-8">
-        <LayoutDashboard className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <FolderKanban className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <ListTodo className="h-5 w-5 text-blue-600" />
-        <Calendar className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <Repeat className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <BarChart2 className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-      </nav>
-    </div>
-  );
+interface Task {
+  _id: string;
+  name: string;
+  description?: string;
+  priority: string;
+  duration: number;
+  deadline: string;
+  completed: boolean;
+  status?: string; // Make status optional
+  type?: "deep-work" | "planning" | "break" | "admin" | "collaboration"; // Make
 }
 
 export default function StandaloneTasks() {
-  const tasks = [
-    {
-      id: 1,
-      name: "Have lunch with mum",
-      description: "Meet mum at the coffe shop",
-      deadline: "Today at 12:00 PM",
-      priority: "Medium",
-      duration: "1h",
-      status: "upcoming",
-    },
-    {
-      id: 2,
-      name: "Review project proposal",
-      description: "Go through the Q4 marketing proposal",
-      deadline: "Today at 3:00 PM",
-      priority: "High",
-      duration: "2h",
-      status: "in-progress",
-    },
-    // Add more tasks as needed
-  ];
+  const { userId } = useAuth();
+  const router = useRouter();
+  const { tasks, addTask, setTasks } = useAppContext();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [newTask, setNewTask] = useState<Task>({
+    _id: "",
+    name: "",
+    description: "",
+    priority: "Medium",
+    duration: 5,
+    deadline: "",
+    completed: false,
+    type: "deep-work", // Set a default value
+  });
 
-  const getPriorityColor = (priority: string) => {
-    const colors = {
+  // Fetch tasks on component mount
+  useEffect(() => {
+    const fetchTasks = async () => {
+      if (!userId) return;
+      try {
+        const response = await fetch(`/api/tasks?userId=${userId}`);
+        if (!response.ok) throw new Error("Failed to fetch tasks");
+        const data = await response.json();
+        setTasks(data);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        alert("Failed to fetch tasks. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, [userId, setTasks]);
+
+  const handlePriorityChange = (value: string) => {
+    setNewTask((prev) => ({ ...prev, priority: value }));
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewTask((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddTask = async () => {
+    if (!userId) return;
+    console.log("this is the new task im sending 0", newTask);
+    try {
+      const response = await fetch("/api/tasks/stand-alone-tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...newTask, userId }),
+      });
+
+      if (!response.ok) throw new Error("Failed to create task");
+
+      const createdTask = await response.json();
+      addTask(createdTask.task);
+      setIsDialogOpen(false);
+      setNewTask({
+        _id: "",
+        name: "",
+        description: "",
+        priority: "Medium",
+        duration: 5,
+        deadline: "",
+        completed: false,
+        type: "deep-work", // Reset to default type
+      });
+      alert("Task created successfully!");
+    } catch (error) {
+      console.error("Error creating task:", error);
+      alert("Failed to create task. Please try again.");
+    }
+  };
+
+  const handleTypeChange = (value: string) => {
+    console.log("Type selected:", value); // Add this for debugging
+    setNewTask((prev) => {
+      const updatedTask = {
+        ...prev,
+        type: value as Task["type"],
+      };
+      console.log("Updated task:", updatedTask); // Add this for debugging
+      return updatedTask;
+    });
+  };
+
+  const handleDelete = async (taskId: string) => {
+    if (!userId) return;
+    try {
+      const response = await fetch(
+        `/api/tasks/stand-alone-tasks?id=${taskId}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to delete task");
+
+      setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
+      alert("Task deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      alert("Failed to delete task. Please try again.");
+    }
+  };
+
+  const handleEdit = (taskId: string) => {
+    router.push(`/dashboard/tasks/${taskId}`);
+  };
+
+  const standaloneTasks = useMemo(() => {
+    return tasks.filter(
+      (task) =>
+        !task.projectId && !task.isRoutineTask && task.completed !== true
+    );
+  }, [tasks]);
+
+  const getPriorityColor = (priority: string): string => {
+    const colors: Record<string, string> = {
       High: "text-red-800 bg-red-100",
       Medium: "text-yellow-800 bg-yellow-100",
       Low: "text-green-800 bg-green-100",
     };
-    return colors[priority];
+    return colors[priority] || colors.Medium; // Provide a default value
   };
+
+  const getTypeColor = (type: Task["type"]): string => {
+    const colors: Record<string, string> = {
+      "deep-work": "text-purple-800 bg-purple-100",
+      planning: "text-blue-800 bg-blue-100",
+      break: "text-green-800 bg-green-100",
+      admin: "text-gray-800 bg-gray-100",
+      collaboration: "text-orange-800 bg-orange-100",
+    };
+    return type ? colors[type] : colors["admin"];
+  };
+
+  if (isLoading) {
+    return (
+      <main className="flex-1 flex items-center justify-center">
+        <p className="text-lg text-center">Loading...</p>
+      </main>
+    );
+  }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -107,10 +242,120 @@ export default function StandaloneTasks() {
                 Manage your standalone tasks
               </p>
             </div>
-            <Button>
-              <Plus className="h-4 w-4 md:mr-2" />
-              <span className="hidden md:inline">Add Task</span>
-            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Add Task</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Task</DialogTitle>
+                  <DialogDescription>
+                    Enter the details for the new standalone task.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">
+                      Name
+                    </Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={newTask.name}
+                      onChange={handleInputChange}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="description" className="text-right">
+                      Description
+                    </Label>
+                    <Input
+                      id="description"
+                      name="description"
+                      value={newTask.description}
+                      onChange={handleInputChange}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="deadline" className="text-right">
+                      Deadline
+                    </Label>
+                    <Input
+                      id="deadline"
+                      name="deadline"
+                      type="date"
+                      value={newTask.deadline}
+                      onChange={handleInputChange}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="priority" className="text-right">
+                      Priority
+                    </Label>
+                    <Select
+                      value={newTask.priority}
+                      onValueChange={handlePriorityChange}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Low">Low</SelectItem>
+                        <SelectItem value="Medium">Medium</SelectItem>
+                        <SelectItem value="High">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="duration" className="text-right">
+                      Duration (minutes)
+                    </Label>
+                    <Input
+                      id="duration"
+                      name="duration"
+                      type="number"
+                      min="5"
+                      max="240"
+                      value={newTask.duration}
+                      onChange={handleInputChange}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="type" className="text-right">
+                      Task Type
+                    </Label>
+                    <Select
+                      value={newTask.type || "deep-work"} // Provide a default value
+                      onValueChange={handleTypeChange}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select task type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="deep-work">Deep Work</SelectItem>
+                        <SelectItem value="planning">Planning</SelectItem>
+                        <SelectItem value="break">Break</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="collaboration">
+                          Collaboration
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button onClick={handleAddTask}>Add Task</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Tabs */}
@@ -144,15 +389,18 @@ export default function StandaloneTasks() {
                     <TableHead>Due</TableHead>
                     <TableHead className="w-[100px]">Priority</TableHead>
                     <TableHead className="w-[100px]">Duration</TableHead>
+                    <TableHead className="w-[120px]">Type</TableHead>
                     <TableHead className="w-[70px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tasks.map((task) => (
-                    <TableRow key={task.id} className="group">
+                  {standaloneTasks.map((task) => (
+                    <TableRow key={task._id} className="group">
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
-                          {getStatusIcon(task.status)}
+                          {task.completed && (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          )}
                           <span>{task.name}</span>
                         </div>
                       </TableCell>
@@ -160,7 +408,8 @@ export default function StandaloneTasks() {
                         {task.description}
                       </TableCell>
                       <TableCell className="text-gray-500">
-                        {task.deadline}
+                        {task.deadline &&
+                          format(parseISO(task.deadline), "MMM dd, yyyy")}
                       </TableCell>
                       <TableCell>
                         <span
@@ -172,7 +421,21 @@ export default function StandaloneTasks() {
                         </span>
                       </TableCell>
                       <TableCell className="text-gray-500">
-                        {task.duration}
+                        {task.duration}m
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(
+                            task.type
+                          )}`}
+                        >
+                          {task.type
+                            ? task.type
+                                .replace("-", " ")
+                                .charAt(0)
+                                .toUpperCase() + task.type.slice(1)
+                            : "-"}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -185,8 +448,15 @@ export default function StandaloneTasks() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600">
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(task._id)}
+                            >
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(task._id)}
+                              className="text-red-600"
+                            >
                               Delete
                             </DropdownMenuItem>
                             <DropdownMenuItem>
@@ -204,13 +474,15 @@ export default function StandaloneTasks() {
 
           {/* Task List - Mobile */}
           <div className="md:hidden space-y-4">
-            {tasks.map((task) => (
-              <Card key={task.id} className="group">
+            {standaloneTasks.map((task) => (
+              <Card key={task._id} className="group">
                 <div className="p-4 space-y-4">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        {getStatusIcon(task.status)}
+                        {task.completed && (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        )}
                         <span className="font-medium">{task.name}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-500">

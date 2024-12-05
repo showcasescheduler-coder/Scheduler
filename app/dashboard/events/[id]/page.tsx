@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Calendar,
@@ -30,26 +30,107 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { SidebarContent } from "@/app/components/SideBar";
+import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 
-function SidebarContent() {
-  return (
-    <div className="flex flex-col items-center py-6 space-y-8">
-      <div className="flex flex-col items-center gap-2">
-        <Brain className="h-8 w-8 text-blue-600" />
-      </div>
-      <nav className="space-y-8">
-        <LayoutDashboard className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <FolderKanban className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <ListTodo className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <Calendar className="h-5 w-5 text-blue-600" />
-        <Repeat className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <BarChart2 className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-      </nav>
-    </div>
-  );
+interface EventDetailsProps {
+  params: { id: string };
 }
 
-export default function EventDetails() {
+export default function EventDetails({ params: { id } }: EventDetailsProps) {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [event, setEvent] = useState<{
+    name: string;
+    description: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    isRecurring: boolean;
+    days: string[];
+    meetingLink: string | null;
+    status: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        const response = await fetch(`/api/events/${id}`);
+        if (!response.ok) throw new Error("Failed to fetch event");
+        const data = await response.json();
+        setEvent(data);
+      } catch (error) {
+        console.error("Error fetching event:", error);
+        toast.error("Failed to load event");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEvent();
+  }, [id]);
+
+  const handleSave = async () => {
+    if (!event) return;
+
+    try {
+      const response = await fetch(`/api/events/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(event),
+      });
+
+      if (!response.ok) throw new Error("Failed to update event");
+
+      toast.success("Event updated successfully");
+    } catch (error) {
+      console.error("Error updating event:", error);
+      toast.error("Failed to update event");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this event?")) return;
+
+    try {
+      const response = await fetch(`/api/events/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete event");
+
+      toast.success("Event deleted successfully");
+      router.push("/dashboard/events");
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      toast.error("Failed to delete event");
+    }
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    if (!event) return;
+    setEvent((prev) => {
+      if (!prev) return prev;
+      return { ...prev, [field]: value };
+    });
+  };
+
+  const handleDayToggle = (day: string) => {
+    if (!event) return;
+    setEvent((prev) => {
+      if (!prev) return prev;
+      const newDays = prev.days.includes(day)
+        ? prev.days.filter((d) => d !== day)
+        : [...prev.days, day];
+      return { ...prev, days: newDays };
+    });
+  };
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!event) return <div>Event not found</div>;
+
   return (
     <div className="flex h-screen bg-white">
       <aside className="hidden md:block w-16 border-r border-gray-200">
@@ -74,27 +155,35 @@ export default function EventDetails() {
                     </SheetContent>
                   </Sheet>
                 </div>
-                <Button variant="ghost" size="icon" className="hidden md:flex">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hidden md:flex"
+                  onClick={() => router.push("/dashboard/events")}
+                >
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div>
                   <div className="flex items-center gap-2">
                     <h1 className="text-xl md:text-2xl font-semibold">
-                      Team Weekly Sync
+                      {event.name}
                     </h1>
                     <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
-                      Upcoming
+                      {event.status || "Upcoming"}
                     </span>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {/* Join button for virtual meetings */}
-                <Button variant="outline" size="sm">
-                  <Video className="h-4 w-4 mr-2" />
-                  Join Meeting
+                {event.meetingLink && (
+                  <Button variant="outline" size="sm">
+                    <Video className="h-4 w-4 mr-2" />
+                    Join Meeting
+                  </Button>
+                )}
+                <Button size="sm" onClick={handleSave}>
+                  Save Changes
                 </Button>
-                <Button size="sm">Save Changes</Button>
               </div>
             </div>
           </div>
@@ -110,15 +199,17 @@ export default function EventDetails() {
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       <div className="flex items-center gap-1">
                         <Clock className="h-4 w-4" />
-                        <span>10:00 AM - 11:00 AM</span>
+                        <span>
+                          {event.startTime} - {event.endTime}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
-                        <span>Every Monday</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>8 attendees</span>
+                        <span>
+                          {event.isRecurring
+                            ? event.days.join(", ")
+                            : event.date}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -128,7 +219,12 @@ export default function EventDetails() {
               <Card>
                 <CardContent className="p-4">
                   <div className="space-y-2">
-                    <Select defaultValue="upcoming">
+                    <Select
+                      value={event.status || "upcoming"}
+                      onValueChange={(value) =>
+                        handleInputChange("status", value)
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
@@ -149,105 +245,112 @@ export default function EventDetails() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium">Event Title</label>
-                    <Input defaultValue="Team Weekly Sync" className="mt-2" />
+                    <Input
+                      value={event.name}
+                      onChange={(e) =>
+                        handleInputChange("name", e.target.value)
+                      }
+                      className="mt-2"
+                    />
                   </div>
 
                   <div>
                     <label className="text-sm font-medium">Description</label>
                     <Textarea
-                      defaultValue="Weekly team sync to discuss project progress and upcoming tasks."
+                      value={event.description}
+                      onChange={(e) =>
+                        handleInputChange("description", e.target.value)
+                      }
                       className="mt-2"
                     />
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">Date</label>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Input
-                          type="date"
-                          defaultValue="2024-11-23"
-                          className="flex-1"
-                        />
-                        <Button variant="outline" size="icon">
-                          <Calendar className="h-4 w-4" />
-                        </Button>
+                  {!event.isRecurring ? (
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium">Date</label>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Input
+                            type="date"
+                            value={event.date}
+                            onChange={(e) =>
+                              handleInputChange("date", e.target.value)
+                            }
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Time</label>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Input
+                            type="time"
+                            value={event.startTime}
+                            onChange={(e) =>
+                              handleInputChange("startTime", e.target.value)
+                            }
+                            className="flex-1"
+                          />
+                          <Input
+                            type="time"
+                            value={event.endTime}
+                            onChange={(e) =>
+                              handleInputChange("endTime", e.target.value)
+                            }
+                            className="flex-1"
+                          />
+                        </div>
                       </div>
                     </div>
-
-                    <div>
-                      <label className="text-sm font-medium">Time</label>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Input
-                          type="time"
-                          defaultValue="10:00"
-                          className="flex-1"
-                        />
-                        <Input
-                          type="time"
-                          defaultValue="11:00"
-                          className="flex-1"
-                        />
+                  ) : (
+                    <div className="space-y-4">
+                      <label className="text-sm font-medium">
+                        Recurring Days
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                          "Monday",
+                          "Tuesday",
+                          "Wednesday",
+                          "Thursday",
+                          "Friday",
+                          "Saturday",
+                          "Sunday",
+                        ].map((day) => (
+                          <div
+                            key={day}
+                            className="flex items-center space-x-2"
+                          >
+                            <Checkbox
+                              id={day}
+                              checked={event.days.includes(day)}
+                              onCheckedChange={() => handleDayToggle(day)}
+                            />
+                            <label htmlFor={day} className="text-sm">
+                              {day}
+                            </label>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="space-y-4 pt-4 border-t border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="virtual" className="text-sm font-medium">
-                        Virtual Meeting
-                      </Label>
-                      <Switch id="virtual" defaultChecked />
-                    </div>
-
                     <div>
                       <label className="text-sm font-medium">
                         Meeting Link
                       </label>
                       <div className="flex items-center gap-2 mt-2">
-                        <Input defaultValue="https://meet.google.com/abc-defg-hij" />
+                        <Input
+                          value={event.meetingLink || ""}
+                          onChange={(e) =>
+                            handleInputChange("meetingLink", e.target.value)
+                          }
+                          placeholder="Add meeting link (optional)"
+                        />
                         <Button variant="outline" size="icon">
                           <LinkIcon className="h-4 w-4" />
                         </Button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium">Location</label>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Input placeholder="Add a location (optional)" />
-                        <Button variant="outline" size="icon">
-                          <MapPin className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 pt-4 border-t border-gray-100">
-                    <div>
-                      <label className="text-sm font-medium">Frequency</label>
-                      <Select defaultValue="weekly">
-                        <SelectTrigger className="mt-2">
-                          <SelectValue placeholder="Select frequency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="one-off">One-off</SelectItem>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="weekly">Weekly</SelectItem>
-                          <SelectItem value="monthly">Monthly</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium">Attendees</label>
-                      <div className="mt-2 space-y-2">
-                        {/* This would typically be a more complex component for managing attendees */}
-                        <Input placeholder="Add attendees by email" />
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <Users className="h-4 w-4" />
-                          <span>8 people attending</span>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -256,19 +359,24 @@ export default function EventDetails() {
             </Card>
 
             {/* Danger Zone */}
+
             <Card className="border-red-200">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-medium text-red-600">
-                      Cancel Event
+                      Delete Event
                     </h3>
                     <p className="text-sm text-gray-500">
-                      Cancel this event and notify all attendees
+                      Permanently delete this event
                     </p>
                   </div>
-                  <Button variant="destructive" size="sm">
-                    Cancel Event
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleDelete}
+                  >
+                    Delete Event
                   </Button>
                 </div>
               </CardContent>

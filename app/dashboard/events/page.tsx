@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Brain,
   LayoutDashboard,
@@ -24,118 +24,275 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
   DropdownMenuItem,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { SidebarContent } from "@/app/components/SideBar";
+import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
+import { format, parseISO } from "date-fns";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type EventType = "meeting" | "appointment";
 type EventStatus = "upcoming" | "completed" | "cancelled";
 type EventFrequency = "one-off" | "recurring";
 
-interface Event {
-  id: number;
-  title: string;
-  type: EventType;
+export interface Event {
+  _id: string;
+  name: string;
+  description: string;
   date: string;
-  time: string;
-  attendees?: number;
-  isVirtual?: boolean;
-  location?: string;
-  status: EventStatus;
-  frequency: EventFrequency;
-  recurrence?: string;
+  startTime: string;
+  endTime: string;
+  block: string | null;
+  priority: string;
+  isRecurring: boolean;
+  days: string[];
+  meetingLink: string | null;
+  status: string;
+}
+
+interface NewEvent {
+  name: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  isRecurring: boolean;
+  days: string[];
 }
 
 type GroupedEvents = {
   [key: string]: Event[];
 };
 
-type StatusFilter = "upcoming" | "completed";
+// Change the StatusFilter type
+type StatusFilter = "upcoming" | "past";
 type FrequencyFilter = "all" | EventFrequency;
 
-// interface FrequencyOption {
-//   [key in FrequencyFilter]: string;
-// }
-
-function SidebarContent() {
-  return (
-    <div className="flex flex-col items-center py-6 space-y-8">
-      <div className="flex flex-col items-center gap-2">
-        <Brain className="h-8 w-8 text-blue-600" />
-      </div>
-      <nav className="space-y-8">
-        <LayoutDashboard className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <FolderKanban className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <ListTodo className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <CalendarIcon className="h-5 w-5 text-blue-600" />
-        <Repeat className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <BarChart2 className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-      </nav>
-    </div>
-  );
-}
-
 export default function EventsPage() {
-  const [statusFilter, setStatusFilter] =
-    React.useState<StatusFilter>("upcoming");
-  const [frequencyFilter, setFrequencyFilter] =
-    React.useState<FrequencyFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("upcoming");
+  const [frequencyFilter, setFrequencyFilter] = useState<
+    "all" | "one-off" | "recurring"
+  >("all");
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { userId } = useAuth();
+  const router = useRouter();
+  const [newEvent, setNewEvent] = useState<NewEvent>({
+    name: "",
+    description: "",
+    date: "",
+    startTime: "",
+    endTime: "",
+    isRecurring: false,
+    days: [],
+  });
 
-  const events: Event[] = [
-    {
-      id: 1,
-      title: "Team Weekly Sync",
-      type: "meeting",
-      date: "Today",
-      time: "10:00 AM - 11:00 AM",
-      attendees: 8,
-      isVirtual: true,
-      status: "upcoming",
-      frequency: "recurring",
-      recurrence: "Weekly",
-    },
-    {
-      id: 2,
-      title: "Client Presentation",
-      type: "meeting",
-      date: "Today",
-      time: "2:00 PM - 3:30 PM",
-      attendees: 12,
-      isVirtual: true,
-      status: "upcoming",
-      frequency: "one-off",
-    },
-    {
-      id: 3,
-      title: "Dentist Appointment",
-      type: "appointment",
-      date: "Tomorrow",
-      time: "9:00 AM - 10:00 AM",
-      location: "Dental Clinic",
-      status: "upcoming",
-      frequency: "one-off",
-    },
-  ];
+  // const events: Event[] = [
+  //   {
+  //     id: 1,
+  //     title: "Team Weekly Sync",
+  //     type: "meeting",
+  //     date: "Today",
+  //     time: "10:00 AM - 11:00 AM",
+  //     attendees: 8,
+  //     isVirtual: true,
+  //     status: "upcoming",
+  //     frequency: "recurring",
+  //     recurrence: "Weekly",
+  //   },
+  //   {
+  //     id: 2,
+  //     title: "Client Presentation",
+  //     type: "meeting",
+  //     date: "Today",
+  //     time: "2:00 PM - 3:30 PM",
+  //     attendees: 12,
+  //     isVirtual: true,
+  //     status: "upcoming",
+  //     frequency: "one-off",
+  //   },
+  //   {
+  //     id: 3,
+  //     title: "Dentist Appointment",
+  //     type: "appointment",
+  //     date: "Tomorrow",
+  //     time: "9:00 AM - 10:00 AM",
+  //     location: "Dental Clinic",
+  //     status: "upcoming",
+  //     frequency: "one-off",
+  //   },
+  // ];
 
+  useEffect(() => {
+    const fetchEvents = async () => {
+      if (!userId) return;
+      try {
+        const response = await fetch(`/api/events?userId=${userId}`);
+        if (!response.ok) throw new Error("Failed to fetch events");
+        const data = await response.json();
+        setEvents(data);
+        console.log(data);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+        toast.error("Failed to load events");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [userId]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewEvent((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleRecurringChange = (value: string) => {
+    setNewEvent((prev) => ({ ...prev, isRecurring: value === "recurring" }));
+  };
+
+  const handleDayToggle = (day: string) => {
+    setNewEvent((prev) => ({
+      ...prev,
+      days: prev.days.includes(day)
+        ? prev.days.filter((d) => d !== day)
+        : [...prev.days, day],
+    }));
+  };
+
+  const handleAddEvent = async () => {
+    if (
+      !newEvent.name ||
+      !newEvent.description ||
+      !newEvent.startTime ||
+      !newEvent.endTime
+    ) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+
+    if (newEvent.isRecurring && newEvent.days.length === 0) {
+      toast.error("Please select at least one day for recurring events.");
+      return;
+    }
+
+    if (!newEvent.isRecurring && !newEvent.date) {
+      toast.error("Please select a date for single events.");
+      return;
+    }
+
+    try {
+      const eventData = {
+        name: newEvent.name,
+        description: newEvent.description,
+        startTime: newEvent.startTime,
+        endTime: newEvent.endTime,
+        isRecurring: newEvent.isRecurring,
+        status: "upcoming",
+        ...(newEvent.isRecurring
+          ? { days: newEvent.days }
+          : { date: newEvent.date }),
+      };
+
+      const response = await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, ...eventData }),
+      });
+
+      if (!response.ok) throw new Error("Failed to add event");
+
+      const result = await response.json();
+      console.log("i got the result back", result);
+      setEvents((prev) => [...prev, result]);
+      setIsDialogOpen(false);
+      setNewEvent({
+        name: "",
+        description: "",
+        date: "",
+        startTime: "",
+        endTime: "",
+        isRecurring: false,
+        days: [],
+      });
+      toast.success("Event added successfully");
+    } catch (error) {
+      console.error("Error adding event:", error);
+      toast.error("Failed to add event");
+    }
+  };
+
+  const handleDelete = async (eventId: string) => {
+    if (!confirm("Are you sure you want to delete this event?")) return;
+
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete event");
+
+      setEvents((prev) => prev.filter((event) => event._id !== eventId));
+      toast.success("Event deleted successfully");
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      toast.error("Failed to delete event");
+    }
+  };
+
+  // Modify the filtering logic
   const filteredEvents = events.filter((event) => {
-    const matchesStatus = event.status === statusFilter;
+    const today = new Date();
+    const eventDate = event.isRecurring ? null : new Date(event.date);
+
+    // First check the frequency filter
     const matchesFrequency =
-      frequencyFilter === "all" || event.frequency === frequencyFilter;
+      frequencyFilter === "all" ||
+      (frequencyFilter === "recurring"
+        ? event.isRecurring
+        : !event.isRecurring);
+
+    // Then check the date status
+    const isPast = eventDate ? eventDate < today : false;
+    const matchesStatus = statusFilter === "past" ? isPast : !isPast;
+
+    // Event must match both conditions
     return matchesStatus && matchesFrequency;
   });
 
+  // The rest of your groupedEvents logic remains the same
   const groupedEvents = filteredEvents.reduce<GroupedEvents>((acc, event) => {
-    if (!acc[event.date]) {
-      acc[event.date] = [];
-    }
-    acc[event.date].push(event);
+    const date = event.isRecurring
+      ? "Recurring"
+      : format(parseISO(event.date), "MMM d, yyyy");
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(event);
     return acc;
   }, {});
 
-  // const frequencyOptions: FrequencyOption = {
-  //   all: "All Events",
-  //   "one-off": "One-off",
-  //   recurring: "Recurring",
-  // };
+  if (isLoading)
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Loading events...
+      </div>
+    );
 
   return (
     <div className="flex h-screen bg-white">
@@ -167,10 +324,139 @@ export default function EventsPage() {
                 Manage your meetings and appointments
               </p>
             </div>
-            <Button className="w-full md:w-auto">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Event
-            </Button>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="w-full md:w-auto">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Event
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Event</DialogTitle>
+                  <DialogDescription>
+                    Enter the details for the new event.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">
+                      Name
+                    </Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      value={newEvent.name}
+                      onChange={handleInputChange}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="description" className="text-right">
+                      Description
+                    </Label>
+                    <Input
+                      id="description"
+                      name="description"
+                      value={newEvent.description}
+                      onChange={handleInputChange}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right">Event Type</Label>
+                    <RadioGroup
+                      defaultValue="single"
+                      onValueChange={handleRecurringChange}
+                      className="col-span-3 flex space-x-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="single" id="single" />
+                        <Label htmlFor="single">Single Date</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="recurring" id="recurring" />
+                        <Label htmlFor="recurring">Recurring</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {newEvent.isRecurring ? (
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label className="text-right">Days</Label>
+                      <div className="col-span-3 flex flex-wrap gap-2">
+                        {[
+                          "Monday",
+                          "Tuesday",
+                          "Wednesday",
+                          "Thursday",
+                          "Friday",
+                          "Saturday",
+                          "Sunday",
+                        ].map((day) => (
+                          <div key={day} className="flex items-center">
+                            <Checkbox
+                              id={day}
+                              checked={newEvent.days.includes(day)}
+                              onCheckedChange={() => handleDayToggle(day)}
+                            />
+                            <Label htmlFor={day} className="ml-2">
+                              {day}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="date" className="text-right">
+                        Date
+                      </Label>
+                      <Input
+                        id="date"
+                        name="date"
+                        type="date"
+                        value={newEvent.date}
+                        onChange={handleInputChange}
+                        className="col-span-3"
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="startTime" className="text-right">
+                      Start Time
+                    </Label>
+                    <Input
+                      id="startTime"
+                      name="startTime"
+                      type="time"
+                      value={newEvent.startTime}
+                      onChange={handleInputChange}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="endTime" className="text-right">
+                      End Time
+                    </Label>
+                    <Input
+                      id="endTime"
+                      name="endTime"
+                      type="time"
+                      value={newEvent.endTime}
+                      onChange={handleInputChange}
+                      className="col-span-3"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="submit" onClick={handleAddEvent}>
+                    Add Event
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Filters */}
@@ -188,10 +474,10 @@ export default function EventsPage() {
                   Upcoming
                 </TabsTrigger>
                 <TabsTrigger
-                  value="completed"
+                  value="past"
                   className="flex-1 md:flex-none text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
                 >
-                  Completed
+                  Past
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -199,7 +485,11 @@ export default function EventsPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="w-full md:w-auto h-9">
-                  {/* {frequencyOptions[frequencyFilter]} */}
+                  {frequencyFilter === "all"
+                    ? "All Events"
+                    : frequencyFilter === "recurring"
+                    ? "Recurring"
+                    : "One-off"}
                   <ChevronDown className="ml-2 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -229,23 +519,23 @@ export default function EventsPage() {
                 <h3 className="text-sm font-medium text-gray-500">{date}</h3>
                 <div className="space-y-4">
                   {dateEvents.map((event) => (
-                    <Card key={event.id} className="group">
+                    <Card key={event._id} className="group">
                       <CardContent className="p-4">
                         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 md:gap-0">
                           <div className="space-y-1">
                             <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
                               <span className="text-base font-medium">
-                                {event.title}
+                                {event.name}
                               </span>
                               <div className="flex flex-wrap gap-2">
-                                {event.isVirtual && (
+                                {event.meetingLink && (
                                   <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                                     Virtual
                                   </span>
                                 )}
-                                {event.frequency === "recurring" && (
+                                {event.isRecurring && (
                                   <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
-                                    {event.recurrence}
+                                    {event.days?.join(", ")}
                                   </span>
                                 )}
                               </div>
@@ -253,23 +543,23 @@ export default function EventsPage() {
                             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                               <div className="flex items-center gap-1">
                                 <Clock className="h-4 w-4" />
-                                {event.time}
+                                {event.startTime} - {event.endTime}
                               </div>
-                              {event.attendees && (
+                              {/* {event.attendees && (
                                 <div className="flex items-center gap-1">
                                   <Users className="h-4 w-4" />
                                   {event.attendees} attendees
                                 </div>
-                              )}
-                              {event.location && (
+                              )} */}
+                              {event.description && (
                                 <div className="text-gray-500">
-                                  {event.location}
+                                  {event.description}
                                 </div>
                               )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2 self-end md:self-start">
-                            {event.isVirtual && event.status === "upcoming" && (
+                            {event.meetingLink && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -289,10 +579,21 @@ export default function EventsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem>Edit</DropdownMenuItem>
-                                <DropdownMenuItem>Reschedule</DropdownMenuItem>
-                                <DropdownMenuItem className="text-red-600">
-                                  Cancel
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    router.push(
+                                      `/dashboard/events/${event._id}`
+                                    )
+                                  }
+                                >
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(event._id)}
+                                  className="text-red-600"
+                                >
+                                  Delete
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
