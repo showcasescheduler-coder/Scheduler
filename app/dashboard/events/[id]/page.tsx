@@ -177,11 +177,11 @@ export default function EventDetails({ params: { id } }: EventDetailsProps) {
               <div className="flex items-center gap-2">
                 {event.meetingLink && (
                   <Button variant="outline" size="sm">
-                    <Video className="h-4 w-4 mr-2" />
+                    <Video className="h-4 w-4 mr-2 text-blue-500" />
                     Join Meeting
                   </Button>
                 )}
-                <Button size="sm" onClick={handleSave}>
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
                   Save Changes
                 </Button>
               </div>
@@ -198,13 +198,13 @@ export default function EventDetails({ params: { id } }: EventDetailsProps) {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
+                        <Clock className="h-4 w-4 text-blue-500" />
                         <span>
                           {event.startTime} - {event.endTime}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
+                        <Calendar className="h-4 w-4 text-blue-500" />
                         <span>
                           {event.isRecurring
                             ? event.days.join(", ")
@@ -225,7 +225,7 @@ export default function EventDetails({ params: { id } }: EventDetailsProps) {
                         handleInputChange("status", value)
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="border-gray-200 focus:ring-blue-500">
                         <SelectValue placeholder="Status" />
                       </SelectTrigger>
                       <SelectContent>
@@ -242,102 +242,122 @@ export default function EventDetails({ params: { id } }: EventDetailsProps) {
             {/* Event Details Form */}
             <Card>
               <CardContent className="p-4 md:p-6">
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium">Event Title</label>
-                    <Input
-                      value={event.name}
-                      onChange={(e) =>
-                        handleInputChange("name", e.target.value)
-                      }
-                      className="mt-2"
-                    />
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Left Column - Title and Description */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        <ListTodo className="h-4 w-4 text-blue-500" />
+                        Event Title
+                      </label>
+                      <Input
+                        value={event.name}
+                        onChange={(e) =>
+                          handleInputChange("name", e.target.value)
+                        }
+                        className="mt-2 border-gray-200 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        <Brain className="h-4 w-4 text-blue-500" />
+                        Description
+                      </label>
+                      <Textarea
+                        value={event.description}
+                        onChange={(e) =>
+                          handleInputChange("description", e.target.value)
+                        }
+                        className="mt-2 min-h-[320px] border-gray-200 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium">Description</label>
-                    <Textarea
-                      value={event.description}
-                      onChange={(e) =>
-                        handleInputChange("description", e.target.value)
-                      }
-                      className="mt-2"
-                    />
-                  </div>
-
-                  {!event.isRecurring ? (
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium">Date</label>
-                        <div className="flex items-center gap-2 mt-2">
+                  {/* Right Column - Other Details */}
+                  <div className="space-y-6">
+                    {!event.isRecurring ? (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="flex items-center gap-2 text-sm font-medium">
+                            <Calendar className="h-4 w-4 text-blue-500" />
+                            Date
+                          </label>
                           <Input
                             type="date"
                             value={event.date}
                             onChange={(e) =>
                               handleInputChange("date", e.target.value)
                             }
-                            className="flex-1"
+                            className="mt-2 border-gray-200 focus:ring-blue-500"
                           />
                         </div>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Time</label>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Input
-                            type="time"
-                            value={event.startTime}
-                            onChange={(e) =>
-                              handleInputChange("startTime", e.target.value)
-                            }
-                            className="flex-1"
-                          />
-                          <Input
-                            type="time"
-                            value={event.endTime}
-                            onChange={(e) =>
-                              handleInputChange("endTime", e.target.value)
-                            }
-                            className="flex-1"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <label className="text-sm font-medium">
-                        Recurring Days
-                      </label>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {[
-                          "Monday",
-                          "Tuesday",
-                          "Wednesday",
-                          "Thursday",
-                          "Friday",
-                          "Saturday",
-                          "Sunday",
-                        ].map((day) => (
-                          <div
-                            key={day}
-                            className="flex items-center space-x-2"
-                          >
-                            <Checkbox
-                              id={day}
-                              checked={event.days.includes(day)}
-                              onCheckedChange={() => handleDayToggle(day)}
+                        <div>
+                          <label className="flex items-center gap-2 text-sm font-medium">
+                            <Clock className="h-4 w-4 text-blue-500" />
+                            Time
+                          </label>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Input
+                              type="time"
+                              value={event.startTime}
+                              onChange={(e) =>
+                                handleInputChange("startTime", e.target.value)
+                              }
+                              className="flex-1 border-gray-200 focus:ring-blue-500"
                             />
-                            <label htmlFor={day} className="text-sm">
-                              {day}
-                            </label>
+                            <Input
+                              type="time"
+                              value={event.endTime}
+                              onChange={(e) =>
+                                handleInputChange("endTime", e.target.value)
+                              }
+                              className="flex-1 border-gray-200 focus:ring-blue-500"
+                            />
                           </div>
-                        ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="space-y-4">
+                        <label className="flex items-center gap-2 text-sm font-medium">
+                          <Repeat className="h-4 w-4 text-blue-500" />
+                          Recurring Days
+                        </label>
+                        <div className="grid grid-cols-2 gap-4">
+                          {[
+                            "Monday",
+                            "Tuesday",
+                            "Wednesday",
+                            "Thursday",
+                            "Friday",
+                            "Saturday",
+                            "Sunday",
+                          ].map((day) => (
+                            <div
+                              key={day}
+                              className="flex items-center space-x-2"
+                            >
+                              <Checkbox
+                                id={day}
+                                checked={event.days.includes(day)}
+                                onCheckedChange={() => handleDayToggle(day)}
+                                className="border-blue-500 text-blue-500 focus:ring-blue-500"
+                              />
+                              <label
+                                htmlFor={day}
+                                className="text-sm text-gray-700"
+                              >
+                                {day}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-                  <div className="space-y-4 pt-4 border-t border-gray-100">
-                    <div>
-                      <label className="text-sm font-medium">
+                    <div className="pt-4 border-t border-gray-100">
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        <LinkIcon className="h-4 w-4 text-blue-500" />
                         Meeting Link
                       </label>
                       <div className="flex items-center gap-2 mt-2">
@@ -347,6 +367,7 @@ export default function EventDetails({ params: { id } }: EventDetailsProps) {
                             handleInputChange("meetingLink", e.target.value)
                           }
                           placeholder="Add meeting link (optional)"
+                          className="border-gray-200 focus:ring-blue-500"
                         />
                         <Button variant="outline" size="icon">
                           <LinkIcon className="h-4 w-4" />
@@ -359,7 +380,6 @@ export default function EventDetails({ params: { id } }: EventDetailsProps) {
             </Card>
 
             {/* Danger Zone */}
-
             <Card className="border-red-200">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">

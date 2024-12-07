@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { format } from "date-fns";
 
 export default function ProjectsPage() {
   const { projects, setProjects, addProject } = useAppContext();
@@ -261,7 +262,15 @@ export default function ProjectsPage() {
                     <CardTitle className="text-base font-medium">
                       {project.name}
                     </CardTitle>
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full font-medium ${
+                        project.priority?.toLowerCase() === "high"
+                          ? "bg-red-100 text-red-800"
+                          : project.priority?.toLowerCase() === "medium"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-green-100 text-green-800"
+                      }`}
+                    >
                       {project.priority}
                     </span>
                   </CardHeader>
@@ -273,21 +282,57 @@ export default function ProjectsPage() {
                     <div className="space-y-3">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Progress</span>
-                        <span className="font-medium">{30}%</span>
+                        <span className="font-medium">
+                          {project.tasks && project.tasks.length > 0
+                            ? Math.round(
+                                (project.tasks.filter((task) => task.completed)
+                                  .length /
+                                  project.tasks.length) *
+                                  100
+                              )
+                            : 0}
+                          %
+                        </span>
                       </div>
                       <div className="h-2 bg-gray-100 rounded-full">
                         <div
                           className="h-full bg-blue-600 rounded-full transition-all"
-                          style={{ width: `${30}%` }}
+                          style={{
+                            width: `${
+                              project.tasks && project.tasks.length > 0
+                                ? Math.round(
+                                    (project.tasks.filter(
+                                      (task) => task.completed
+                                    ).length /
+                                      project.tasks.length) *
+                                      100
+                                  )
+                                : 0
+                            }%`,
+                          }}
                         />
                       </div>
                       <div className="flex justify-between text-sm text-gray-500">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
-                          {project.time}
+                          Due:{" "}
+                          {project.deadline ? (
+                            <span className="font-medium">
+                              {format(
+                                new Date(project.deadline),
+                                "MMM d, yyyy"
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-blue-300">Not set</span>
+                          )}
                         </div>
                         <span>
-                          {40}/{100} tasks
+                          {project.tasks
+                            ? project.tasks.filter((task) => task.completed)
+                                .length
+                            : 0}
+                          /{project.tasks ? project.tasks.length : 0} tasks
                         </span>
                       </div>
                     </div>

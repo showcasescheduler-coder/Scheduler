@@ -12,6 +12,9 @@ import {
   BarChart2,
   CheckCircle,
   CalendarIcon,
+  AlertCircle,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,6 +60,17 @@ export default function TaskDetails({ params: { id } }: Props) {
   const [task, setTask] = useState<Task | null>(null);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+
+  const getTypeStyles = (type: string) => {
+    const styles = {
+      "deep-work": "text-purple-800 bg-purple-100",
+      planning: "text-blue-800 bg-blue-100",
+      break: "text-green-800 bg-green-100",
+      admin: "text-gray-800 bg-gray-100",
+      collaboration: "text-orange-800 bg-orange-100",
+    };
+    return styles[type as keyof typeof styles] || styles.admin;
+  };
 
   useEffect(() => {
     const fetchTaskDetails = async () => {
@@ -139,7 +153,6 @@ export default function TaskDetails({ params: { id } }: Props) {
           <div className="px-4 md:px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                {/* Mobile Menu */}
                 <div className="md:hidden">
                   <Sheet>
                     <SheetTrigger asChild>
@@ -163,18 +176,22 @@ export default function TaskDetails({ params: { id } }: Props) {
                 <div>
                   <div className="flex items-center gap-2">
                     <h1 className="text-xl md:text-2xl font-semibold">
-                      {task.name}
+                      Task Details
                     </h1>
                     <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
-                      {task.status}
+                      Upcoming
                     </span>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" onClick={handleSave}>
-                  Save
+                <Button
+                  variant="outline"
+                  className="text-red-600 hover:text-red-700"
+                >
+                  Delete
                 </Button>
+                <Button onClick={handleSave}>Save Changes</Button>
               </div>
             </div>
           </div>
@@ -182,119 +199,260 @@ export default function TaskDetails({ params: { id } }: Props) {
 
         <div className="flex-1 overflow-y-auto">
           <div className="p-4 md:p-8 space-y-6">
-            {/* Task Details */}
             <Card>
-              <CardContent className="p-4 md:p-6 space-y-6">
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium">Task Name</label>
-                    <Input
-                      name="name" // A
-                      defaultValue="Have lunch with mum"
-                      className="mt-2"
-                      value={task.name}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Description</label>
-                    <Textarea
-                      name="description" // Added name attribute
-                      defaultValue="Meet mum at the coffee shop"
-                      className="mt-2"
-                      value={task.description}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
+              <CardContent className="p-4 md:p-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Left Column - Task Name and Description */}
+                  <div className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium">Due Date</label>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !task.deadline && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {task.deadline ? (
-                                format(new Date(task.deadline), "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <CalendarComponent
-                              mode="single"
-                              selected={
-                                task.deadline
-                                  ? new Date(task.deadline)
-                                  : undefined
-                              }
-                              onSelect={handleDateChange}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Duration</label>
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <ListTodo className="h-4 w-4 text-blue-500" />
+                        Task Name
+                      </label>
                       <Input
-                        name="duration"
-                        value={task.duration}
+                        name="name"
+                        value={task?.name}
                         onChange={handleInputChange}
                         className="mt-2"
                       />
                     </div>
+
+                    <div>
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Brain className="h-4 w-4 text-blue-500" />
+                        Description
+                      </label>
+                      <Textarea
+                        name="description"
+                        value={task?.description}
+                        onChange={handleInputChange}
+                        className="mt-2 min-h-[320px]"
+                      />
+                    </div>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">Status</label>
-                      <Select
-                        defaultValue="upcoming"
-                        value={task.status}
-                        onValueChange={(value) =>
-                          handleSelectChange("status", value)
-                        }
-                      >
-                        <SelectTrigger className="mt-2">
-                          <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="upcoming">Upcoming</SelectItem>
-                          <SelectItem value="in-progress">
-                            In Progress
-                          </SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Priority</label>
-                      <Select
-                        defaultValue="medium"
-                        value={task.priority}
-                        onValueChange={(value) =>
-                          handleSelectChange("priority", value)
-                        }
-                      >
-                        <SelectTrigger className="mt-2">
-                          <SelectValue placeholder="Priority" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="low">Low</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  {/* Right Column - Other Fields */}
+                  <div className="space-y-4">
+                    <div className="grid gap-4">
+                      <div>
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-blue-500" />
+                          Due Date
+                        </label>
+                        <div className="mt-2">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-start text-left font-normal"
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                <span>
+                                  {task?.deadline
+                                    ? format(
+                                        new Date(task.deadline),
+                                        "MMMM dd, yyyy"
+                                      )
+                                    : "Select date"}
+                                </span>
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-auto p-0"
+                              align="start"
+                            >
+                              <CalendarComponent
+                                mode="single"
+                                selected={
+                                  task?.deadline
+                                    ? new Date(task.deadline)
+                                    : undefined
+                                }
+                                onSelect={handleDateChange}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-blue-500" />
+                          Duration (minutes)
+                        </label>
+                        <div className="relative mt-2">
+                          <Input
+                            type="number"
+                            name="duration"
+                            value={task?.duration}
+                            onChange={handleInputChange}
+                            className="pl-10"
+                          />
+                          <Clock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <BarChart2 className="h-4 w-4 text-blue-500" />
+                          Status
+                        </label>
+                        <Select
+                          value={task?.status}
+                          onValueChange={(value) =>
+                            handleSelectChange("status", value)
+                          }
+                        >
+                          <SelectTrigger className="mt-2">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Todo">
+                              <div className="flex items-center">
+                                <Clock className="mr-2 h-4 w-4 text-blue-500" />
+                                <span>Todo</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="In Progress">
+                              <div className="flex items-center">
+                                <AlertCircle className="mr-2 h-4 w-4 text-yellow-500" />
+                                <span>In Progress</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="Completed">
+                              <div className="flex items-center">
+                                <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                                <span>Completed</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <FolderKanban className="h-4 w-4 text-blue-500" />
+                          Priority
+                        </label>
+                        <Select
+                          value={task?.priority}
+                          onValueChange={(value) =>
+                            handleSelectChange("priority", value)
+                          }
+                        >
+                          <SelectTrigger className="mt-2">
+                            <SelectValue placeholder="Select priority" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="High">
+                              <div className="flex items-center">
+                                <div className="w-2 h-2 rounded-full bg-red-500 mr-2" />
+                                High
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="Medium">
+                              <div className="flex items-center">
+                                <div className="w-2 h-2 rounded-full bg-yellow-500 mr-2" />
+                                Medium
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="Low">
+                              <div className="flex items-center">
+                                <div className="w-2 h-2 rounded-full bg-green-500 mr-2" />
+                                Low
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Repeat className="h-4 w-4 text-blue-500" />
+                          Task Type
+                        </label>
+                        <Select
+                          value={task?.type}
+                          onValueChange={(value) =>
+                            handleSelectChange("type", value)
+                          }
+                        >
+                          <SelectTrigger className="mt-2">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="deep-work">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs ${getTypeStyles(
+                                  "deep-work"
+                                )}`}
+                              >
+                                Deep Work
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="planning">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs ${getTypeStyles(
+                                  "planning"
+                                )}`}
+                              >
+                                Planning
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="break">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs ${getTypeStyles(
+                                  "break"
+                                )}`}
+                              >
+                                Break
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="admin">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs ${getTypeStyles(
+                                  "admin"
+                                )}`}
+                              >
+                                Admin
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="collaboration">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs ${getTypeStyles(
+                                  "collaboration"
+                                )}`}
+                              >
+                                Collaboration
+                              </span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-red-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-red-600">
+                      Delete Event
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Permanently delete this event
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    // onClick={handleDelete}
+                  >
+                    Delete Event
+                  </Button>
                 </div>
               </CardContent>
             </Card>
