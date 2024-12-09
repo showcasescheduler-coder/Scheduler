@@ -12,6 +12,8 @@ import {
   MoreHorizontal,
   CheckCircle,
   Clock,
+  Menu,
+  Link,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -53,6 +55,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format, parseISO } from "date-fns";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { UserButton } from "@clerk/nextjs";
+import MobileNav from "@/app/components/MobileNav";
 
 interface Task {
   _id: string;
@@ -233,6 +243,28 @@ export default function StandaloneTasks() {
       </aside>
 
       <main className="flex-1">
+        <div className="md:hidden px-4 py-2 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 p-0">
+                <MobileNav />
+              </SheetContent>
+            </Sheet>
+
+            {/* Center: Date display */}
+            <div className="text-sm font-medium">
+              {format(new Date(), "MMM d, yyyy")}
+            </div>
+
+            {/* Right: User button */}
+            <UserButton />
+          </div>
+        </div>
         <div className="p-4 md:p-8">
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
@@ -472,55 +504,83 @@ export default function StandaloneTasks() {
             </Card>
           </div>
 
-          {/* Task List - Mobile */}
-          <div className="md:hidden space-y-4">
-            {standaloneTasks.map((task) => (
-              <Card key={task._id} className="group">
-                <div className="p-4 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        {task.completed && (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        )}
-                        <span className="font-medium">{task.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Clock className="h-4 w-4" />
-                        {task.deadline}
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">
-                          Delete
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>Mark as Complete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
-                        task.priority
-                      )}`}
-                    >
-                      {task.priority}
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      {task.duration}
-                    </span>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+          <Card className="md:hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[140px]">Task</TableHead>
+                    <TableHead className="w-[80px]">Priority</TableHead>
+                    <TableHead className="w-[80px]">Due</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {standaloneTasks.map((task) => (
+                    <TableRow key={task._id} className="group">
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {task.completed && (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          )}
+                          <div className="flex flex-col">
+                            <span className="text-sm">{task.name}</span>
+                            <span className="text-xs text-gray-500">
+                              {task.duration}m
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
+                            task.priority
+                          )}`}
+                        >
+                          {task.priority}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-500">
+                        {task.deadline &&
+                          new Date(task.deadline).toLocaleDateString(
+                            undefined,
+                            {
+                              month: "short",
+                              day: "numeric",
+                            }
+                          )}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(task._id)}
+                            >
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(task._id)}
+                              className="text-red-600"
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              Mark as Complete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
 
           {/* Empty State stays the same */}
           {tasks.length === 0 && (

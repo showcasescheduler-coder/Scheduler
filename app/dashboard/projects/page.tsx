@@ -11,11 +11,17 @@ import {
   Repeat,
   BarChart2,
   CheckCircle,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +52,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
+import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
 
 export default function ProjectsPage() {
   const { projects, setProjects, addProject } = useAppContext();
@@ -134,6 +142,87 @@ export default function ProjectsPage() {
       </aside>
 
       <main className="flex-1">
+        {/* Mobile Header */}
+        <div className="md:hidden px-4 py-2 border-b border-gray-200">
+          {/* Three column layout */}
+          <div className="flex items-center justify-between">
+            {/* Left: Menu button */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 p-0">
+                <div className="flex flex-col h-full">
+                  {/* Header */}
+                  <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                    <Brain className="h-8 w-8 text-blue-600" />
+                    <SheetClose className="rounded-sm opacity-70 hover:opacity-100 ring-offset-background transition-opacity">
+                      {/* <X className="h-4 w-4" /> */}
+                    </SheetClose>
+                  </div>
+
+                  {/* Navigation Links with better spacing */}
+                  <nav className="flex-1 p-4">
+                    <div className="flex flex-col space-y-6">
+                      <Link
+                        href="/dashboard"
+                        className="flex items-center space-x-3 text-sm font-medium"
+                      >
+                        <LayoutDashboard className="h-5 w-5 text-blue-600" />
+                        <span>Dashboard</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/projects"
+                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                      >
+                        <FolderKanban className="h-5 w-5" />
+                        <span>Projects</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/tasks"
+                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                      >
+                        <ListTodo className="h-5 w-5" />
+                        <span>Tasks</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/events"
+                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                      >
+                        <Calendar className="h-5 w-5" />
+                        <span>Events</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/routines"
+                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                      >
+                        <Repeat className="h-5 w-5" />
+                        <span>Routines</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/analytics"
+                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                      >
+                        <BarChart2 className="h-5 w-5" />
+                        <span>Analytics</span>
+                      </Link>
+                    </div>
+                  </nav>
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            {/* Center: Date display */}
+            <div className="text-sm font-medium">
+              {format(new Date(), "MMM d, yyyy")}
+            </div>
+
+            {/* Right: User button */}
+            <UserButton />
+          </div>
+        </div>
         <div className="h-full p-8">
           <div className="mb-8">
             <div className="flex items-center justify-between">

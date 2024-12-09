@@ -20,6 +20,12 @@ import {
   PlusCircle,
   ClipboardList,
   LinkIcon,
+  Calendar,
+  X,
+  LayoutDashboard,
+  ListTodo,
+  BarChart2,
+  FolderKanban,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
@@ -31,7 +37,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScheduleGenerationDialog } from "@/dialog/generateModal";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -56,6 +67,8 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DialogTrigger } from "@radix-ui/react-dialog";
 import CompletedDayView from "@/app/components/completedDayComponent";
 import AllBlocksCompleted from "../components/allBlocksCompleteted";
+import Link from "next/link";
+import CompletedBlock from "../components/CompletedBlocks";
 
 interface Task {
   _id: string;
@@ -1198,6 +1211,48 @@ export default function Component() {
     }
   };
 
+  const handleReactivateBlock = async (blockId: string) => {
+    try {
+      const response = await fetch(`/api/blocks/${blockId}/reactivate`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to reactivate block");
+      }
+
+      const block = await response.json();
+      const updatedBlock = block.block;
+
+      // Construct the updated day with the reactivated block
+      const updatedDay = {
+        ...day,
+        blocks: day.blocks.map((block: { _id: string }) => {
+          if (typeof block === "string") return block;
+          return block._id === blockId ? updatedBlock : block;
+        }),
+      };
+
+      // Update the local state
+      mutate(
+        (currentDay: Day) => ({
+          ...currentDay,
+          blocks: currentDay.blocks.map((b) => {
+            if (typeof b === "string" || b._id !== blockId) return b;
+            return { ...b, status: "pending" };
+          }),
+        }),
+        false
+      );
+
+      // Optionally, show a success message
+      toast.success("Block reactivated successfully");
+    } catch (error) {
+      console.error("Error reactivating block:", error);
+      toast.error("Failed to reactivate block. Please try again.");
+    }
+  };
+
   // With this:
   const allBlocksCompleted = day?.blocks
     ? day.blocks.length > 0 &&
@@ -1292,17 +1347,80 @@ export default function Component() {
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-16 p-0">
-                  <SidebarContent />
+                <SheetContent side="left" className="w-64 p-0">
+                  <div className="flex flex-col h-full">
+                    {/* Header */}
+                    <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                      <Brain className="h-8 w-8 text-blue-600" />
+                      <SheetClose className="rounded-sm opacity-70 hover:opacity-100 ring-offset-background transition-opacity">
+                        {/* <X className="h-4 w-4" /> */}
+                      </SheetClose>
+                    </div>
+
+                    {/* Navigation Links with better spacing */}
+                    <nav className="flex-1 p-4">
+                      <div className="flex flex-col space-y-6">
+                        <Link
+                          href="/dashboard"
+                          className="flex items-center space-x-3 text-sm font-medium"
+                        >
+                          <LayoutDashboard className="h-5 w-5 text-blue-600" />
+                          <span>Dashboard</span>
+                        </Link>
+                        <Link
+                          href="/dashboard/projects"
+                          className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                        >
+                          <FolderKanban className="h-5 w-5" />
+                          <span>Projects</span>
+                        </Link>
+                        <Link
+                          href="/dashboard/tasks"
+                          className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                        >
+                          <ListTodo className="h-5 w-5" />
+                          <span>Tasks</span>
+                        </Link>
+                        <Link
+                          href="/dashboard/events"
+                          className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                        >
+                          <Calendar className="h-5 w-5" />
+                          <span>Events</span>
+                        </Link>
+                        <Link
+                          href="/dashboard/routines"
+                          className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                        >
+                          <Repeat className="h-5 w-5" />
+                          <span>Routines</span>
+                        </Link>
+                        <Link
+                          href="/dashboard/analytics"
+                          className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                        >
+                          <BarChart2 className="h-5 w-5" />
+                          <span>Analytics</span>
+                        </Link>
+                      </div>
+                    </nav>
+                  </div>
                 </SheetContent>
               </Sheet>
 
               {/* Center: Date selector */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8">
-                    {formatShortDate(currentDate)}
-                    <ChevronDown className="ml-1 h-4 w-4" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 flex items-center gap-2 px-2"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    <span className="font-medium">
+                      {formatShortDate(currentDate)}
+                    </span>
+                    <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="center">
@@ -1324,9 +1442,12 @@ export default function Component() {
             <div className="hidden md:block mb-6">
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
-                  <h1 className="text-2xl font-semibold">Welcome back, Alex</h1>
-                  <p className="text-sm text-gray-500">
+                  <h1 className="text-2xl font-semibold">
                     {formatDate(currentDate)}
+                  </h1>
+                  <p className="text-sm text-gray-500">
+                    {/* {formatDate(currentDate)} */}
+                    Alex James
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
@@ -1480,6 +1601,18 @@ export default function Component() {
                           </CardContent>
                         </Card>
                       </div>
+                    ) : activeTab === "completed" ? (
+                      <div className="space-y-4">
+                        {sortedBlocks.map((block) => (
+                          <CompletedBlock
+                            key={block._id}
+                            block={block}
+                            onReactivateBlock={(blockId) =>
+                              handleReactivateBlock(blockId)
+                            }
+                          />
+                        ))}
+                      </div>
                     ) : (
                       <div className="space-y-4">
                         {sortedBlocks.map((block: Block) => (
@@ -1603,20 +1736,27 @@ export default function Component() {
                                             >
                                               {task.name}
                                             </label>
+
                                             <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 flex-shrink-0">
-                                              {task.duration}min
+                                              {task.duration}
+                                              <span className="hidden md:inline">
+                                                min
+                                              </span>
                                             </span>
+
+                                            {/* Task type indicator - different for mobile and desktop */}
                                             <TooltipProvider>
                                               <Tooltip>
                                                 <TooltipTrigger>
-                                                  <span className="inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 flex-shrink-0">
+                                                  {/* Circle for mobile */}
+                                                  <div className="md:hidden h-2.5 w-2.5 rounded-full bg-purple-500 flex-shrink-0" />
+                                                  {/* Badge with text for desktop */}
+                                                  <span className="hidden md:inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 flex-shrink-0">
                                                     {task.type}
                                                   </span>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                  <p className="max-w-xs">
-                                                    {task.description}
-                                                  </p>
+                                                  <p>{task.type}</p>
                                                 </TooltipContent>
                                               </Tooltip>
                                             </TooltipProvider>
@@ -1716,8 +1856,10 @@ export default function Component() {
                                       handleCompleteBlock(block._id)
                                     }
                                   >
-                                    <Check className="h-4 w-4 mr-1" />
-                                    Complete
+                                    <Check className="h-4 w-4 md:mr-1" />
+                                    <span className="hidden md:inline">
+                                      Complete
+                                    </span>
                                   </Button>
                                   {block.meetingLink ? (
                                     <Button
@@ -1732,8 +1874,10 @@ export default function Component() {
                                         rel="noopener noreferrer"
                                         className="flex items-center"
                                       >
-                                        <LinkIcon className="h-4 w-4 mr-1" />
-                                        Join Meeting
+                                        <LinkIcon className="h-4 w-4 md:mr-1" />
+                                        <span className="hidden md:inline">
+                                          Join Meeting
+                                        </span>
                                       </a>
                                     </Button>
                                   ) : (
@@ -1742,8 +1886,10 @@ export default function Component() {
                                       size="sm"
                                       className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
                                     >
-                                      <Clock className="h-4 w-4 mr-1" />
-                                      Start
+                                      <Clock className="h-4 w-4 md:mr-1" />
+                                      <span className="hidden md:inline">
+                                        Start
+                                      </span>
                                     </Button>
                                   )}
                                 </div>

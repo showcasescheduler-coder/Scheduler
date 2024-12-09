@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarContent } from "@/app/components/SideBar";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { format, parseISO } from "date-fns";
@@ -45,6 +45,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import MobileNav from "@/app/components/MobileNav";
 
 type EventType = "meeting" | "appointment";
 type EventStatus = "upcoming" | "completed" | "cancelled";
@@ -102,42 +103,6 @@ export default function EventsPage() {
     isRecurring: false,
     days: [],
   });
-
-  // const events: Event[] = [
-  //   {
-  //     id: 1,
-  //     title: "Team Weekly Sync",
-  //     type: "meeting",
-  //     date: "Today",
-  //     time: "10:00 AM - 11:00 AM",
-  //     attendees: 8,
-  //     isVirtual: true,
-  //     status: "upcoming",
-  //     frequency: "recurring",
-  //     recurrence: "Weekly",
-  //   },
-  //   {
-  //     id: 2,
-  //     title: "Client Presentation",
-  //     type: "meeting",
-  //     date: "Today",
-  //     time: "2:00 PM - 3:30 PM",
-  //     attendees: 12,
-  //     isVirtual: true,
-  //     status: "upcoming",
-  //     frequency: "one-off",
-  //   },
-  //   {
-  //     id: 3,
-  //     title: "Dentist Appointment",
-  //     type: "appointment",
-  //     date: "Tomorrow",
-  //     time: "9:00 AM - 10:00 AM",
-  //     location: "Dental Clinic",
-  //     status: "upcoming",
-  //     frequency: "one-off",
-  //   },
-  // ];
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -301,23 +266,32 @@ export default function EventsPage() {
       </aside>
 
       <main className="flex-1">
-        <div className="p-4 md:p-8">
-          {/* Mobile Header */}
-          <div className="md:hidden mb-4">
+        <div className="md:hidden px-4 py-2 border-b border-gray-200">
+          <div className="flex items-center justify-between">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-16 p-0">
-                <SidebarContent />
+              <SheetContent side="left" className="w-64 p-0">
+                <MobileNav />
               </SheetContent>
             </Sheet>
-          </div>
 
+            {/* Center: Date display */}
+            <div className="text-sm font-medium">
+              {format(new Date(), "MMM d, yyyy")}
+            </div>
+
+            {/* Right: User button */}
+            <UserButton />
+          </div>
+        </div>
+
+        <div className="p-4 md:p-8">
           {/* Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0 mb-6">
+          <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-2xl font-semibold">Events</h1>
               <p className="text-sm text-gray-500">
@@ -326,9 +300,9 @@ export default function EventsPage() {
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="w-full md:w-auto">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Event
+                <Button>
+                  <Plus className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Add Event</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -545,12 +519,6 @@ export default function EventsPage() {
                                 <Clock className="h-4 w-4" />
                                 {event.startTime} - {event.endTime}
                               </div>
-                              {/* {event.attendees && (
-                                <div className="flex items-center gap-1">
-                                  <Users className="h-4 w-4" />
-                                  {event.attendees} attendees
-                                </div>
-                              )} */}
                               {event.description && (
                                 <div className="text-gray-500">
                                   {event.description}

@@ -24,7 +24,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
@@ -48,7 +53,7 @@ import {
 } from "@/components/ui/table";
 import { SidebarContent } from "@/app/components/SideBar";
 import { useAppContext } from "@/app/context/AppContext";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { Project } from "@/app/context/models";
 import {
@@ -67,6 +72,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import Link from "next/link";
 
 interface Props {
   params: { id: string };
@@ -350,27 +356,94 @@ export default function ProjectDetails({ params: { id } }: Props) {
       </aside>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Header */}
-        <header className="border-b border-gray-200 bg-white sticky top-0 z-10">
+        {/* Mobile Header */}
+        <div className="md:hidden px-4 py-2 border-b border-gray-200">
+          {/* Three column layout */}
+          <div className="flex items-center justify-between">
+            {/* Left: Menu button */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 p-0">
+                <div className="flex flex-col h-full">
+                  {/* Header */}
+                  <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                    <Brain className="h-8 w-8 text-blue-600" />
+                    <SheetClose className="rounded-sm opacity-70 hover:opacity-100 ring-offset-background transition-opacity" />
+                  </div>
+
+                  {/* Navigation Links */}
+                  <nav className="flex-1 p-4">
+                    <div className="flex flex-col space-y-6">
+                      <Link
+                        href="/dashboard"
+                        className="flex items-center space-x-3 text-sm font-medium"
+                      >
+                        <LayoutDashboard className="h-5 w-5 text-blue-600" />
+                        <span>Dashboard</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/projects"
+                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                      >
+                        <FolderKanban className="h-5 w-5" />
+                        <span>Projects</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/tasks"
+                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                      >
+                        <ListTodo className="h-5 w-5" />
+                        <span>Tasks</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/events"
+                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                      >
+                        <Calendar className="h-5 w-5" />
+                        <span>Events</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/routines"
+                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                      >
+                        <Repeat className="h-5 w-5" />
+                        <span>Routines</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/analytics"
+                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+                      >
+                        <BarChart2 className="h-5 w-5" />
+                        <span>Analytics</span>
+                      </Link>
+                    </div>
+                  </nav>
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            {/* Center: Date display */}
+            <div className="text-sm font-medium">
+              {format(new Date(), "MMM d, yyyy")}
+            </div>
+
+            {/* Right: User button */}
+            <UserButton />
+          </div>
+        </div>
+
+        {/* Desktop Header */}
+        <header className="hidden md:block border-b border-gray-200 bg-white sticky top-0 z-10">
           <div className="px-4 md:px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="md:hidden">
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <Menu className="h-5 w-5" />
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-16 p-0">
-                      <SidebarContent />
-                    </SheetContent>
-                  </Sheet>
-                </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="hidden md:flex"
                   onClick={() => router.push("/dashboard/projects")}
                 >
                   <ArrowLeft className="h-5 w-5" />
@@ -447,13 +520,11 @@ export default function ProjectDetails({ params: { id } }: Props) {
               </Card>
 
               {/* Project Details Form */}
-              {/* Project Details Form */}
               <Card>
                 <CardContent className="p-4 md:p-6">
                   <div className="space-y-4">
                     <div>
-                      <label className="flex items-center gap-2 text-sm font-medium">
-                        <ListTodo className="h-4 w-4 text-blue-500" />
+                      <label className="text-sm font-medium">
                         Project Name
                       </label>
                       <Input
@@ -464,10 +535,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                       />
                     </div>
                     <div>
-                      <label className="flex items-center gap-2 text-sm font-medium">
-                        <Brain className="h-4 w-4 text-blue-500" />
-                        Description
-                      </label>
+                      <label className="text-sm font-medium">Description</label>
                       <Textarea
                         name="description"
                         className="mt-2"
@@ -476,10 +544,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                       />
                     </div>
                     <div>
-                      <label className="flex items-center gap-2 text-sm font-medium">
-                        <Calendar className="h-4 w-4 text-blue-500" />
-                        Deadline
-                      </label>
+                      <label className="text-sm font-medium">Deadline</label>
                       <div className="flex items-center gap-2 mt-2">
                         <Input
                           type="date"
@@ -497,13 +562,9 @@ export default function ProjectDetails({ params: { id } }: Props) {
                         </Button>
                       </div>
                     </div>
-
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="flex items-center gap-2 text-sm font-medium">
-                          <BarChart2 className="h-4 w-4 text-blue-500" />
-                          Status
-                        </label>
+                        <label className="text-sm font-medium">Status</label>
                         <Select defaultValue="in-progress">
                           <SelectTrigger className="mt-2">
                             <SelectValue placeholder="Status" />
@@ -518,10 +579,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                         </Select>
                       </div>
                       <div>
-                        <label className="flex items-center gap-2 text-sm font-medium">
-                          <FolderKanban className="h-4 w-4 text-blue-500" />
-                          Priority
-                        </label>
+                        <label className="text-sm font-medium">Priority</label>
                         <Select
                           value={
                             project.priority
@@ -992,653 +1050,5 @@ export default function ProjectDetails({ params: { id } }: Props) {
         )}
       </Dialog>
     </div>
-    // <div className="flex h-screen bg-white">
-    //   <aside className="hidden md:block w-16 border-r border-gray-200">
-    //     <SidebarContent />
-    //   </aside>
-
-    //   <div className="flex-1 flex flex-col h-full overflow-hidden">
-    //     {/* Header */}
-    //     <header className="border-b border-gray-200 bg-white sticky top-0 z-10">
-    //       <div className="px-4 md:px-8 py-4">
-    //         <div className="flex items-center justify-between">
-    //           <div className="flex items-center gap-4">
-    //             <div className="md:hidden">
-    //               <Sheet>
-    //                 <SheetTrigger asChild>
-    //                   <Button variant="ghost" size="icon">
-    //                     <Menu className="h-5 w-5" />
-    //                   </Button>
-    //                 </SheetTrigger>
-    //                 <SheetContent side="left" className="w-16 p-0">
-    //                   <SidebarContent />
-    //                 </SheetContent>
-    //               </Sheet>
-    //             </div>
-    //             <Button
-    //               variant="ghost"
-    //               size="icon"
-    //               className="hidden md:flex"
-    //               onClick={() => router.push("/dashboard/projects")}
-    //             >
-    //               <ArrowLeft className="h-5 w-5" />
-    //             </Button>
-    //             <div>
-    //               <div className="flex items-center gap-2">
-    //                 <h1 className="text-xl md:text-2xl font-semibold">
-    //                   {project.name}
-    //                 </h1>
-    //                 <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
-    //                   In Progress
-    //                 </span>
-    //               </div>
-    //             </div>
-    //           </div>
-    //           <Button size="sm" onClick={handleSave}>
-    //             Save
-    //           </Button>
-    //         </div>
-    //       </div>
-    //     </header>
-
-    //     <div className="flex-1 overflow-y-auto">
-    //       <div className="p-4 md:p-8 space-y-6">
-    //         {/* Progress Overview */}
-    //         <div className="grid md:grid-cols-3 gap-4">
-    //           <Card className="md:col-span-2">
-    //             <CardContent className="p-4">
-    //               <div className="space-y-3">
-    //                 <div className="flex justify-between text-sm">
-    //                   <span className="text-gray-500">Overall Progress</span>
-    //                   <span className="font-medium">
-    //                     {project.tasks.length > 0
-    //                       ? `${Math.round(
-    //                           (project.tasks.filter((t) => t.completed).length /
-    //                             project.tasks.length) *
-    //                             100
-    //                         )}%`
-    //                       : "0%"}
-    //                   </span>
-    //                 </div>
-    //                 <div className="h-2 bg-gray-100 rounded-full">
-    //                   <div
-    //                     className="h-full bg-blue-600 rounded-full transition-all"
-    //                     style={{
-    //                       width:
-    //                         project.tasks.length > 0
-    //                           ? `${
-    //                               (project.tasks.filter((t) => t.completed)
-    //                                 .length /
-    //                                 project.tasks.length) *
-    //                               100
-    //                             }%`
-    //                           : "0%",
-    //                     }}
-    //                   />
-    //                 </div>
-    //                 <div className="flex justify-between text-sm text-gray-500">
-    //                   <span>
-    //                     {project.tasks.filter((t) => t.completed).length}/
-    //                     {project.tasks.length} tasks completed
-    //                   </span>
-    //                   <span>
-    //                     Due{" "}
-    //                     {project.deadline
-    //                       ? format(new Date(project.deadline), "MMM dd, yyyy")
-    //                       : "Not set"}
-    //                   </span>
-    //                 </div>
-    //               </div>
-    //             </CardContent>
-    //           </Card>
-
-    //           <Card className="hidden md:block">
-    //             <CardContent className="p-4">
-    //               <div className="space-y-2">
-    //                 <Select defaultValue="in-progress">
-    //                   <SelectTrigger>
-    //                     <SelectValue placeholder="Status" />
-    //                   </SelectTrigger>
-    //                   <SelectContent>
-    //                     <SelectItem value="planning">Planning</SelectItem>
-    //                     <SelectItem value="in-progress">In Progress</SelectItem>
-    //                     <SelectItem value="completed">Completed</SelectItem>
-    //                   </SelectContent>
-    //                 </Select>
-    //                 {/* Desktop version */}
-    //                 <Select
-    //                   value={
-    //                     project.priority
-    //                       ? project.priority.charAt(0).toUpperCase() +
-    //                         project.priority.slice(1)
-    //                       : "Medium"
-    //                   }
-    //                   onValueChange={handlePriorityChange}
-    //                 >
-    //                   <SelectTrigger>
-    //                     <SelectValue placeholder="Priority" />
-    //                   </SelectTrigger>
-    //                   <SelectContent>
-    //                     <SelectItem value="High">High</SelectItem>
-    //                     <SelectItem value="Medium">Medium</SelectItem>
-    //                     <SelectItem value="Low">Low</SelectItem>
-    //                   </SelectContent>
-    //                 </Select>
-    //               </div>
-    //             </CardContent>
-    //           </Card>
-    //         </div>
-
-    //         <Card>
-    //           <CardContent className="p-4 md:p-6">
-    //             <div className="space-y-4">
-    //               <div>
-    //                 <label className="text-sm font-medium">Project Name</label>
-    //                 <Input
-    //                   name="name"
-    //                   className="mt-2"
-    //                   value={project.name}
-    //                   onChange={handleInputChange}
-    //                 />
-    //               </div>
-    //               <div>
-    //                 <label className="text-sm font-medium">Description</label>
-    //                 <Textarea
-    //                   name="description"
-    //                   className="mt-2"
-    //                   value={project.description}
-    //                   onChange={handleInputChange}
-    //                 />
-    //               </div>
-    //               <div>
-    //                 <label className="text-sm font-medium">Deadline</label>
-    //                 <div className="flex items-center gap-2 mt-2">
-    //                   <Input
-    //                     type="date"
-    //                     name="deadline"
-    //                     className="flex-1"
-    //                     value={
-    //                       project.deadline
-    //                         ? format(new Date(project.deadline), "yyyy-MM-dd")
-    //                         : ""
-    //                     }
-    //                     onChange={handleInputChange}
-    //                   />
-    //                   <Button variant="outline" size="icon">
-    //                     <Calendar className="h-4 w-4" />
-    //                   </Button>
-    //                 </div>
-    //               </div>
-
-    //               {/* Update the mobile priority select */}
-    //               <div className="md:hidden space-y-4 pt-4 border-t border-gray-100">
-    //                 <div>
-    //                   <label className="text-sm font-medium">Status</label>
-    //                   <Select defaultValue="in-progress">
-    //                     <SelectTrigger className="mt-2 w-full">
-    //                       <SelectValue placeholder="Status" />
-    //                     </SelectTrigger>
-    //                     <SelectContent>
-    //                       <SelectItem value="planning">Planning</SelectItem>
-    //                       <SelectItem value="in-progress">
-    //                         In Progress
-    //                       </SelectItem>
-    //                       <SelectItem value="completed">Completed</SelectItem>
-    //                     </SelectContent>
-    //                   </Select>
-    //                 </div>
-    //                 <div>
-    //                   <label className="text-sm font-medium">Priority</label>
-    //                   <Select
-    //                     value={
-    //                       project.priority
-    //                         ? project.priority.charAt(0).toUpperCase() +
-    //                           project.priority.slice(1)
-    //                         : "Medium"
-    //                     }
-    //                     onValueChange={handlePriorityChange}
-    //                   >
-    //                     <SelectTrigger className="mt-2 w-full">
-    //                       <SelectValue placeholder="Priority" />
-    //                     </SelectTrigger>
-    //                     <SelectContent>
-    //                       <SelectItem value="High">High</SelectItem>
-    //                       <SelectItem value="Medium">Medium</SelectItem>
-    //                       <SelectItem value="Low">Low</SelectItem>
-    //                     </SelectContent>
-    //                   </Select>
-    //                 </div>
-    //               </div>
-    //             </div>
-    //           </CardContent>
-    //         </Card>
-
-    //         {/* Tasks Section */}
-    //         <div className="space-y-4">
-    //           <div className="flex items-center justify-between">
-    //             <h2 className="text-lg font-semibold">Tasks</h2>
-    //             <div className="flex items-center gap-2">
-    //               <Button
-    //                 onClick={() => setIsTaskDialogOpen(true)}
-    //                 className="bg-blue-600 hover:bg-blue-700"
-    //               >
-    //                 <Plus className="h-4 w-4 mr-2" />
-    //                 Add Task
-    //               </Button>
-    //               <Button
-    //                 variant="outline"
-    //                 onClick={() => setIsGenerateTasksDialogOpen(true)}
-    //                 disabled={generatingTasks || project.tasks.length > 0}
-    //               >
-    //                 <Sparkles className="h-4 w-4 mr-2" />
-    //                 AI Generate
-    //               </Button>
-    //             </div>
-    //           </div>
-
-    //           {/* Task List */}
-    //           <Card>
-    //             <CardContent className="p-0">
-    //               <div className="border-b border-gray-200">
-    //                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-    //                   <TabsList className="h-10 w-full rounded-none">
-    //                     <TabsTrigger
-    //                       value="incomplete"
-    //                       className="flex-1 rounded-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600"
-    //                     >
-    //                       Incomplete (
-    //                       {project.tasks.filter((t) => !t.completed).length})
-    //                     </TabsTrigger>
-    //                     <TabsTrigger
-    //                       value="completed"
-    //                       className="flex-1 rounded-none data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600"
-    //                     >
-    //                       Completed (
-    //                       {project.tasks.filter((t) => t.completed).length})
-    //                     </TabsTrigger>
-    //                   </TabsList>
-    //                 </Tabs>
-    //               </div>
-
-    //               <div className="divide-y divide-gray-100">
-    //                 {getFilteredTasks().map((task) => (
-    //                   <div key={task._id} className="p-4 hover:bg-gray-50">
-    //                     <div className="flex items-center justify-between">
-    //                       <div>
-    //                         <h3 className="font-medium">{task.name}</h3>
-    //                         <p className="text-sm text-gray-500">
-    //                           {task.description}
-    //                         </p>
-    //                       </div>
-    //                       <DropdownMenu modal={false}>
-    //                         <DropdownMenuTrigger asChild>
-    //                           <Button
-    //                             variant="ghost"
-    //                             size="icon"
-    //                             className="h-8 w-8 p-0"
-    //                           >
-    //                             <MoreHorizontal className="h-4 w-4" />
-    //                           </Button>
-    //                         </DropdownMenuTrigger>
-    //                         <DropdownMenuContent align="end">
-    //                           <DropdownMenuItem
-    //                             onSelect={(e) => {
-    //                               e.preventDefault();
-    //                               setEditingTask(task);
-    //                               setIsEditDialogOpen(true);
-    //                             }}
-    //                           >
-    //                             <Edit className="mr-2 h-4 w-4" />
-    //                             <span>Edit Task</span>
-    //                           </DropdownMenuItem>
-    //                           <DropdownMenuItem
-    //                             onSelect={() =>
-    //                               handleDeleteTask(task._id, project._id)
-    //                             }
-    //                           >
-    //                             <Trash2 className="mr-2 h-4 w-4" />
-    //                             <span>Delete Task</span>
-    //                           </DropdownMenuItem>
-    //                           <DropdownMenuItem
-    //                             onSelect={() => {
-    //                               const updatedTask = {
-    //                                 ...task,
-    //                                 completed: !task.completed,
-    //                               };
-    //                               setEditingTask(updatedTask);
-    //                               handleUpdateTask();
-    //                             }}
-    //                           >
-    //                             {task.completed
-    //                               ? "Mark as Incomplete"
-    //                               : "Mark as Complete"}
-    //                           </DropdownMenuItem>
-    //                         </DropdownMenuContent>
-    //                       </DropdownMenu>
-    //                     </div>
-    //                     <div className="mt-2 flex items-center gap-4 text-sm text-gray-500">
-    //                       <span>{task.duration}m</span>
-    //                       <span
-    //                         className={`text-xs px-2 py-1 rounded-full ${
-    //                           task.priority === "High"
-    //                             ? "bg-red-100 text-red-800"
-    //                             : task.priority === "Medium"
-    //                             ? "bg-yellow-100 text-yellow-800"
-    //                             : "bg-green-100 text-green-800"
-    //                         }`}
-    //                       >
-    //                         {task.priority}
-    //                       </span>
-    //                       <span>
-    //                         Due {format(parseISO(task.deadline), "MMM dd")}
-    //                       </span>
-    //                     </div>
-    //                   </div>
-    //                 ))}
-    //               </div>
-    //             </CardContent>
-    //           </Card>
-    //           {/* Generate Tasks Dialog */}
-    //           <Dialog
-    //             open={isGenerateTasksDialogOpen}
-    //             onOpenChange={setIsGenerateTasksDialogOpen}
-    //           >
-    //             <DialogContent className="sm:max-w-[425px]">
-    //               <DialogHeader>
-    //                 <DialogTitle>Generate Project Tasks</DialogTitle>
-    //                 <DialogDescription>
-    //                   Provide additional context to help generate more relevant
-    //                   tasks.
-    //                 </DialogDescription>
-    //               </DialogHeader>
-    //               <div className="grid gap-4 py-4">
-    //                 <div>
-    //                   <Label htmlFor="context">Additional Context</Label>
-    //                   <Textarea
-    //                     id="context"
-    //                     value={generationContext}
-    //                     onChange={(e) => setGenerationContext(e.target.value)}
-    //                     placeholder="Add any specific requirements or context..."
-    //                     className="min-h-[100px]"
-    //                   />
-    //                 </div>
-    //               </div>
-    //               <DialogFooter>
-    //                 <Button
-    //                   onClick={handleGenerateTasks}
-    //                   disabled={generatingTasks}
-    //                 >
-    //                   {generatingTasks ? (
-    //                     <>
-    //                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-    //                       Generating...
-    //                     </>
-    //                   ) : (
-    //                     <>
-    //                       <Sparkles className="mr-2 h-4 w-4" />
-    //                       Generate Tasks
-    //                     </>
-    //                   )}
-    //                 </Button>
-    //               </DialogFooter>
-    //             </DialogContent>
-    //           </Dialog>
-    //           <Dialog
-    //             open={isTaskDialogOpen}
-    //             onOpenChange={setIsTaskDialogOpen}
-    //           >
-    //             <DialogContent>
-    //               <DialogHeader>
-    //                 <DialogTitle>Add New Task</DialogTitle>
-    //                 <DialogDescription>
-    //                   Enter the details for the new task.
-    //                 </DialogDescription>
-    //               </DialogHeader>
-    //               <div className="grid gap-4 py-4">
-    //                 <div className="grid grid-cols-4 items-center gap-4">
-    //                   <Label htmlFor="task-name" className="text-right">
-    //                     Name
-    //                   </Label>
-    //                   <Input
-    //                     id="task-name"
-    //                     value={newTask.name || ""}
-    //                     onChange={(e) =>
-    //                       setNewTask({ ...newTask, name: e.target.value })
-    //                     }
-    //                     className="col-span-3"
-    //                   />
-    //                 </div>
-    //                 <div className="grid grid-cols-4 items-center gap-4">
-    //                   <Label htmlFor="task-description" className="text-right">
-    //                     Description
-    //                   </Label>
-    //                   <Input
-    //                     id="task-description"
-    //                     value={newTask.description || ""}
-    //                     onChange={(e) =>
-    //                       setNewTask({
-    //                         ...newTask,
-    //                         description: e.target.value,
-    //                       })
-    //                     }
-    //                     className="col-span-3"
-    //                   />
-    //                 </div>
-    //                 <div className="grid grid-cols-4 items-center gap-4">
-    //                   <Label htmlFor="deadline" className="text-right">
-    //                     Deadline
-    //                   </Label>
-    //                   <Input
-    //                     id="deadline"
-    //                     name="deadline"
-    //                     type="date"
-    //                     value={newTask.deadline || ""}
-    //                     onChange={(e) =>
-    //                       setNewTask({ ...newTask, deadline: e.target.value })
-    //                     }
-    //                     className="col-span-3"
-    //                   />
-    //                 </div>
-    //                 <div className="grid grid-cols-4 items-center gap-4">
-    //                   <Label htmlFor="task-duration" className="text-right">
-    //                     Duration (minutes)
-    //                   </Label>
-    //                   <Input
-    //                     id="task-duration"
-    //                     type="number"
-    //                     min="5"
-    //                     max="240"
-    //                     value={newTask.duration || ""}
-    //                     onChange={(e) =>
-    //                       setNewTask({
-    //                         ...newTask,
-    //                         duration: Number(e.target.value),
-    //                       })
-    //                     }
-    //                     className="col-span-3"
-    //                   />
-    //                 </div>
-    //                 <div className="grid grid-cols-4 items-center gap-4">
-    //                   <Label htmlFor="task-priority" className="text-right">
-    //                     Priority
-    //                   </Label>
-    //                   <Select
-    //                     value={newTask.priority}
-    //                     onValueChange={(value) =>
-    //                       setNewTask({ ...newTask, priority: value })
-    //                     }
-    //                   >
-    //                     <SelectTrigger className="col-span-3">
-    //                       <SelectValue placeholder="Select priority" />
-    //                     </SelectTrigger>
-    //                     <SelectContent>
-    //                       <SelectItem value="Low">Low</SelectItem>
-    //                       <SelectItem value="Medium">Medium</SelectItem>
-    //                       <SelectItem value="High">High</SelectItem>
-    //                     </SelectContent>
-    //                   </Select>
-    //                 </div>
-    //                 <div className="grid grid-cols-4 items-center gap-4">
-    //                   <Label htmlFor="task-type" className="text-right">
-    //                     Type
-    //                   </Label>
-    //                   <Select
-    //                     value={newTask.type}
-    //                     onValueChange={(
-    //                       value:
-    //                         | "deep-work"
-    //                         | "planning"
-    //                         | "break"
-    //                         | "admin"
-    //                         | "collaboration"
-    //                     ) => setNewTask({ ...newTask, type: value })}
-    //                   >
-    //                     <SelectTrigger className="col-span-3">
-    //                       <SelectValue placeholder="Select type" />
-    //                     </SelectTrigger>
-    //                     <SelectContent>
-    //                       <SelectItem value="deep-work">Deep Work</SelectItem>
-    //                       <SelectItem value="planning">Planning</SelectItem>
-    //                       <SelectItem value="break">Break</SelectItem>
-    //                       <SelectItem value="admin">Admin</SelectItem>
-    //                       <SelectItem value="collaboration">
-    //                         Collaboration
-    //                       </SelectItem>
-    //                     </SelectContent>
-    //                   </Select>
-    //                 </div>
-    //               </div>
-    //               <DialogFooter>
-    //                 <Button onClick={handleAddTask}>Add Task</Button>
-    //               </DialogFooter>
-    //             </DialogContent>
-    //           </Dialog>
-
-    //           {/* Place this Dialog component outside of the map */}
-    //           <Dialog
-    //             open={isEditDialogOpen}
-    //             onOpenChange={(open) => {
-    //               setIsEditDialogOpen(open);
-    //               if (!open) {
-    //                 setEditingTask(null);
-    //               }
-    //             }}
-    //           >
-    //             {editingTask && (
-    //               <DialogContent>
-    //                 <DialogHeader>
-    //                   <DialogTitle>Edit Task</DialogTitle>
-    //                   <DialogDescription>
-    //                     Update the details of your task below.
-    //                   </DialogDescription>
-    //                 </DialogHeader>
-    //                 <div className="grid gap-4 py-4">
-    //                   <div className="grid grid-cols-4 items-center gap-4">
-    //                     <Label htmlFor="edit-name" className="text-right">
-    //                       Name
-    //                     </Label>
-    //                     <Input
-    //                       id="edit-name"
-    //                       value={editingTask.name || ""}
-    //                       onChange={(e) =>
-    //                         setEditingTask((prev) =>
-    //                           prev ? { ...prev, name: e.target.value } : null
-    //                         )
-    //                       }
-    //                       className="col-span-3"
-    //                     />
-    //                   </div>
-    //                   <div className="grid grid-cols-4 items-center gap-4">
-    //                     <Label
-    //                       htmlFor="edit-description"
-    //                       className="text-right"
-    //                     >
-    //                       Description
-    //                     </Label>
-    //                     <Input
-    //                       id="edit-description"
-    //                       value={editingTask.description || ""}
-    //                       onChange={(e) =>
-    //                         setEditingTask((prev) =>
-    //                           prev
-    //                             ? { ...prev, description: e.target.value }
-    //                             : null
-    //                         )
-    //                       }
-    //                       className="col-span-3"
-    //                     />
-    //                   </div>
-    //                   <div className="grid grid-cols-4 items-center gap-4">
-    //                     <Label htmlFor="edit-deadline" className="text-right">
-    //                       Deadline
-    //                     </Label>
-    //                     <Input
-    //                       id="edit-deadline"
-    //                       type="date"
-    //                       value={editingTask.deadline || ""}
-    //                       onChange={(e) =>
-    //                         setEditingTask((prev) =>
-    //                           prev
-    //                             ? { ...prev, deadline: e.target.value }
-    //                             : null
-    //                         )
-    //                       }
-    //                       className="col-span-3"
-    //                     />
-    //                   </div>
-    //                   <div className="grid grid-cols-4 items-center gap-4">
-    //                     <Label htmlFor="edit-duration" className="text-right">
-    //                       Duration (min)
-    //                     </Label>
-    //                     <Input
-    //                       id="edit-duration"
-    //                       type="number"
-    //                       min="5"
-    //                       max="240"
-    //                       value={editingTask.duration || ""}
-    //                       onChange={(e) =>
-    //                         setEditingTask((prev) =>
-    //                           prev
-    //                             ? { ...prev, duration: Number(e.target.value) }
-    //                             : null
-    //                         )
-    //                       }
-    //                       className="col-span-3"
-    //                     />
-    //                   </div>
-    //                   <div className="grid grid-cols-4 items-center gap-4">
-    //                     <Label htmlFor="edit-priority" className="text-right">
-    //                       Priority
-    //                     </Label>
-    //                     <Select
-    //                       value={editingTask.priority || "Medium"}
-    //                       onValueChange={(value) =>
-    //                         setEditingTask((prev) =>
-    //                           prev ? { ...prev, priority: value } : null
-    //                         )
-    //                       }
-    //                     >
-    //                       <SelectTrigger className="col-span-3">
-    //                         <SelectValue placeholder="Select priority" />
-    //                       </SelectTrigger>
-    //                       <SelectContent>
-    //                         <SelectItem value="Low">Low</SelectItem>
-    //                         <SelectItem value="Medium">Medium</SelectItem>
-    //                         <SelectItem value="High">High</SelectItem>
-    //                       </SelectContent>
-    //                     </Select>
-    //                   </div>
-    //                 </div>
-    //                 <DialogFooter>
-    //                   <Button onClick={handleUpdateTask}>Update Task</Button>
-    //                 </DialogFooter>
-    //               </DialogContent>
-    //             )}
-    //           </Dialog>
-    //         </div>
-    //       </div>
-    //     </div>
-    //   </div>
-    // </div>
   );
 }

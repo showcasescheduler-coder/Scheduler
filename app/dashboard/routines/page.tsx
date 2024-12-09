@@ -14,13 +14,14 @@ import {
   PlayCircle,
   History,
   MoreHorizontal,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarContent } from "@/app/components/SideBar";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import {
@@ -42,6 +43,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import MobileNav from "@/app/components/MobileNav";
+import { format } from "date-fns";
 
 export interface Routine {
   _id: string;
@@ -191,10 +194,34 @@ export default function RoutinesPage() {
       </aside>
 
       <main className="flex-1">
-        <div className="h-full p-8">
+        <div className="md:hidden px-4 py-2 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 p-0">
+                <MobileNav />
+              </SheetContent>
+            </Sheet>
+
+            {/* Center: Date display */}
+            <div className="text-sm font-medium">
+              {format(new Date(), "MMM d, yyyy")}
+            </div>
+
+            {/* Right: User button */}
+            <UserButton />
+          </div>
+        </div>
+
+        <div className="p-4 md:p-8">
+          {/* Header */}
           <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
+            <div className="flex justify-between items-center">
+              <div>
                 <h1 className="text-2xl font-semibold">Routines</h1>
                 <p className="text-sm text-gray-500">
                   Manage your daily and weekly routines
@@ -202,9 +229,9 @@ export default function RoutinesPage() {
               </div>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="h-9">
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Routine
+                  <Button>
+                    <Plus className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">New Routine</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -299,29 +326,33 @@ export default function RoutinesPage() {
             </div>
           </div>
 
-          <Tabs defaultValue="all" className="w-full mb-6">
-            <TabsList className="h-9 bg-transparent border border-gray-200 rounded-lg p-1 w-full sm:w-auto">
-              <TabsTrigger
-                value="all"
-                className="flex-1 sm:flex-none text-sm px-8 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
-              >
-                All
-              </TabsTrigger>
-              <TabsTrigger
-                value="daily"
-                className="flex-1 sm:flex-none text-sm px-8 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
-              >
-                Daily
-              </TabsTrigger>
-              <TabsTrigger
-                value="weekly"
-                className="flex-1 sm:flex-none text-sm px-8 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
-              >
-                Weekly
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {/* Tabs */}
+          <div className="mb-6">
+            <Tabs defaultValue="all" className="w-full">
+              <TabsList className="h-9 bg-transparent border border-gray-200 rounded-lg p-1">
+                <TabsTrigger
+                  value="all"
+                  className="flex-1 sm:flex-none text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
+                >
+                  All
+                </TabsTrigger>
+                <TabsTrigger
+                  value="daily"
+                  className="flex-1 sm:flex-none text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
+                >
+                  Daily
+                </TabsTrigger>
+                <TabsTrigger
+                  value="weekly"
+                  className="flex-1 sm:flex-none text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
+                >
+                  Weekly
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
 
+          {/* Routines Grid */}
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {routines.map((routine) => (
               <Card
@@ -329,7 +360,6 @@ export default function RoutinesPage() {
                 className="border-gray-200 shadow-sm flex flex-col h-[400px]"
               >
                 <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
-                  {/* Changed padding */}
                   <CardTitle className="text-base font-medium">
                     {routine.name}
                   </CardTitle>
