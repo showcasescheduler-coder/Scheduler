@@ -425,7 +425,11 @@ export default function EventsPage() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" onClick={handleAddEvent}>
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    type="submit"
+                    onClick={handleAddEvent}
+                  >
                     Add Event
                   </Button>
                 </DialogFooter>

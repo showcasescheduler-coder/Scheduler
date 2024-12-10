@@ -319,7 +319,12 @@ export default function RoutinesPage() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button onClick={handleAddRoutine}>Add Routine</Button>
+                    <Button
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={handleAddRoutine}
+                    >
+                      Add Routine
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

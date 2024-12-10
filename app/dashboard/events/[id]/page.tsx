@@ -34,6 +34,9 @@ import { SidebarContent } from "@/app/components/SideBar";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import MobileNav from "@/app/components/MobileNav";
+import { UserButton } from "@clerk/nextjs";
+import { format } from "date-fns";
 
 interface EventDetailsProps {
   params: { id: string };
@@ -138,27 +141,73 @@ export default function EventDetails({ params: { id } }: EventDetailsProps) {
       </aside>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Header */}
-        <header className="border-b border-gray-200 bg-white sticky top-0 z-10">
+        {/* Mobile Header */}
+        <div className="md:hidden border-b border-gray-200">
+          <div className="px-4 py-3 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 p-0">
+                  <MobileNav />
+                </SheetContent>
+              </Sheet>
+
+              <div className="text-sm font-medium">
+                {format(new Date(), "MMM d, yyyy")}
+              </div>
+
+              <UserButton />
+            </div>
+          </div>
+
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 -ml-2 shrink-0"
+                onClick={() => router.push("/dashboard/events")}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex-1 flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-lg font-semibold truncate">
+                    {event.name}
+                  </h1>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
+                      {event.status || "Upcoming"}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {event.isRecurring ? "Recurring Event" : event.date}
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  className="ml-4 shrink-0"
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Header */}
+        <header className="hidden md:block border-b border-gray-200 bg-white sticky top-0 z-10">
           <div className="px-4 md:px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="md:hidden">
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <Menu className="h-5 w-5" />
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-16 p-0">
-                      <SidebarContent />
-                    </SheetContent>
-                  </Sheet>
-                </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="hidden md:flex"
                   onClick={() => router.push("/dashboard/events")}
                 >
                   <ArrowLeft className="h-5 w-5" />
@@ -181,7 +230,11 @@ export default function EventDetails({ params: { id } }: EventDetailsProps) {
                     Join Meeting
                   </Button>
                 )}
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                <Button
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={handleSave}
+                >
                   Save Changes
                 </Button>
               </div>

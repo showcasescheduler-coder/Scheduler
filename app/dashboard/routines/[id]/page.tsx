@@ -14,6 +14,7 @@ import {
   FolderKanban,
   Repeat,
   BarChart2,
+  Edit,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -56,6 +57,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { UserButton } from "@clerk/nextjs";
+import MobileNav from "@/app/components/MobileNav";
+import { format } from "date-fns";
 
 interface Props {
   params: { id: string };
@@ -169,11 +173,6 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
     }
   };
 
-  const handleEditTask = (task: RoutineTask) => {
-    setEditingTask(task);
-    setIsEditTaskDialogOpen(true);
-  };
-
   const handleUpdateTask = async () => {
     if (!editingTask || !routine) return;
 
@@ -254,27 +253,73 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
       </aside>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* Header */}
-        <header className="border-b border-gray-200 bg-white sticky top-0 z-10">
+        {/* Mobile Header */}
+        <div className="md:hidden border-b border-gray-200">
+          <div className="px-4 py-3 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 p-0">
+                  <MobileNav />
+                </SheetContent>
+              </Sheet>
+
+              <div className="text-sm font-medium">
+                {format(new Date(), "MMM d, yyyy")}
+              </div>
+
+              <UserButton />
+            </div>
+          </div>
+
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 -ml-2 shrink-0"
+                onClick={() => router.push("/dashboard/routines")}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex-1 flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-lg font-semibold truncate">
+                    {routine.name}
+                  </h1>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">
+                      {routine.startTime} - {routine.endTime}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {routine.days.join(", ")}
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  className="ml-4 shrink-0"
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Header */}
+        <header className="hidden md:block border-b border-gray-200 bg-white sticky top-0 z-10">
           <div className="px-4 md:px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="md:hidden">
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <Menu className="h-5 w-5" />
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-16 p-0">
-                      <SidebarContent />
-                    </SheetContent>
-                  </Sheet>
-                </div>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="hidden md:flex"
                   onClick={() => router.push("/dashboard/routines")}
                 >
                   <ArrowLeft className="h-5 w-5" />
@@ -283,6 +328,16 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                   <h1 className="text-xl md:text-2xl font-semibold">
                     {routine.name}
                   </h1>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      {routine.startTime} - {routine.endTime}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4 text-blue-500" />
+                      {routine.days.join(", ")}
+                    </span>
+                  </div>
                 </div>
               </div>
               <Button
@@ -296,28 +351,10 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
           </div>
         </header>
 
-        {/* Info Bar */}
-        <div className="bg-white border-b border-gray-200">
-          <div className="px-4 md:px-8 py-2">
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4 text-blue-500" />
-                <span>
-                  {routine.startTime} - {routine.endTime}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Calendar className="h-4 w-4 text-blue-500" />
-                <span>{routine.days.join(", ")}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div className="flex-1 overflow-y-auto">
-          <div className="p-4 md:p-8 space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Left Column - Routine Details */}
+          <div className="max-w-[1600px] mx-auto p-4 md:p-8 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column */}
               <div className="space-y-6">
                 <Card>
                   <CardContent className="p-4 md:p-6">
@@ -348,7 +385,7 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                         />
                       </div>
 
-                      <div className="grid md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label className="flex items-center gap-2 text-sm font-medium">
                             <Clock className="h-4 w-4 text-blue-500" />
@@ -382,7 +419,7 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                           <Calendar className="h-4 w-4 text-blue-500" />
                           Recurring Days
                         </Label>
-                        <div className="grid grid-cols-7 gap-4 mt-2">
+                        <div className="grid grid-cols-4 md:grid-cols-7 gap-2 md:gap-4 mt-2">
                           {[
                             "Monday",
                             "Tuesday",
@@ -412,9 +449,8 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                     </div>
                   </CardContent>
                 </Card>
-
-                {/* Delete Section */}
-                <Card className="border-red-200">
+                {/* Desktop Delete Card */}
+                <Card className="border-red-200 hidden md:block">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -445,7 +481,7 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                 </Card>
               </div>
 
-              {/* Right Column - Tasks */}
+              {/* Right Column */}
               <div className="space-y-6">
                 <Card>
                   <CardContent className="p-4 md:p-6">
@@ -467,98 +503,150 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                       </Dialog>
                     </div>
 
-                    <div className="overflow-hidden rounded-lg border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Task</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Duration</TableHead>
-                            <TableHead>Priority</TableHead>
-                            <TableHead className="w-24">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {routine.tasks.map((task) => (
-                            <TableRow key={task._id}>
-                              <TableCell className="font-medium">
-                                {task.name}
-                              </TableCell>
-                              <TableCell>
-                                <span
-                                  className={`inline-block px-2 py-1 rounded-full text-xs ${
-                                    task.type === "deep-work"
-                                      ? "bg-purple-100 text-purple-800"
-                                      : task.type === "planning"
-                                      ? "bg-blue-100 text-blue-800"
-                                      : task.type === "break"
-                                      ? "bg-green-100 text-green-800"
-                                      : task.type === "admin"
-                                      ? "bg-orange-100 text-orange-800"
-                                      : "bg-pink-100 text-pink-800"
-                                  }`}
-                                >
-                                  {task.type
-                                    .split("-")
-                                    .map(
-                                      (word) =>
-                                        word.charAt(0).toUpperCase() +
-                                        word.slice(1)
-                                    )
-                                    .join(" ")}
-                                </span>
-                              </TableCell>
-                              <TableCell>{task.duration} min</TableCell>
-                              <TableCell>
-                                <span
-                                  className={`inline-block px-2 py-1 rounded-full text-xs ${
-                                    task.priority === "High"
-                                      ? "bg-red-100 text-red-800"
-                                      : task.priority === "Medium"
-                                      ? "bg-yellow-100 text-yellow-800"
-                                      : "bg-blue-100 text-blue-800"
-                                  }`}
-                                >
-                                  {task.priority}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                      onClick={() => handleEditTask(task)}
-                                    >
-                                      Edit
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => handleDeleteTask(task._id)}
-                                      className="text-red-600"
-                                    >
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                          {routine.tasks.length === 0 && (
+                    <div className="overflow-x-auto">
+                      <div className="rounded-lg border min-w-[300px] md:min-w-[600px]">
+                        <Table>
+                          <TableHeader>
                             <TableRow>
-                              <TableCell
-                                colSpan={5}
-                                className="text-center py-6 text-sm text-gray-500"
-                              >
-                                <ListTodo className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                                No tasks added yet
-                              </TableCell>
+                              <TableHead>Task</TableHead>
+                              <TableHead className="hidden md:table-cell">
+                                Type
+                              </TableHead>
+                              <TableHead className="hidden md:table-cell">
+                                Duration
+                              </TableHead>
+                              <TableHead className="hidden md:table-cell">
+                                Priority
+                              </TableHead>
+                              <TableHead className="w-24">Actions</TableHead>
                             </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {routine.tasks.map((task) => (
+                              <TableRow key={task._id}>
+                                <TableCell className="font-medium">
+                                  <div>
+                                    <div>{task.name}</div>
+                                    <div className="md:hidden text-sm text-gray-500">
+                                      {task.duration} min
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="hidden md:table-cell">
+                                  <span
+                                    className={`inline-block px-2 py-1 rounded-full text-xs ${
+                                      task.type === "deep-work"
+                                        ? "bg-purple-100 text-purple-800"
+                                        : task.type === "planning"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : task.type === "break"
+                                        ? "bg-green-100 text-green-800"
+                                        : task.type === "admin"
+                                        ? "bg-orange-100 text-orange-800"
+                                        : "bg-pink-100 text-pink-800"
+                                    }`}
+                                  >
+                                    {task.type
+                                      .split("-")
+                                      .map(
+                                        (word) =>
+                                          word.charAt(0).toUpperCase() +
+                                          word.slice(1)
+                                      )
+                                      .join(" ")}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="hidden md:table-cell">
+                                  {task.duration} min
+                                </TableCell>
+                                <TableCell className="hidden md:table-cell">
+                                  <span
+                                    className={`inline-block px-2 py-1 rounded-full text-xs ${
+                                      task.priority === "High"
+                                        ? "bg-red-100 text-red-800"
+                                        : task.priority === "Medium"
+                                        ? "bg-yellow-100 text-yellow-800"
+                                        : "bg-blue-100 text-blue-800"
+                                    }`}
+                                  >
+                                    {task.priority}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
+                                  <DropdownMenu modal={false}>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon">
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem
+                                        onSelect={(e) => {
+                                          e.preventDefault();
+                                          setEditingTask(task);
+                                          setIsEditTaskDialogOpen(true);
+                                        }}
+                                      >
+                                        <span>Edit Task</span>
+                                      </DropdownMenuItem>
+
+                                      <DropdownMenuItem
+                                        onSelect={() =>
+                                          handleDeleteTask(task._id)
+                                        }
+                                        className="text-red-600"
+                                      >
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            {routine.tasks.length === 0 && (
+                              <TableRow>
+                                <TableCell
+                                  colSpan={5}
+                                  className="text-center py-6 text-sm text-gray-500"
+                                >
+                                  <ListTodo className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                                  No tasks added yet
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                {/* Mobile Delete Card */}
+                <Card className="border-red-200 md:hidden">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-medium text-red-600">
+                          Delete Routine
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          Permanently delete this routine and all its tasks
+                        </p>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (
+                            confirm(
+                              "Are you sure you want to delete this routine? This action cannot be undone."
+                            )
+                          ) {
+                            router.push("/dashboard/routines");
+                          }
+                        }}
+                      >
+                        Delete Routine
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -659,120 +747,130 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleAddTask}>Add Task</Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={handleAddTask}
+              >
+                Add Task
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         <Dialog
           open={isEditTaskDialogOpen}
-          onOpenChange={setIsEditTaskDialogOpen}
+          onOpenChange={(open) => {
+            setIsEditTaskDialogOpen(open);
+            if (!open) setEditingTask(null);
+          }}
         >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Task</DialogTitle>
-              <DialogDescription>Modify the task details</DialogDescription>
-            </DialogHeader>
-            {editingTask && (
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-name">Task Name</Label>
-                  <Input
-                    id="edit-name"
-                    value={editingTask.name}
-                    onChange={(e) =>
-                      setEditingTask({
-                        ...editingTask,
-                        name: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-description">Description</Label>
-                  <Textarea
-                    id="edit-description"
-                    value={editingTask.description}
-                    onChange={(e) =>
-                      setEditingTask({
-                        ...editingTask,
-                        description: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+          {editingTask && (
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Task</DialogTitle>
+                <DialogDescription>Modify the task details</DialogDescription>
+              </DialogHeader>
+              {editingTask && (
+                <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="edit-duration">Duration (minutes)</Label>
+                    <Label htmlFor="edit-name">Task Name</Label>
                     <Input
-                      id="edit-duration"
-                      type="number"
-                      min={5}
-                      max={240}
-                      value={editingTask.duration}
+                      id="edit-name"
+                      value={editingTask.name}
                       onChange={(e) =>
                         setEditingTask({
                           ...editingTask,
-                          duration: Number(e.target.value),
+                          name: e.target.value,
                         })
                       }
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="edit-priority">Priority</Label>
-                    <Select
-                      value={editingTask.priority}
-                      onValueChange={(value) =>
-                        setEditingTask({ ...editingTask, priority: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select priority" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Low">Low</SelectItem>
-                        <SelectItem value="Medium">Medium</SelectItem>
-                        <SelectItem value="High">High</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2 col-span-2">
-                    <Label htmlFor="edit-type">Task Type</Label>
-                    <Select
-                      value={editingTask.type}
-                      onValueChange={(value) =>
+                    <Label htmlFor="edit-description">Description</Label>
+                    <Textarea
+                      id="edit-description"
+                      value={editingTask.description}
+                      onChange={(e) =>
                         setEditingTask({
                           ...editingTask,
-                          type: value as RoutineTask["type"],
+                          description: e.target.value,
                         })
                       }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select task type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="deep-work">Deep Work</SelectItem>
-                        <SelectItem value="planning">Planning</SelectItem>
-                        <SelectItem value="break">Break</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="collaboration">
-                          Collaboration
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-duration">Duration (minutes)</Label>
+                      <Input
+                        id="edit-duration"
+                        type="number"
+                        min={5}
+                        max={240}
+                        value={editingTask.duration}
+                        onChange={(e) =>
+                          setEditingTask({
+                            ...editingTask,
+                            duration: Number(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-priority">Priority</Label>
+                      <Select
+                        value={editingTask.priority}
+                        onValueChange={(value) =>
+                          setEditingTask({ ...editingTask, priority: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select priority" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Low">Low</SelectItem>
+                          <SelectItem value="Medium">Medium</SelectItem>
+                          <SelectItem value="High">High</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2 col-span-2">
+                      <Label htmlFor="edit-type">Task Type</Label>
+                      <Select
+                        value={editingTask.type}
+                        onValueChange={(value) =>
+                          setEditingTask({
+                            ...editingTask,
+                            type: value as RoutineTask["type"],
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select task type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="deep-work">Deep Work</SelectItem>
+                          <SelectItem value="planning">Planning</SelectItem>
+                          <SelectItem value="break">Break</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="collaboration">
+                            Collaboration
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-            <DialogFooter>
-              <Button
-                onClick={handleUpdateTask}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Update Task
-              </Button>
-            </DialogFooter>
-          </DialogContent>
+              )}
+              <DialogFooter>
+                <Button
+                  onClick={handleUpdateTask}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Update Task
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          )}
         </Dialog>
       </div>
     </div>

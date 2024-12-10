@@ -18,9 +18,17 @@ import {
   PlusCircle,
   Edit,
   Trash2,
+  MoreVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -73,6 +81,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import MobileNav from "@/app/components/MobileNav";
 
 interface Props {
   params: { id: string };
@@ -357,82 +366,68 @@ export default function ProjectDetails({ params: { id } }: Props) {
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile Header */}
-        <div className="md:hidden px-4 py-2 border-b border-gray-200">
-          {/* Three column layout */}
-          <div className="flex items-center justify-between">
-            {/* Left: Menu button */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-64 p-0">
-                <div className="flex flex-col h-full">
-                  {/* Header */}
-                  <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                    <Brain className="h-8 w-8 text-blue-600" />
-                    <SheetClose className="rounded-sm opacity-70 hover:opacity-100 ring-offset-background transition-opacity" />
-                  </div>
+        <div className="md:hidden border-b border-gray-200">
+          {/* Top bar with menu and user */}
+          <div className="px-4 py-3 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 p-0">
+                  <MobileNav />
+                </SheetContent>
+              </Sheet>
 
-                  {/* Navigation Links */}
-                  <nav className="flex-1 p-4">
-                    <div className="flex flex-col space-y-6">
-                      <Link
-                        href="/dashboard"
-                        className="flex items-center space-x-3 text-sm font-medium"
-                      >
-                        <LayoutDashboard className="h-5 w-5 text-blue-600" />
-                        <span>Dashboard</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/projects"
-                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
-                      >
-                        <FolderKanban className="h-5 w-5" />
-                        <span>Projects</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/tasks"
-                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
-                      >
-                        <ListTodo className="h-5 w-5" />
-                        <span>Tasks</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/events"
-                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
-                      >
-                        <Calendar className="h-5 w-5" />
-                        <span>Events</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/routines"
-                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
-                      >
-                        <Repeat className="h-5 w-5" />
-                        <span>Routines</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/analytics"
-                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
-                      >
-                        <BarChart2 className="h-5 w-5" />
-                        <span>Analytics</span>
-                      </Link>
-                    </div>
-                  </nav>
-                </div>
-              </SheetContent>
-            </Sheet>
+              {/* Center: Date display */}
+              <div className="text-sm font-medium">
+                {format(new Date(), "MMM d, yyyy")}
+              </div>
 
-            {/* Center: Date display */}
-            <div className="text-sm font-medium">
-              {format(new Date(), "MMM d, yyyy")}
+              {/* Right: User button */}
+              <UserButton />
             </div>
+          </div>
 
-            {/* Right: User button */}
-            <UserButton />
+          {/* Project info bar */}
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 -ml-2 shrink-0"
+                onClick={() => router.push("/dashboard/projects")}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex-1 flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-lg font-semibold truncate">
+                    {project.name}
+                  </h1>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
+                      In Progress
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Due{" "}
+                      {project.deadline
+                        ? format(new Date(project.deadline), "MMM dd, yyyy")
+                        : "Not set"}
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  className="ml-4 shrink-0"
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -603,11 +598,146 @@ export default function ProjectDetails({ params: { id } }: Props) {
                   </div>
                 </CardContent>
               </Card>
+              {/* Mobile-only Tasks Section */}
+              <div className="md:hidden">
+                <Card className="overflow-hidden">
+                  <CardHeader className="p-4">
+                    <CardTitle>Tasks</CardTitle>
+                    <CardDescription>
+                      Manage tasks associated with this project
+                    </CardDescription>
+                    <div className="flex flex-col gap-4 mt-4">
+                      <Tabs
+                        value={activeTab}
+                        onValueChange={setActiveTab}
+                        className="w-full"
+                      >
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="incomplete">
+                            Incomplete
+                          </TabsTrigger>
+                          <TabsTrigger value="completed">Completed</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                      {activeTab !== "completed" && (
+                        <Button
+                          onClick={() => setIsGenerateTasksDialogOpen(true)}
+                          disabled={generatingTasks}
+                          className="w-full bg-blue-600 hover:bg-blue-700"
+                        >
+                          {generatingTasks ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="mr-2 h-4 w-4" />
+                          )}
+                          Generate Tasks
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="p-4">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[60%]">Task</TableHead>
+                            <TableHead className="w-[25%]">Due Date</TableHead>
+                            <TableHead className="w-[15%] text-center">
+                              Actions
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {getFilteredTasks().map((task) => (
+                            <TableRow key={task._id}>
+                              <TableCell className="py-3">
+                                <div className="space-y-1">
+                                  <div className="font-medium">{task.name}</div>
+                                  {task.description && (
+                                    <div className="text-sm text-gray-500 truncate max-w-[280px]">
+                                      {task.description}
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="align-top py-3">
+                                <div className="text-sm font-medium">
+                                  {format(parseISO(task.deadline), "MMM dd")}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <DropdownMenu modal={false}>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                    >
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                      onSelect={(e) => {
+                                        e.preventDefault();
+                                        setEditingTask(task);
+                                        setIsEditDialogOpen(true);
+                                      }}
+                                    >
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      <span>Edit Task</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onSelect={() =>
+                                        handleDeleteTask(task._id, project._id)
+                                      }
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      <span>Delete Task</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onSelect={() => {
+                                        const updatedTask = {
+                                          ...task,
+                                          completed: !task.completed,
+                                        };
+                                        setEditingTask(updatedTask);
+                                        handleUpdateTask();
+                                      }}
+                                    >
+                                      {task.completed
+                                        ? "Mark as Incomplete"
+                                        : "Mark as Complete"}
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+
+                  <CardFooter className="justify-center border-t p-4">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="gap-1"
+                      onClick={() => setIsTaskDialogOpen(true)}
+                    >
+                      <PlusCircle className="h-3.5 w-3.5" />
+                      Add Task
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </div>
             </div>
           </div>
 
           {/* Right Column - Tasks */}
-          <div className="w-full md:w-1/2 overflow-y-auto bg-gray-50">
+          <div className="hidden md:block w-full md:w-1/2 overflow-y-auto bg-gray-50">
             <div className="p-4 md:p-6 space-y-4">
               {/* Header with Actions */}
               <div className="flex items-center justify-between mb-6">
@@ -794,7 +924,11 @@ export default function ProjectDetails({ params: { id } }: Props) {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleGenerateTasks} disabled={generatingTasks}>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={handleGenerateTasks}
+              disabled={generatingTasks}
+            >
               {generatingTasks ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -930,7 +1064,12 @@ export default function ProjectDetails({ params: { id } }: Props) {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleAddTask}>Add Task</Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={handleAddTask}
+            >
+              Add Task
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1044,7 +1183,12 @@ export default function ProjectDetails({ params: { id } }: Props) {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleUpdateTask}>Update Task</Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={handleUpdateTask}
+              >
+                Update Task
+              </Button>
             </DialogFooter>
           </DialogContent>
         )}

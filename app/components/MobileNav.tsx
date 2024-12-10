@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Brain,
   LayoutDashboard,
@@ -12,6 +15,27 @@ import {
 import { SheetClose } from "@/components/ui/sheet";
 
 const MobileNav = () => {
+  const pathname = usePathname();
+
+  const isActive = (path: string) => {
+    // Special case for dashboard to prevent it from being active for all /dashboard/* routes
+    if (path === "/dashboard") {
+      return pathname === "/dashboard";
+    }
+    // For other routes, check if the current path starts with the given path
+    return pathname.startsWith(path);
+  };
+
+  const getLinkClass = (path: string) => {
+    return `flex items-center space-x-3 text-sm font-medium ${
+      isActive(path) ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
+    } transition-colors`;
+  };
+
+  const getIconClass = (path: string) => {
+    return `h-5 w-5 ${isActive(path) ? "text-blue-600" : ""} transition-colors`;
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -21,53 +45,50 @@ const MobileNav = () => {
 
       <nav className="flex-1 p-4">
         <div className="flex flex-col space-y-6">
-          <a
-            href="/dashboard"
-            className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
-          >
-            <LayoutDashboard className="h-5 w-5" />
+          <Link href="/dashboard" className={getLinkClass("/dashboard")}>
+            <LayoutDashboard className={getIconClass("/dashboard")} />
             <span className="flex-1">Dashboard</span>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/dashboard/projects"
-            className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+            className={getLinkClass("/dashboard/projects")}
           >
-            <FolderKanban className="h-5 w-5" />
+            <FolderKanban className={getIconClass("/dashboard/projects")} />
             <span className="flex-1">Projects</span>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/dashboard/tasks"
-            className="flex items-center space-x-3 text-sm font-medium text-blue-600"
+            className={getLinkClass("/dashboard/tasks")}
           >
-            <ListTodo className="h-5 w-5" />
+            <ListTodo className={getIconClass("/dashboard/tasks")} />
             <span className="flex-1">Tasks</span>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/dashboard/events"
-            className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+            className={getLinkClass("/dashboard/events")}
           >
-            <Calendar className="h-5 w-5" />
+            <Calendar className={getIconClass("/dashboard/events")} />
             <span className="flex-1">Events</span>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/dashboard/routines"
-            className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+            className={getLinkClass("/dashboard/routines")}
           >
-            <Repeat className="h-5 w-5" />
+            <Repeat className={getIconClass("/dashboard/routines")} />
             <span className="flex-1">Routines</span>
-          </a>
+          </Link>
 
-          <a
+          <Link
             href="/dashboard/analytics"
-            className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
+            className={getLinkClass("/dashboard/analytics")}
           >
-            <BarChart2 className="h-5 w-5" />
+            <BarChart2 className={getIconClass("/dashboard/analytics")} />
             <span className="flex-1">Analytics</span>
-          </a>
+          </Link>
         </div>
       </nav>
     </div>

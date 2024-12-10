@@ -54,6 +54,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
+import MobileNav from "@/app/components/MobileNav";
 
 export default function ProjectsPage() {
   const { projects, setProjects, addProject } = useAppContext();
@@ -154,63 +155,7 @@ export default function ProjectsPage() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-64 p-0">
-                <div className="flex flex-col h-full">
-                  {/* Header */}
-                  <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                    <Brain className="h-8 w-8 text-blue-600" />
-                    <SheetClose className="rounded-sm opacity-70 hover:opacity-100 ring-offset-background transition-opacity">
-                      {/* <X className="h-4 w-4" /> */}
-                    </SheetClose>
-                  </div>
-
-                  {/* Navigation Links with better spacing */}
-                  <nav className="flex-1 p-4">
-                    <div className="flex flex-col space-y-6">
-                      <Link
-                        href="/dashboard"
-                        className="flex items-center space-x-3 text-sm font-medium"
-                      >
-                        <LayoutDashboard className="h-5 w-5 text-blue-600" />
-                        <span>Dashboard</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/projects"
-                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
-                      >
-                        <FolderKanban className="h-5 w-5" />
-                        <span>Projects</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/tasks"
-                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
-                      >
-                        <ListTodo className="h-5 w-5" />
-                        <span>Tasks</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/events"
-                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
-                      >
-                        <Calendar className="h-5 w-5" />
-                        <span>Events</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/routines"
-                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
-                      >
-                        <Repeat className="h-5 w-5" />
-                        <span>Routines</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/analytics"
-                        className="flex items-center space-x-3 text-sm font-medium text-gray-600 hover:text-gray-900"
-                      >
-                        <BarChart2 className="h-5 w-5" />
-                        <span>Analytics</span>
-                      </Link>
-                    </div>
-                  </nav>
-                </div>
+                <MobileNav />
               </SheetContent>
             </Sheet>
 
@@ -239,16 +184,21 @@ export default function ProjectsPage() {
                     Add Project
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="sm:max-w-[525px]">
                   <DialogHeader>
-                    <DialogTitle>Add New Project</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle className="text-xl">
+                      Add New Project
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-600">
                       Enter the details for the new project.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="name" className="text-right">
+                      <Label
+                        htmlFor="name"
+                        className="text-right text-gray-600"
+                      >
                         Name
                       </Label>
                       <Input
@@ -256,11 +206,14 @@ export default function ProjectsPage() {
                         name="name"
                         value={newProject.name}
                         onChange={handleInputChange}
-                        className="col-span-3"
+                        className="col-span-3 border-gray-200 focus:ring-blue-600 focus:border-blue-600"
                       />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="description" className="text-right">
+                      <Label
+                        htmlFor="description"
+                        className="text-right text-gray-600"
+                      >
                         Description
                       </Label>
                       <Textarea
@@ -268,11 +221,14 @@ export default function ProjectsPage() {
                         name="description"
                         value={newProject.description}
                         onChange={handleInputChange}
-                        className="col-span-3"
+                        className="col-span-3 border-gray-200 focus:ring-blue-600 focus:border-blue-600"
                       />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="deadline" className="text-right">
+                      <Label
+                        htmlFor="deadline"
+                        className="text-right text-gray-600"
+                      >
                         Deadline
                       </Label>
                       <Input
@@ -281,11 +237,14 @@ export default function ProjectsPage() {
                         type="date"
                         value={newProject.deadline}
                         onChange={handleInputChange}
-                        className="col-span-3"
+                        className="col-span-3 border-gray-200 focus:ring-blue-600 focus:border-blue-600"
                       />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="time" className="text-right">
+                      <Label
+                        htmlFor="time"
+                        className="text-right text-gray-600"
+                      >
                         Time
                       </Label>
                       <Input
@@ -294,18 +253,21 @@ export default function ProjectsPage() {
                         type="time"
                         value={newProject.time}
                         onChange={handleInputChange}
-                        className="col-span-3"
+                        className="col-span-3 border-gray-200 focus:ring-blue-600 focus:border-blue-600"
                       />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="priority" className="text-right">
+                      <Label
+                        htmlFor="priority"
+                        className="text-right text-gray-600"
+                      >
                         Priority
                       </Label>
                       <Select
                         onValueChange={handlePriorityChange}
                         defaultValue={newProject.priority}
                       >
-                        <SelectTrigger className="col-span-3">
+                        <SelectTrigger className="col-span-3 border-gray-200 focus:ring-blue-600 focus:border-blue-600">
                           <SelectValue placeholder="Select priority" />
                         </SelectTrigger>
                         <SelectContent>
@@ -317,7 +279,12 @@ export default function ProjectsPage() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button onClick={handleAddProject}>Add Project</Button>
+                    <Button
+                      onClick={handleAddProject}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Add Project
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

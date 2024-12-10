@@ -384,7 +384,12 @@ export default function StandaloneTasks() {
                 </div>
 
                 <DialogFooter>
-                  <Button onClick={handleAddTask}>Add Task</Button>
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={handleAddTask}
+                  >
+                    Add Task
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
