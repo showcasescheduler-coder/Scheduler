@@ -39,7 +39,7 @@ const LoadingModal: React.FC<LoadingModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md" showClose={false}>
+      <DialogContent className="sm:max-w-md">
         <div className="flex flex-col items-center justify-center space-y-6 py-8">
           <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
