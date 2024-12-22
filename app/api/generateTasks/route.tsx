@@ -54,7 +54,8 @@ You MUST respond with a valid JSON array of tasks. Each task in the array MUST f
   "deadline": "YYYY-MM-DD",
   "status": "Todo",
   "completed": false,
-  "dependencies": string[] (names of tasks that must be completed first)
+  "dependencies": string[],
+  "type": "deep-work" | "planning" | "break" | "admin" | "collaboration"
 }`;
 
   const userPrompt = `

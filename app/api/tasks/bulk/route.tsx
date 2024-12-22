@@ -9,8 +9,14 @@ export async function POST(request: NextRequest) {
   try {
     const { tasks, projectId } = await request.json();
 
+    // Add default type to each task if not present
+    const tasksWithType = tasks.map((task: any) => ({
+      ...task,
+      type: task.type || "deep-work", // Set a default type if none provided
+    }));
+
     // Create tasks
-    const createdTasks = await Task.insertMany(tasks);
+    const createdTasks = await Task.insertMany(tasksWithType);
 
     // Update project with new task IDs
     await Project.findByIdAndUpdate(projectId, {
