@@ -74,6 +74,9 @@ import NoBlocksCard from "../components/NoBlocksScheduledCard";
 import MobileNav from "../components/MobileNav";
 import BlockProgress from "../components/BlockProgress";
 import { Progress } from "@/components/ui/progress";
+import { useRouter } from "next/navigation";
+import ScheduleGenerationSpinner from "../components/ScheduleGenerationSpinner";
+import FocusSession from "@/dialog/startBlockModal";
 
 interface Task {
   _id: string;
@@ -160,6 +163,14 @@ export default function Component() {
   const [isEditBlockDialogOpen, setIsEditBlockDialogOpen] = useState(false);
   const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationAttempts, setGenerationAttempts] = useState(0);
+  const [generationStatus, setGenerationStatus] = useState("");
+  const [focusSessionBlock, setFocusSessionBlock] = useState<Block | null>(
+    null
+  );
+
+  const router = useRouter();
 
   const { isLoaded, userId } = useAuth();
 
@@ -235,9 +246,16 @@ export default function Component() {
   useEffect(() => {
     // Only run if we have a promptText and haven't processed it yet
     if (promptText && !hasProcessedPrompt) {
+      // Update your generateSchedule function
       const generateSchedule = async () => {
         setIsLoading(true);
+        setGenerationProgress(0);
+        setGenerationStatus("Initializing...");
+
         try {
+          // Intent Analysis
+          setGenerationProgress(10);
+          setGenerationStatus("Analyzing your requirements...");
           const intentResponse = await fetch("/api/home-page-intent-analysis", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -249,6 +267,11 @@ export default function Component() {
           });
 
           const intentAnalysis = await intentResponse.json();
+
+          // Schedule Generation
+          setGenerationProgress(30);
+          setGenerationStatus("Generating your schedule...");
+          console.log("Intent analysis", intentAnalysis);
           const endpoint = intentAnalysis.isSpecificRequest
             ? "/api/home-page-specific"
             : "/api/home-page-non-specific";
@@ -263,24 +286,45 @@ export default function Component() {
             }),
           });
 
+          setGenerationProgress(60);
+          setGenerationStatus("Optimizing block placement...");
+
           const schedule = await scheduleResponse.json();
+          console.log(schedule);
+          setGenerationProgress(80);
+          setGenerationStatus("Finalizing your schedule...");
 
           if (schedule.blocks) {
+            setGenerationProgress(100);
+            setGenerationStatus("Schedule generated successfully!");
             setPreviewSchedule(schedule);
             setIsPreviewMode(true);
           }
         } catch (error) {
           console.error("Failed to generate schedule:", error);
         } finally {
+          await new Promise((resolve) => setTimeout(resolve, 500)); // Give time to see 100%
           setIsLoading(false);
-          setHasProcessedPrompt(true); // Mark that we've processed this prompt
-          setPromptText(""); // Clear the prompt after processing
+          // IMPORTANT: mark that we've processed
+          setHasProcessedPrompt(true);
+          setGenerationProgress(0);
+          setGenerationStatus("");
         }
       };
 
       generateSchedule();
     }
   }, [promptText]);
+
+  useEffect(() => {
+    // Only run the check after Clerk has loaded
+    if (isLoaded) {
+      // If user is not authenticated AND not in preview mode AND there's no promptText, redirect to homepage
+      if (!userId && !isPreviewMode && !promptText) {
+        router.push("/");
+      }
+    }
+  }, [isLoaded, userId, isPreviewMode, promptText, router]);
 
   const OpenNewBlockModal = () => {
     setIsAddBlockDialogOpen(true);
@@ -1317,13 +1361,13 @@ export default function Component() {
     setIsDialogOpen(true);
   };
 
-  if (!day) {
-    return (
-      <div className="flex h-screen w-full">
-        <LoadingSpinner />
-      </div>
-    );
-  }
+  // if (!day) {
+  //   return (
+  //     <div className="flex h-screen w-full">
+  //       <LoadingSpinner />
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="flex h-screen bg-white font-sans text-gray-900">
@@ -1332,7 +1376,15 @@ export default function Component() {
         <SidebarContent />
       </aside>
       {isLoading ? (
-        <LoadingSpinner />
+        promptText ? ( // If we're loading AND there's a promptText, show the schedule generation spinner
+          <ScheduleGenerationSpinner
+            progress={generationProgress}
+            status={generationStatus}
+          />
+        ) : (
+          // Otherwise show the regular loading spinner
+          <LoadingSpinner />
+        )
       ) : isPreviewMode && previewSchedule ? (
         <SchedulePreview
           schedule={previewSchedule}
@@ -1340,6 +1392,10 @@ export default function Component() {
           userId={user?._id}
           mutate={mutate}
         />
+      ) : !day ? (
+        <div className="flex h-screen w-full">
+          <LoadingSpinner />
+        </div>
       ) : (
         <main className="flex-1 overflow-y-auto">
           {/* Mobile Header */}
@@ -1763,6 +1819,7 @@ export default function Component() {
                                   variant="outline"
                                   size="sm"
                                   className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                  onClick={() => setFocusSessionBlock(block)}
                                 >
                                   <Clock className="h-4 w-4 md:mr-1" />
                                   <span className="hidden md:inline">
@@ -1819,7 +1876,6 @@ export default function Component() {
           day={day}
         />
       )}
-
       {/* Then, add this Dialog component outside of the task card, at the same level as other dialogs */}
       <Dialog
         open={isEditDialogOpen}
@@ -1866,6 +1922,13 @@ export default function Component() {
           </DialogContent>
         )}
       </Dialog>
+
+      {focusSessionBlock && (
+        <FocusSession
+          block={focusSessionBlock}
+          onClose={() => setFocusSessionBlock(null)}
+        />
+      )}
     </div>
   );
 }

@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Sparkles, Calendar } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
 
 interface ScheduleGenerationDialogProps {
   isOpen: boolean;
@@ -25,43 +24,69 @@ interface ScheduleGenerationDialogProps {
 export const ScheduleGenerationDialog: React.FC<
   ScheduleGenerationDialogProps
 > = ({ isOpen, onClose, onGenerateSchedule, isPreviewMode }) => {
-  const [userInput, setUserInput] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const getCurrentTimeBlock = () => {
-    const now = new Date();
-    const minutes = now.getMinutes();
-    const roundedMinutes = Math.round(minutes / 30) * 30;
-    now.setMinutes(roundedMinutes, 0, 0);
-    return now.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
-  const defaultText = `Start Time: ${getCurrentTimeBlock()}
-End Time: 10:00 PM
-`; // Added an extra newline here
+  const [thoughts, setThoughts] = useState([""]);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    if (isOpen && !userInput) {
-      setUserInput(defaultText);
+    if (isOpen) {
+      // Focus the first input after opening
       setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          textareaRef.current.setSelectionRange(
-            defaultText.length,
-            defaultText.length
-          );
+        if (inputRefs.current[0]) {
+          inputRefs.current[0]?.focus();
+        }
+      }, 0);
+    } else {
+      // Reset thoughts when dialog closes
+      setThoughts([""]);
+    }
+  }, [isOpen]);
+
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const newThoughts = [...thoughts];
+      newThoughts.splice(index + 1, 0, "");
+      setThoughts(newThoughts);
+      setTimeout(() => {
+        if (inputRefs.current[index + 1]) {
+          inputRefs.current[index + 1]?.focus();
+        }
+      }, 0);
+    } else if (
+      e.key === "Backspace" &&
+      thoughts[index] === "" &&
+      thoughts.length > 1
+    ) {
+      e.preventDefault();
+      const newThoughts = thoughts.filter((_, i) => i !== index);
+      setThoughts(newThoughts);
+      setTimeout(() => {
+        const prevInput = inputRefs.current[Math.max(0, index - 1)];
+        if (prevInput) {
+          prevInput.focus();
         }
       }, 0);
     }
-  }, [isOpen, userInput]);
+  };
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    const newThoughts = [...thoughts];
+    newThoughts[index] = e.target.value;
+    setThoughts(newThoughts);
+  };
 
   const handleComplete = () => {
-    onGenerateSchedule(userInput, getCurrentTimeBlock(), "10:00 PM");
-    setUserInput("");
+    const cleanThoughts = thoughts
+      .filter((thought) => thought.trim() !== "")
+      .join("\n");
+    onGenerateSchedule(cleanThoughts, "", ""); // Removed default time values
+    setThoughts([""]);
   };
 
   return (
@@ -78,13 +103,28 @@ End Time: 10:00 PM
           </DialogDescription>
         </DialogHeader>
 
-        <Textarea
-          ref={textareaRef}
-          className="min-h-[150px] resize-none text-base leading-relaxed"
-          placeholder="Describe your goals for this time block..."
-          value={userInput}
-          onChange={(e) => setUserInput(e.target.value)}
-        />
+        <div className="space-y-2 rounded-lg border-2 border-[#e2e8f0] p-6 bg-white shadow-sm hover:border-blue-100 hover:shadow-md transition-all duration-200 min-h-[150px]">
+          {thoughts.map((thought, index) => (
+            <div key={index} className="flex items-start space-x-3">
+              <span className="text-blue-600 mt-1 text-lg">•</span>
+              <input
+                ref={(el) => {
+                  inputRefs.current[index] = el;
+                }}
+                type="text"
+                value={thought}
+                onChange={(e) => handleChange(e, index)}
+                onKeyDown={(e) => handleKeyDown(e, index)}
+                placeholder={
+                  index === 0
+                    ? "Let's plan your most productive schedule..."
+                    : "Add another thought..."
+                }
+                className="flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-blue-100 rounded-md w-full text-lg placeholder:text-gray-400 bg-transparent"
+              />
+            </div>
+          ))}
+        </div>
 
         <DialogFooter className="flex gap-3 sm:justify-start">
           <Button

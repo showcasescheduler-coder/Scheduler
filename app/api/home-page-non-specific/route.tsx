@@ -13,49 +13,63 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const createSchedulePrompt = `You are an expert scheduling assistant creating an impressive preview schedule for a first-time user. They've made a general request without specific details. Your goal is to create an educational and inspiring schedule that demonstrates the power of AI-driven scheduling.
+  const createSchedulePrompt = `You are an expert scheduling assistant. A new user has just arrived on the homepage and given a general request, but they have not provided specific details. Your goal is to produce a schedule that not only reflects their general input but also highlights the app’s ability to create balanced, appealing schedules. This schedule should be crafted in such a way that the user sees the value of the tool and feels encouraged to sign up.
+
+You are an expert scheduling assistant creating a schedule that matches the user's requested context, even if they haven't provided many details. Your primary goal is to create a schedule that reflects their intended activities while incorporating productivity best practices.
 
 Time Frame: ${startTime} to ${endTime}
 User Request: "${userInput}"
 
-SCHEDULING PRINCIPLES:
-1. Peak Performance Blocks:
-- Place high-focus work during morning hours (typically 9:00-12:00)
-- Schedule creative tasks during energy peaks
-- Add administrative tasks during natural energy dips
-- Include strategic breaks to maintain productivity
+CONTEXT ADAPTATION:
+1. Schedule Type Identification:
+- Carefully analyze user's request to determine schedule type (study, work, exercise, personal, etc.)
+- Adapt all terminology to match the identified context (e.g., "Study Session" instead of "Deep Work" for study schedules)
+- Ensure all blocks and tasks align with the identified schedule type
+- Use appropriate activity durations for the context (e.g., 45-min study blocks, 60-min work blocks)
+a
+2. Activity-Specific Structure:
+For Study Schedules:
+- Use 45-60 minute focused study sessions
+- Include concept review and practice time
+- Add short breaks between subjects
+- Incorporate active recall and review periods
 
-2. Block Structure:
-- Start with a morning planning block
-- Include 2-3 deep work sessions
-- Add collaborative/meeting blocks
-- Schedule lighter tasks for late afternoon
-- End with a day wrap-up block
+For Work Schedules:
+- Schedule deep work during peak hours
+- Include collaboration and meeting times
+- Add administrative task blocks
+- Plan for project work and reviews
 
-3. Educational Elements:
-- Each block should teach best practices
-- Include clear rationale for time choices
-- Demonstrate energy management
-- Show task grouping principles
+For Exercise Schedules:
+- Alternate between different exercise types
+- Include proper warm-up periods
+- Add cool-down and recovery time
+- Consider intensity levels
 
-4. Example Tasks:
-- Use relatable, generic tasks that most professionals encounter
-- Mix different types of work (focused, collaborative, administrative)
-- Include both strategic and tactical activities
-- Show how breaks and buffers improve productivity
+3. Context-Appropriate Breaks:
+- Adjust break frequency based on activity type
+- Scale break duration to match activity intensity
+- Include activity-appropriate break tasks
+- Position breaks to maximize effectiveness
+
+4. Block Structure Guidelines:
+- Name blocks using context-appropriate terminology
+- Include context-specific productivity techniques
+- Add relevant task types for the schedule context
+- Use appropriate energy management strategies
 
 Return ONLY a JSON object with this structure:
 {
   "currentTime": "${new Date().toTimeString().slice(0, 5)}",
-  "scheduleRationale": "A compelling explanation of the schedule's structure, highlighting the behavioral science and productivity principles used. Focus on how this optimizes energy, minimizes context switching, and maintains sustainable productivity.",
+  "scheduleRationale": "Explanation focusing on why this schedule structure is optimal for the requested activity type, referencing relevant research and best practices for this specific context.",
   "userStartTime": "${startTime}",
   "userEndTime": "${endTime}",
   "blocks": [
     {
-      "name": "Clear, action-oriented block name",
+      "name": "Context-appropriate block name",
       "startTime": "HH:MM format",
       "endTime": "HH:MM format",
-      "description": "Educational explanation of why this block is placed here. Include energy level considerations and productivity science.",
+      "description": "Explanation of this block's purpose within the specific context requested",
       "isEvent": false,
       "isRoutine": false,
       "isStandaloneBlock": true,
@@ -63,9 +77,9 @@ Return ONLY a JSON object with this structure:
       "energyLevel": "high" | "medium" | "low",
       "tasks": [
         {
-          "name": "Example task name",
-          "description": "Brief explanation of this type of task",
-          "duration": number (in minutes),
+          "name": "Context-appropriate task name",
+          "description": "Task explanation relevant to the schedule type",
+          "duration": number,
           "priority": "High" | "Medium" | "Low",
           "type": "deep-work" | "planning" | "break" | "admin" | "collaboration",
           "isRoutineTask": false
@@ -76,19 +90,20 @@ Return ONLY a JSON object with this structure:
 }
 
 IMPORTANT GUIDELINES:
-1. Create 6-8 blocks total
-2. Each block should be 30-90 minutes
-3. Include 2-3 example tasks per block
-4. Space out high-energy tasks
-5. Add breaks between intense blocks
-6. Make all explanations educational but concise
-7. Focus on demonstrating schedule optimization
-8. Use clear, professional language
-9. Make block transitions logical
-10. Ensure schedule feels balanced and achievable
-11. Consider task types independently from block types - while they often match, some tasks within a block may have different types based on their specific nature and requirements
-12. Ensure task type assignments reflect the actual work involved, not just the containing block's type
-`;
+1. Stay strictly within the requested context
+2. Use terminology specific to the identified schedule type
+3. Match block durations to activity best practices
+4. Include context-appropriate breaks
+5. Use activity-specific productivity techniques
+6. Maintain proper intensity progression
+7. Include relevant cool-down/wrap-up activities
+8. Ensure proper sequencing for the activity type
+9. Add context-specific buffer times
+10. Scale complexity to activity requirements
+11. Consider energy management for the specific activity
+12. Include activity-appropriate transitions
+
+Remember: Every aspect of the schedule should clearly reflect the user's requested context, from block names to task descriptions.`;
 
   try {
     const schedule = await getAnthropicResponse(apiKey, createSchedulePrompt);

@@ -21,6 +21,7 @@ import {
   Brain,
   Lightbulb,
   EyeIcon,
+  Menu,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,6 +35,12 @@ import {
 import AuthModal from "@/dialog/authModal";
 import { useAppContext } from "../context/AppContext";
 import toast from "react-hot-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // interface Task {
 //   id: string;
@@ -171,6 +178,84 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
     }
   };
 
+  // Mobile header actions
+  const MobileActions = () => (
+    <div className="md:hidden w-full flex gap-2 mt-4">
+      {userId && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1 bg-white hover:bg-gray-50 border-gray-200"
+          onClick={() => {
+            localStorage.removeItem("schedule");
+            localStorage.setItem("isPreviewMode", "false");
+            setIsPreviewMode(false);
+            setPreviewSchedule(null);
+          }}
+        >
+          <X className="h-4 w-4 mr-2" />
+          Discard
+        </Button>
+      )}
+      <Button
+        variant="outline"
+        size="sm"
+        className="flex-1 bg-white hover:bg-gray-50 border-gray-200"
+        onClick={handleRegenerateClick}
+      >
+        <RotateCcw className="h-4 w-4 mr-2" />
+        Regenerate
+      </Button>
+      <Button
+        size="sm"
+        className="flex-1 bg-blue-600 hover:bg-blue-700"
+        onClick={handleSaveGeneratedSchedule}
+      >
+        <Check className="h-4 w-4 mr-2" />
+        Apply
+      </Button>
+    </div>
+  );
+
+  // Desktop header actions
+  const DesktopActions = () => (
+    <div className="hidden md:flex items-center gap-3">
+      {userId && (
+        <Button
+          variant="outline"
+          size="default"
+          className="bg-white hover:bg-gray-50 border-gray-200"
+          onClick={() => {
+            localStorage.removeItem("schedule");
+            localStorage.setItem("isPreviewMode", "false");
+            setIsPreviewMode(false);
+            setPreviewSchedule(null);
+          }}
+        >
+          <X className="h-4 w-4 mr-2" />
+          Discard
+        </Button>
+      )}
+      <Button
+        variant="outline"
+        size="default"
+        className="bg-white hover:bg-gray-50 border-gray-200"
+        onClick={handleRegenerateClick}
+      >
+        <RotateCcw className="h-4 w-4 mr-2" />
+        Regenerate
+      </Button>
+      <Button
+        size="default"
+        className="bg-blue-600 hover:bg-blue-700"
+        onClick={handleSaveGeneratedSchedule}
+      >
+        <Check className="h-4 w-4 mr-2" />
+        Apply Schedule
+      </Button>
+    </div>
+  );
+
   const insights = schedule.scheduleRationale
     .split(".")
     .filter(Boolean)
@@ -188,73 +273,37 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <EyeIcon className="h-5 w-5 text-blue-600" />
-                  <CardTitle className="text-xl font-semibold">
+                  <CardTitle className="text-lg md:text-xl font-semibold">
                     Schedule Preview
                   </CardTitle>
-                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-md">
+                  <span className="hidden md:inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-md">
                     Draft Mode
                   </span>
                 </div>
-                <div className="flex items-center gap-3">
-                  {userId && (
-                    <Button
-                      variant="outline"
-                      size="default"
-                      className="bg-white hover:bg-gray-50 border-gray-200"
-                      onClick={() => {
-                        localStorage.removeItem("schedule");
-                        localStorage.setItem("isPreviewMode", "false");
-                        setIsPreviewMode(false);
-                        setPreviewSchedule(null);
-                      }}
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Discard
-                    </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="default"
-                    className="bg-white hover:bg-gray-50 border-gray-200"
-                    onClick={handleRegenerateClick}
-                  >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Regenerate
-                  </Button>
-                  <Button
-                    size="default"
-                    className="bg-blue-600 hover:bg-blue-700 min-w-[140px]"
-                    onClick={handleSaveGeneratedSchedule}
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    Apply Schedule
-                  </Button>
-                </div>
+                <DesktopActions />
               </div>
               <p className="text-sm text-gray-500 mt-2">
                 {schedule.userStartTime} - {schedule.userEndTime}
               </p>
             </CardHeader>
             <CardContent className="text-sm text-gray-600 space-y-2">
-              <div className="flex items-start gap-3">
-                <div className="w-full space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Battery className="h-4 w-4 text-green-600" />
-                    <span>{insights[0]}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-yellow-600" />
-                    <span>{insights[1]}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Brain className="h-4 w-4 text-purple-600" />
-                    <span>{insights[2]}</span>
-                  </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Battery className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  <span className="line-clamp-2">{insights[0]}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+                  <span className="line-clamp-2">{insights[1]}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                  <span className="line-clamp-2">{insights[2]}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
-
+          <MobileActions />
           {/* Rest of the schedule blocks code remains the same */}
           <div className="space-y-4">
             {schedule.blocks.map((block, index) => (
@@ -266,7 +315,8 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
                       {block.isStandaloneBlock && (
                         <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
                           <Sparkles className="mr-1 h-3 w-3" />
-                          AI Optimized
+                          <span className="hidden md:inline">AI Optimized</span>
+                          <span className="md:hidden">AI</span>
                         </span>
                       )}
                       <TooltipProvider>

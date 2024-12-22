@@ -97,6 +97,7 @@ export default function RoutinesPage() {
     startTime: "",
     endTime: "",
   });
+  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
     const fetchRoutines = async () => {
@@ -129,6 +130,20 @@ export default function RoutinesPage() {
         ? prev.days.filter((d) => d !== day)
         : [...prev.days, day],
     }));
+  };
+
+  const getFilteredRoutines = () => {
+    switch (activeTab) {
+      case "daily":
+        // Return routines that run 5 or more days (nearly daily)
+        return routines.filter((routine) => routine.days.length >= 5);
+      case "weekly":
+        // Return routines that run 4 or fewer days
+        return routines.filter((routine) => routine.days.length <= 4);
+      default:
+        // "all" tab - return all routines
+        return routines;
+    }
   };
 
   const handleAddRoutine = async () => {
@@ -333,25 +348,31 @@ export default function RoutinesPage() {
 
           {/* Tabs */}
           <div className="mb-6">
-            <Tabs defaultValue="all" className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
               <TabsList className="h-9 bg-transparent border border-gray-200 rounded-lg p-1">
                 <TabsTrigger
                   value="all"
                   className="flex-1 sm:flex-none text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
                 >
-                  All
+                  All ({routines.length})
                 </TabsTrigger>
                 <TabsTrigger
                   value="daily"
                   className="flex-1 sm:flex-none text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
                 >
-                  Daily
+                  Daily (5+ days) (
+                  {routines.filter((r) => r.days.length >= 5).length})
                 </TabsTrigger>
                 <TabsTrigger
                   value="weekly"
                   className="flex-1 sm:flex-none text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
                 >
-                  Weekly
+                  Weekly (1-4 days) (
+                  {routines.filter((r) => r.days.length <= 4).length})
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -359,7 +380,7 @@ export default function RoutinesPage() {
 
           {/* Routines Grid */}
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {routines.map((routine) => (
+            {getFilteredRoutines().map((routine) => (
               <Card
                 key={routine._id}
                 className="border-gray-200 shadow-sm flex flex-col h-[400px]"

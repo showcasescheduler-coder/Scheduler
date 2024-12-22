@@ -20,26 +20,34 @@ User Request: "${userInput}"
 
 SCHEDULING PRINCIPLES:
 1. Request Analysis:
-- Identify specific tasks and times mentioned
-- Note any preferences or constraints
-- Recognize task relationships
-- Understand timing requirements
+- Identify the primary schedule type requested (e.g., study, work, personal)
+- Note any specific activities or preferences mentioned
+- Determine the general purpose of the schedule
+- Adapt block types and tasks to match the requested context
 
-2. AI Enhancement Strategy:
+2. Contextual Adaptation:
+- Use appropriate block names for the schedule type
+- Customize task types to match the context
+- Adjust break patterns based on activity type
+- Scale block durations to match typical needs
+- Use relevant terminology in descriptions
+- Maintain consistent theme throughout schedule
+
+3. AI Enhancement Strategy:
 - Honor all specific time requests
 - Suggest optimal placement for any floating tasks
 - Add complementary blocks where appropriate
 - Include strategic breaks between intense activities
 - Group related tasks to minimize context switching
 
-3. Preview Enhancement:
+4. Preview Enhancement:
 - Add productivity insights to each block
 - Explain energy level considerations
 - Show how task grouping improves focus
 - Demonstrate scheduling optimizations
 - Include buffer time for transitions
 
-4. Educational Elements:
+5. Educational Elements:
 - Explain placement choices
 - Highlight productivity principles
 - Show energy management

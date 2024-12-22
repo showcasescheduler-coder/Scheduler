@@ -68,6 +68,7 @@ export default function ProjectsPage() {
     time: "",
     priority: "Medium",
   });
+  const [activeTab, setActiveTab] = useState("active");
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -91,6 +92,13 @@ export default function ProjectsPage() {
 
   const handlePriorityChange = (value: string) => {
     setNewProject((prev) => ({ ...prev, priority: value }));
+  };
+
+  // Add a function to filter projects
+  const getFilteredProjects = () => {
+    return projects.filter((project) =>
+      activeTab === "completed" ? project.completed : !project.completed
+    );
   };
 
   const handleAddProject = async () => {
@@ -291,7 +299,11 @@ export default function ProjectsPage() {
             </div>
           </div>
 
-          <Tabs defaultValue="active" className="w-full mb-6">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full mb-6"
+          >
             <TabsList className="h-9 bg-transparent border border-gray-200 rounded-lg p-1 w-full sm:w-auto">
               <TabsTrigger
                 value="active"
@@ -312,7 +324,7 @@ export default function ProjectsPage() {
             <EmptyProjectsDisplay />
           ) : (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {projects.map((project) => (
+              {getFilteredProjects().map((project) => (
                 <Card key={project._id} className="border-gray-200 shadow-sm">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-base font-medium">

@@ -82,6 +82,7 @@ import {
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import MobileNav from "@/app/components/MobileNav";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Props {
   params: { id: string };
@@ -104,6 +105,8 @@ export default function ProjectDetails({ params: { id } }: Props) {
   // KEEP - Project context
   const { projects, setProjects } = useAppContext();
   const [project, setProject] = useState<Project | null>(null);
+  const [updatingTasks, setUpdatingTasks] = useState(false);
+  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
   // KEEP - Task dialog and AI generation states
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
@@ -290,6 +293,12 @@ export default function ProjectDetails({ params: { id } }: Props) {
     });
   };
 
+  const allTasksCompleted = (project: Project) => {
+    return (
+      project.tasks.length > 0 && project.tasks.every((task) => task.completed)
+    );
+  };
+
   // const handleEditTask = (task: Task) => {
   //   setEditingTask(task);
   //   setIsEditTaskDialogOpen(true);
@@ -354,7 +363,95 @@ export default function ProjectDetails({ params: { id } }: Props) {
     }
   };
 
-  console.log(project);
+  const handleCompleteProject = async (): Promise<void> => {
+    // Remove the completion check if we're reactivating
+    if (!project || (!project.completed && !allTasksCompleted(project))) return;
+
+    try {
+      const response = await fetch(`/api/complete-project`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: project._id,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to toggle project completion");
+      const { project: updatedProject } = await response.json();
+
+      // Update local state
+      setProjects((prev: Project[]) =>
+        prev.map((p: Project) =>
+          p._id === updatedProject._id ? updatedProject : p
+        )
+      );
+
+      // Update the local project state
+      setProject(updatedProject);
+
+      // Only redirect if we're completing the project, not reactivating
+      router.push("/dashboard/projects");
+    } catch (error) {
+      console.error("Error toggling project completion:", error);
+    }
+  };
+
+  const handleTaskCompletion = async (taskId: string, completed: boolean) => {
+    if (!project) return;
+
+    // Store the current state for potential rollback
+    const previousProject = { ...project };
+    const previousProjects = [...projects];
+
+    try {
+      // Optimistically update local state
+      const updatedTasks = project.tasks.map((task) =>
+        task._id === taskId ? { ...task, completed } : task
+      );
+      const optimisticProject = { ...project, tasks: updatedTasks };
+
+      // Update local state
+      setProject(optimisticProject);
+      setProjects((prev) =>
+        prev.map((p) => (p._id === project._id ? optimisticProject : p))
+      );
+
+      // Make the API call with ID in the body
+      const response = await fetch(`/api/complete-project-task`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: taskId,
+          completed,
+          projectId: project._id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to update task. Status: ${response.statusText}`
+        );
+      }
+
+      // Handle API response
+      const { success, updatedTask, updatedProject } = await response.json();
+
+      if (!success) {
+        throw new Error("Server returned unsuccessful status");
+      }
+
+      // Update with server response
+      setProject(updatedProject);
+      setProjects((prev) =>
+        prev.map((p) => (p._id === updatedProject._id ? updatedProject : p))
+      );
+    } catch (error) {
+      // Revert to previous state on error
+      console.error("Error updating task completion status:", error);
+      setProject(previousProject);
+      setProjects(previousProjects);
+    }
+  };
 
   if (!project) return null;
 
@@ -408,8 +505,8 @@ export default function ProjectDetails({ params: { id } }: Props) {
                     {project.name}
                   </h1>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
-                      In Progress
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                      {project.completed ? "Completed" : "In Progress"}
                     </span>
                     <span className="text-xs text-gray-500">
                       Due{" "}
@@ -419,11 +516,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                     </span>
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={handleSave}
-                  className="ml-4 shrink-0"
-                >
+                <Button size="sm" onClick={handleSave}>
                   Save
                 </Button>
               </div>
@@ -449,14 +542,26 @@ export default function ProjectDetails({ params: { id } }: Props) {
                       {project.name}
                     </h1>
                     <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
-                      In Progress
+                      {project.completed ? "Completed" : "In Progress"}
                     </span>
                   </div>
                 </div>
               </div>
-              <Button size="sm" onClick={handleSave}>
-                Save
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={handleSave}>
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleCompleteProject}
+                  disabled={!project.completed && !allTasksCompleted(project)}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  {project.completed
+                    ? "Reactivate Project"
+                    : "Complete Project"}
+                </Button>
+              </div>
             </div>
           </div>
         </header>
@@ -511,6 +616,21 @@ export default function ProjectDetails({ params: { id } }: Props) {
                       </span>
                     </div>
                   </div>
+                  {project.tasks.length > 0 && (
+                    <div className="mt-4 pt-4 border-t md:hidden">
+                      <Button
+                        onClick={handleCompleteProject}
+                        disabled={
+                          !project.completed && !allTasksCompleted(project)
+                        }
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        {project.completed
+                          ? "Reactivate Project"
+                          : "Complete Project"}
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -641,8 +761,9 @@ export default function ProjectDetails({ params: { id } }: Props) {
                       <Table>
                         <TableHeader>
                           <TableRow>
+                            <TableHead className="w-[50px]">Done</TableHead>
                             <TableHead className="w-[60%]">Task</TableHead>
-                            <TableHead className="w-[25%]">Due Date</TableHead>
+                            {/* <TableHead className="w-[25%]">Due Date</TableHead> */}
                             <TableHead className="w-[15%] text-center">
                               Actions
                             </TableHead>
@@ -651,6 +772,20 @@ export default function ProjectDetails({ params: { id } }: Props) {
                         <TableBody>
                           {getFilteredTasks().map((task) => (
                             <TableRow key={task._id}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={task.completed}
+                                  onCheckedChange={(
+                                    checked: boolean | string
+                                  ) =>
+                                    handleTaskCompletion(
+                                      task._id,
+                                      checked === true
+                                    )
+                                  }
+                                  className="ml-2"
+                                />
+                              </TableCell>
                               <TableCell className="py-3">
                                 <div className="space-y-1">
                                   <div className="font-medium">{task.name}</div>
@@ -661,11 +796,11 @@ export default function ProjectDetails({ params: { id } }: Props) {
                                   )}
                                 </div>
                               </TableCell>
-                              <TableCell className="align-top py-3">
+                              {/* <TableCell className="align-top py-3">
                                 <div className="text-sm font-medium">
                                   {format(parseISO(task.deadline), "MMM dd")}
                                 </div>
-                              </TableCell>
+                              </TableCell> */}
                               <TableCell className="text-center">
                                 <DropdownMenu modal={false}>
                                   <DropdownMenuTrigger asChild>
@@ -695,20 +830,6 @@ export default function ProjectDetails({ params: { id } }: Props) {
                                     >
                                       <Trash2 className="mr-2 h-4 w-4" />
                                       <span>Delete Task</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onSelect={() => {
-                                        const updatedTask = {
-                                          ...task,
-                                          completed: !task.completed,
-                                        };
-                                        setEditingTask(updatedTask);
-                                        handleUpdateTask();
-                                      }}
-                                    >
-                                      {task.completed
-                                        ? "Mark as Incomplete"
-                                        : "Mark as Complete"}
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
@@ -799,6 +920,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[50px]">Done</TableHead>
                       <TableHead className="w-[300px]">Task</TableHead>
                       <TableHead>Due Date</TableHead>
                       <TableHead>Priority</TableHead>
@@ -809,6 +931,15 @@ export default function ProjectDetails({ params: { id } }: Props) {
                   <TableBody>
                     {getFilteredTasks().map((task) => (
                       <TableRow key={task._id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={task.completed}
+                            onCheckedChange={(checked: boolean | string) =>
+                              handleTaskCompletion(task._id, checked === true)
+                            }
+                            className="ml-2"
+                          />
+                        </TableCell>
                         <TableCell>
                           <div>
                             <div className="font-medium">{task.name}</div>
@@ -871,20 +1002,6 @@ export default function ProjectDetails({ params: { id } }: Props) {
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 <span>Delete Task</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onSelect={() => {
-                                  const updatedTask = {
-                                    ...task,
-                                    completed: !task.completed,
-                                  };
-                                  setEditingTask(updatedTask);
-                                  handleUpdateTask();
-                                }}
-                              >
-                                {task.completed
-                                  ? "Mark as Incomplete"
-                                  : "Mark as Complete"}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

@@ -33,6 +33,7 @@ export interface Event {
 }
 
 export interface Project {
+  completed: unknown;
   _id: string;
   name: string;
   description: string;
@@ -75,6 +76,7 @@ export interface Block {
   endTime: string;
   tasks: Task[];
   event?: string; // Change this to a string (event ID) instead of Event[]
+  completed: boolean;
 }
 
 export interface Day {

@@ -12,7 +12,6 @@ export default clerkMiddleware((auth, req) => {
 
   // List of routes that require authentication
   const protectedRoutes = [
-    "/dashboard",
     "/dashboard/events",
     "/dashboard/routines",
     "/dashboard/tasks",

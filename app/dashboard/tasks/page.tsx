@@ -92,6 +92,7 @@ export default function StandaloneTasks() {
     completed: false,
     type: "deep-work", // Set a default value
   });
+  const [activeTab, setActiveTab] = useState("active");
 
   // Fetch tasks on component mount
   useEffect(() => {
@@ -193,9 +194,11 @@ export default function StandaloneTasks() {
   const standaloneTasks = useMemo(() => {
     return tasks.filter(
       (task) =>
-        !task.projectId && !task.isRoutineTask && task.completed !== true
+        !task.projectId &&
+        !task.isRoutineTask &&
+        task.completed === (activeTab === "completed")
     );
-  }, [tasks]);
+  }, [tasks, activeTab]);
 
   const getPriorityColor = (priority: string): string => {
     const colors: Record<string, string> = {
@@ -235,6 +238,8 @@ export default function StandaloneTasks() {
         return null;
     }
   };
+
+  console.log(tasks);
 
   return (
     <div className="flex h-screen bg-white">
@@ -397,19 +402,39 @@ export default function StandaloneTasks() {
 
           {/* Tabs */}
           <div className="mb-6">
-            <Tabs defaultValue="active" className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
               <TabsList className="h-9 bg-transparent border border-gray-200 rounded-lg p-1">
                 <TabsTrigger
                   value="active"
                   className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
                 >
-                  Active
+                  Active (
+                  {
+                    tasks.filter(
+                      (task) =>
+                        !task.projectId &&
+                        !task.isRoutineTask &&
+                        !task.completed
+                    ).length
+                  }
+                  )
                 </TabsTrigger>
                 <TabsTrigger
                   value="completed"
                   className="text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
                 >
-                  Completed
+                  Completed (
+                  {
+                    tasks.filter(
+                      (task) =>
+                        !task.projectId && !task.isRoutineTask && task.completed
+                    ).length
+                  }
+                  )
                 </TabsTrigger>
               </TabsList>
             </Tabs>
