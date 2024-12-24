@@ -8,6 +8,9 @@ interface ProjectInput {
   deadline: string;
 }
 
+// Define allowed duration values in minutes
+const ALLOWED_DURATIONS = [5, 10, 15, 30, 60, 90, 120];
+
 interface Task {
   name: string;
   description: string;
@@ -43,20 +46,41 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const systemPrompt = `You are an expert technical project manager specializing in breaking down projects into well-defined tasks. You excel at analyzing project requirements and additional context to create comprehensive, practical task lists. Your task breakdowns should integrate both the core project requirements and any specific needs or preferences expressed in the user's context.
+  const systemPrompt = `You are part of a personal scheduling app that helps users complete short-term projects (2 weeks or less) by breaking them down into simple, achievable tasks. Your role is to create practical task lists that make projects feel manageable and help users maintain momentum.
 
-You MUST respond with a valid JSON array of tasks. Each task in the array MUST follow this exact schema:
+Key Principles:
+- Create clear, action-oriented tasks that feel achievable
+- Avoid unnecessary planning/documentation tasks unless specifically requested
+- Focus on actual work that moves the project forward
+- Keep tasks simple and straightforward
+- Minimize dependencies between tasks where possible
+
+Task Duration Rules:
+- Tasks MUST use these exact durations (in minutes): ${ALLOWED_DURATIONS.join(
+    ", "
+  )}
+- Choose realistic durations that don't overwhelm users
+- Prefer shorter tasks (15-60 mins) to maintain momentum
+- Only use longer durations (90-120 mins) for complex work that can't be split
+
+You MUST respond with a valid JSON array of tasks. Each task MUST follow this schema:
 {
-  "name": "Task name",
-  "description": "Detailed description including acceptance criteria",
+  "name": "Clear, action-oriented task name",
+  "description": "Simple description of what needs to be done",
   "priority": "Low" | "Medium" | "High",
-  "duration": number (in minutes),
+  "duration": ${ALLOWED_DURATIONS.join(" | ")},
   "deadline": "YYYY-MM-DD",
   "status": "Todo",
   "completed": false,
-  "dependencies": string[],
-  "type": "deep-work" | "planning" | "break" | "admin" | "collaboration"
-}`;
+  "dependencies": string[]
+}
+
+Guidelines:
+1. Write tasks in plain, straightforward language
+2. Focus on concrete actions ("Write login function" vs "Implement authentication")
+3. Keep descriptions brief but clear
+4. Only add dependencies when strictly necessary
+5. Prioritize based on project flow and deadlines`;
 
   const userPrompt = `
 PROJECT INFORMATION:
@@ -68,41 +92,35 @@ Today's Date: ${today}
 USER CONTEXT:
 ${context ? context : "No additional context provided"}
 
-Please analyze this project and create a detailed task breakdown following these requirements:
+Break this project down into practical tasks that will help the user complete their project successfully:
 
-1. Context Analysis:
-   - Carefully analyze the provided user context to understand specific requirements and constraints
-   - Identify any special considerations or focus areas mentioned in the context
-   - Consider any technical requirements or preferences indicated
-   - Look for implicit requirements or constraints in the context
+1. Task Creation:
+   - Create simple, clear tasks that directly contribute to the project goal
+   - Each task MUST be exactly one of these durations (in minutes): ${ALLOWED_DURATIONS.join(
+     ", "
+   )}
+   - Focus on actual work rather than process or documentation
+   - Make tasks feel achievable and satisfying to complete
 
-2. Task Requirements:
-   - Break down the project into tasks that take 2-3 hours maximum
-   - Tasks must be specific, actionable, and technically accurate
-   - Ensure tasks align with both the project description and the additional context
-   - Include necessary setup, development, testing, and documentation tasks
-   - Add tasks specifically addressing requirements mentioned in the context
+2. Task Organization:
+   - List tasks in a logical order of completion
+   - Only include essential dependencies
+   - Spread work evenly across the project timeline
+   - Consider user energy levels when setting task durations
 
-3. Task Planning:
-   - Prioritize tasks based on dependencies and critical path
-   - Set realistic deadlines within the project timeline
-   - Consider any timing constraints or preferences mentioned in the context
-   - Ensure logical task sequencing
+3. Task Writing:
+   - Use clear, everyday language
+   - Write descriptions that make the next action obvious
+   - Include just enough detail to know when it's done
+   - Keep everything simple and practical
 
-4. Comprehensive Coverage:
-   - Ensure all aspects of the project are addressed
-   - Include necessary infrastructure and setup tasks
-   - Add quality assurance and testing tasks
-   - Include documentation and handover tasks
-   - Add tasks for any specific requirements mentioned in the context
+Remember to:
+- Use ONLY the specified duration values
+- Keep tasks focused on real work
+- Minimize planning/documentation overhead
+- Make the project feel achievable
 
-5. Task Details:
-   - Write clear, specific task descriptions
-   - Include acceptance criteria in descriptions
-   - Specify any technical requirements mentioned in the context
-   - Note any dependencies or prerequisites
-
-Remember to respond ONLY with a valid JSON array of tasks following the specified schema.`;
+Respond ONLY with a valid JSON array of tasks following the schema.`;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {

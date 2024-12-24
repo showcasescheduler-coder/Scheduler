@@ -71,6 +71,7 @@ interface SchedulePreviewProps {
   dayId?: string; // Make optional since guest users won't have this
   userId?: string; // Make optional since guest users won't have this
   mutate: () => Promise<any>; // Update the type to match SWR's mutate
+  onGenerateSchedule: () => void; // Add this new prop
 }
 
 interface Schedule {
@@ -115,6 +116,7 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
   dayId,
   userId,
   mutate,
+  onGenerateSchedule,
 }) => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authAction, setAuthAction] = useState<"accept" | "regenerate">(
@@ -131,8 +133,12 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
   };
 
   const handleRegenerateClick = () => {
-    setAuthAction("regenerate");
-    setShowAuthModal(true);
+    if (!isSignedIn) {
+      setAuthAction("regenerate");
+      setShowAuthModal(true);
+      return;
+    }
+    onGenerateSchedule(); // Call the passed function if user is signed in
   };
 
   // Update the save function to use the loading state:

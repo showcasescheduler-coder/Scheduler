@@ -150,6 +150,10 @@ export default function Component() {
     projects,
     events,
     routines,
+    setTasks,
+    setProjects,
+    setEvents,
+    setRoutines,
   } = useAppContext();
   const [hasProcessedPrompt, setHasProcessedPrompt] = useState(false);
   const { user, day, mutate, isError } = useUserAndDay();
@@ -325,6 +329,78 @@ export default function Component() {
       }
     }
   }, [isLoaded, userId, isPreviewMode, promptText, router]);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch(`/api/events?userId=${userId}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch events");
+        }
+        const data = await response.json();
+        setEvents(data);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+        // Optionally, set an error state here to show an error message to the user
+      }
+    };
+
+    fetchEvents();
+  }, [setEvents]);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch(`/api/projects?userId=${userId}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch projects");
+        }
+        const data = await response.json();
+        setProjects(data.projects);
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+      }
+    };
+
+    fetchProjects();
+  }, [setProjects]);
+
+  useEffect(() => {
+    const fetchRoutines = async () => {
+      try {
+        const response = await fetch(`/api/routines?userId=${userId}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch routines");
+        }
+        const data = await response.json();
+        setRoutines(data);
+      } catch (error) {
+        console.error("Error fetching routines:", error);
+        alert("Failed to fetch routines. Please try again.");
+      }
+    };
+
+    fetchRoutines();
+  }, [setRoutines]);
+
+  useEffect(() => {
+    // Fetch tasks from the API
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch(`/api/tasks?userId=${userId}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch tasks");
+        }
+        const data = await response.json();
+        setTasks(data);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        alert("Failed to fetch tasks. Please try again.");
+      }
+    };
+
+    fetchTasks();
+  }, [setTasks]);
 
   const OpenNewBlockModal = () => {
     setIsAddBlockDialogOpen(true);
@@ -677,12 +753,6 @@ export default function Component() {
     // setGenerationProgress(0);
     // setGenerationStep("Initializing...");
 
-    // console.log("Projects:", projects);
-    // console.log("Original Tasks:", tasks);
-    // console.log("Routines:", routines);
-    // console.log("Events:", events);
-    console.log(userInput, startTime, endTime);
-
     // Get the date and day of the week from the state
     const selectedDate = new Date(day.date);
     const formattedSelectedDate = selectedDate.toISOString().split("T")[0]; // Format: YYYY-MM-DD
@@ -690,13 +760,11 @@ export default function Component() {
       weekday: "long",
     });
 
-    console.log("Selected Date:", formattedSelectedDate);
-    console.log("Selected Day of Week:", selectedDayOfWeek);
-
     // Filter out completed standalone tasks
     const incompleteTasks = tasks.filter(
       (task) => !task.isRoutineTask && !task.completed
     );
+    console.log("tasks", tasks);
 
     // Filter out completed tasks from projects
     const projectsWithIncompleteTasks = projects.map((project) => ({
@@ -770,6 +838,14 @@ export default function Component() {
       .map((routine) => ({
         name: routine.name,
         description: routine.description,
+        startTimeWindow: {
+          earliestStart: routine.startTime, // When this routine can start
+          latestStart: routine.endTime, // When this routine needs to end by
+        },
+        totalDuration: routine.tasks.reduce(
+          (sum, task) => sum + Number(task.duration),
+          0
+        ),
         tasks: routine.tasks.map((task) => ({
           name: task.name,
           description: task.description,
@@ -796,10 +872,11 @@ export default function Component() {
       })),
     }));
 
-    console.log("Optimized Projects:", optimizedProjects);
-    console.log("Optimized Tasks:", optimizedTasks);
-    console.log("Optimized Events:", optimizedEvents);
-    console.log("Optimized Routines:", optimizedRoutines);
+    console.log(optimizedProjects);
+    console.log(optimizedEvents);
+    console.log(optimizedRoutines);
+    console.log(optimizedTasks);
+    console.log(userInput);
 
     try {
       // Initial setup
@@ -839,6 +916,13 @@ export default function Component() {
         // First API call
         // setGenerationProgress(20);
         // setGenerationStep("Analyzing intent and requirements...");
+
+        console.log(optimizedProjects);
+        console.log(optimizedEvents);
+        console.log(optimizedRoutines);
+        console.log(optimizedTasks);
+        console.log(userInput);
+
         const baseSchedule = await fetch("/api/intent-analysis", {
           method: "POST",
           headers: {
@@ -859,7 +943,7 @@ export default function Component() {
         // setGenerationProgress(40);
         // setGenerationStep("Processing schedule structure...");
         const baseSchedulejson = await baseSchedule.json();
-        console.log("Generated Initial Schedule:", baseSchedulejson);
+        console.log("Intent analaysis", baseSchedulejson);
         console.log(
           baseSchedulejson.hasEnoughData === false &&
             baseSchedulejson.hasSpecificInstructions
@@ -956,8 +1040,8 @@ export default function Component() {
               },
               body: JSON.stringify({
                 projects: optimizedProjects,
-                eventBlocks: events,
-                routineBlocks: routines,
+                eventBlocks: optimizedEvents,
+                routineBlocks: optimizedRoutines,
                 tasks: optimizedTasks,
                 userInput: userInput,
                 startTime: startTime,
@@ -1391,6 +1475,7 @@ export default function Component() {
           dayId={day?._id}
           userId={user?._id}
           mutate={mutate}
+          onGenerateSchedule={() => setIsDialogOpen(true)} // Add this prop
         />
       ) : !day ? (
         <div className="flex h-screen w-full">
@@ -1847,7 +1932,7 @@ export default function Component() {
           startTime: string,
           endTime: string
         ) => generateScheduleTest(userInput, startTime, endTime)}
-        isPreviewMode={false}
+        isPreviewMode={isPreviewMode}
       />
       <AddEventModal
         isOpen={isAddEventModalOpen}

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Calendar,
@@ -114,7 +114,8 @@ export default function ProjectDetails({ params: { id } }: Props) {
   const [activeTab, setActiveTab] = useState("incomplete");
   const [isGenerateTasksDialogOpen, setIsGenerateTasksDialogOpen] =
     useState(false);
-  const [generationContext, setGenerationContext] = useState("");
+  const [thoughts, setThoughts] = useState([""]);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // KEEP - Router and Auth
   const router = useRouter();
@@ -231,6 +232,10 @@ export default function ProjectDetails({ params: { id } }: Props) {
     if (!project || project.tasks.length > 0) return;
     setGeneratingTasks(true);
     try {
+      const cleanThoughts = thoughts
+        .filter((thought) => thought.trim() !== "")
+        .join("\n");
+
       const response = await fetch("/api/generateTasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -240,7 +245,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
             description: project.description,
             deadline: format(new Date(project.deadline), "yyyy-MM-dd"),
           },
-          context: generationContext,
+          context: cleanThoughts,
           today: new Date().toISOString().split("T")[0],
         }),
       });
@@ -270,6 +275,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
       });
 
       setIsGenerateTasksDialogOpen(false);
+      setThoughts([""]); // Add it here
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -1025,20 +1031,63 @@ export default function ProjectDetails({ params: { id } }: Props) {
           <DialogHeader>
             <DialogTitle>Generate Project Tasks</DialogTitle>
             <DialogDescription>
-              Provide additional context to help generate more relevant tasks.
+              What would you like to accomplish with these tasks?
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div>
-              <Label htmlFor="context">Additional Context</Label>
-              <Textarea
-                id="context"
-                value={generationContext}
-                onChange={(e) => setGenerationContext(e.target.value)}
-                placeholder="Add any specific requirements or context..."
-                className="min-h-[100px]"
-              />
-            </div>
+          <div className="space-y-2 rounded-lg border-2 border-[#e2e8f0] p-6 bg-white shadow-sm hover:border-blue-100 hover:shadow-md transition-all duration-200 min-h-[150px]">
+            {thoughts.map((thought, index) => (
+              <div key={index} className="flex items-start space-x-3">
+                <span className="text-blue-600 mt-1 text-lg">•</span>
+                <input
+                  ref={(el) => {
+                    inputRefs.current[index] = el;
+                  }}
+                  type="text"
+                  value={thought}
+                  onChange={(e) => {
+                    const newThoughts = [...thoughts];
+                    newThoughts[index] = e.target.value;
+                    setThoughts(newThoughts);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const newThoughts = [...thoughts];
+                      newThoughts.splice(index + 1, 0, "");
+                      setThoughts(newThoughts);
+                      setTimeout(() => {
+                        if (inputRefs.current[index + 1]) {
+                          inputRefs.current[index + 1]?.focus();
+                        }
+                      }, 0);
+                    } else if (
+                      e.key === "Backspace" &&
+                      thoughts[index] === "" &&
+                      thoughts.length > 1
+                    ) {
+                      e.preventDefault();
+                      const newThoughts = thoughts.filter(
+                        (_, i) => i !== index
+                      );
+                      setThoughts(newThoughts);
+                      setTimeout(() => {
+                        const prevInput =
+                          inputRefs.current[Math.max(0, index - 1)];
+                        if (prevInput) {
+                          prevInput.focus();
+                        }
+                      }, 0);
+                    }
+                  }}
+                  placeholder={
+                    index === 0
+                      ? "What tasks would you like to generate..."
+                      : "Add another thought..."
+                  }
+                  className="flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-blue-100 rounded-md w-full text-lg placeholder:text-gray-400 bg-transparent"
+                />
+              </div>
+            ))}
           </div>
           <DialogFooter>
             <Button

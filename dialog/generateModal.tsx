@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Sparkles, Calendar } from "lucide-react";
+import { Sparkles, Calendar, RotateCcw } from "lucide-react";
 
 interface ScheduleGenerationDialogProps {
   isOpen: boolean;
@@ -26,6 +26,7 @@ export const ScheduleGenerationDialog: React.FC<
 > = ({ isOpen, onClose, onGenerateSchedule, isPreviewMode }) => {
   const [thoughts, setThoughts] = useState([""]);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  console.log(isPreviewMode);
 
   useEffect(() => {
     if (isOpen) {
@@ -89,17 +90,43 @@ export const ScheduleGenerationDialog: React.FC<
     setThoughts([""]);
   };
 
+  const getPlaceholders = () => {
+    if (isPreviewMode) {
+      return {
+        first: "E.g., Move deep work blocks to the morning...",
+        additional: "Add another adjustment...",
+      };
+    }
+    return {
+      first: "Let's plan your most productive schedule...",
+      additional: "Add another thought...",
+    };
+  };
+
+  const placeholders = getPlaceholders();
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl font-semibold">
-            <Calendar className="h-6 w-6 text-blue-600" />
-            Generate Schedule
+            {isPreviewMode ? (
+              <>
+                <RotateCcw className="h-6 w-6 text-blue-600" />
+                Regenerate Schedule
+              </>
+            ) : (
+              <>
+                <Calendar className="h-6 w-6 text-blue-600" />
+                Generate Schedule
+              </>
+            )}
           </DialogTitle>
           <DialogDescription className="flex items-center text-sm text-muted-foreground">
             <Sparkles className="mr-2 h-4 w-4 text-blue-600" />
-            What would you like to accomplish?
+            {isPreviewMode
+              ? "What would you like to adjust in your current schedule?"
+              : "What would you like to accomplish?"}
           </DialogDescription>
         </DialogHeader>
 
@@ -116,9 +143,7 @@ export const ScheduleGenerationDialog: React.FC<
                 onChange={(e) => handleChange(e, index)}
                 onKeyDown={(e) => handleKeyDown(e, index)}
                 placeholder={
-                  index === 0
-                    ? "Let's plan your most productive schedule..."
-                    : "Add another thought..."
+                  index === 0 ? placeholders.first : placeholders.additional
                 }
                 className="flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-blue-100 rounded-md w-full text-lg placeholder:text-gray-400 bg-transparent"
               />
@@ -139,7 +164,7 @@ export const ScheduleGenerationDialog: React.FC<
             onClick={handleComplete}
           >
             <Sparkles className="h-4 w-4" />
-            Generate Schedule
+            {isPreviewMode ? "Regenerate Schedule" : "Generate Schedule"}
           </Button>
         </DialogFooter>
       </DialogContent>
