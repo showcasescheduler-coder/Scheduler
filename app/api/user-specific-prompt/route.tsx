@@ -27,7 +27,7 @@ AVAILABLE DATA:
 Time Frame: ${startTime} to ${endTime}
 User Request: "${userInput}"
 
-Projects and Their Tasks: \${JSON.stringify(projects, null, 2)}
+Projects and Their Tasks: ${JSON.stringify(projects, null, 2)}
 Events: ${JSON.stringify(eventBlocks, null, 2)}
 Routines: ${JSON.stringify(routineBlocks, null, 2)}
 Standalone Tasks: ${JSON.stringify(tasks, null, 2)}
@@ -39,41 +39,51 @@ SCHEDULING PRINCIPLES:
 - Never reschedule or modify events
 - Events take absolute priority over all other activities
 
-2. Task Reference Detection:
+2. Break and Energy Management:
+- Include 15-minute breaks between cognitive tasks
+- Schedule a 45-minute lunch break between 12:00-13:00 if possible
+- Consider natural energy peaks (morning) for high-priority tasks
+- Avoid scheduling intense tasks right after lunch
+- Maximum continuous work period should be 90 minutes
+
+3. Task Distribution and Flow:
 - Analyze user input for mentions of existing tasks, projects, or activities
-- Look for direct task names, project references, or close matches
-- When a match is found, use the existing task's ID and details
-- Include matching tasks with their original properties
-
-3. Schedule Building Priority Order:
-a) Fixed events (unchangeable, must be included)
-b) Routine blocks (following their usual schedule)
-c) Specifically referenced tasks from user input
-d) High priority tasks
-e) Tasks with approaching deadlines
-f) Related tasks to minimize context switching
-
-4. Energy and Flow Optimization:
-- Place high-cognitive tasks during peak energy (typically morning)
-- Group similar tasks to maintain focus
-- Schedule breaks between different types of work
+- Group similar tasks together to maintain focus and reduce context switching
 - Consider task relationships and dependencies
+- Distribute high-priority tasks across the day, not all in one block
+- Allow buffer time between different types of work
+
+4. Gap Management:
+- For gaps 45+ minutes: Add a break followed by a focused work block
+- For gaps 30-45 minutes: Add a single focused work block
+- Focused work blocks should suggest activities based on:
+  a) Any available tasks from backlog
+  b) Related work to surrounding blocks
+  c) General focus suggestions if no specific tasks available
+
+5. Block Structure:
+- Morning blocks (before lunch): Prioritize high-cognitive tasks
+- Early afternoon: Collaborative/lighter tasks
+- Late afternoon: Mixed priority tasks, routines
+- Include regular breaks for optimal productivity
+- Keep blocks balanced (typically 60-90 minutes)
 
 SCHEDULING INSTRUCTIONS:
 1. Lock in all events at their exact times (isEvent: true, include eventId)
 2. Place routine blocks (isRoutine: true, include routineId)
-3. Identify any referenced tasks from the backlog
-4. Fill remaining time optimally with other tasks
-5. Include explanation of choices in scheduleRationale
-6. For unscheduled tasks, mention them in scheduleRationale
+3. Add lunch break if schedule spans midday
+4. Identify and place specifically referenced tasks with appropriate breaks
+5. Fill significant gaps with focused work blocks and breaks
+6. Ensure no block exceeds 90 minutes without a break
+7. Include detailed explanation in scheduleRationale
 
 Return ONLY a JSON object with this structure:
 {
   "currentTime": "${new Date().toTimeString().slice(0, 5)}",
-  "scheduleRationale": "Detailed explanation of the schedule's structure and logic, including how it optimizes for productivity and energy levels, how it incorporates any user preferences, and how it allows for future task additions. Should include: 1) Which existing tasks were referenced 2) Why tasks were placed in their slots 3) Any important tasks that couldn't be scheduled 4) Energy flow considerations",
+  "scheduleRationale": "Detailed explanation including: 1) Referenced task placement 2) Break strategy 3) Gap management approach 4) Energy flow considerations 5) Unscheduled task handling",
   "blocks": [
     {
-      "name": "Block name (from user specification or complementary)",
+      "name": "Block name (descriptive and specific)",
       "startTime": "HH:MM format",
       "endTime": "HH:MM format",
       "isEvent": boolean,
@@ -85,7 +95,7 @@ Return ONLY a JSON object with this structure:
         {
           "id": "existing-id-if-found or null",
           "name": "Task name",
-          "description": "Details about the activity, including whether it was referenced in user input",
+          "description": "Activity details and context",
           "duration": number,
           "priority": "High" | "Medium" | "Low",
           "isRoutineTask": boolean

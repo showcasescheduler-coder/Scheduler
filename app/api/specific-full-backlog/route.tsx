@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const createSchedulePrompt = `You are an expert scheduling assistant helping a client who has both a full backlog and specific instructions for their day. Your goal is to create a schedule that prioritizes events, honors their specific requests, incorporates routines, and intelligently handles any remaining time.
+  const createSchedulePrompt = `You are an expert scheduling assistant helping a client who has both a full backlog and specific instructions for their day. Your goal is to create a schedule that properly balances events, routines, and specific requests while intelligently incorporating backlog tasks.
 
 AVAILABLE DATA:
 Time Frame: ${startTime} to ${endTime}
@@ -32,90 +32,89 @@ Events: ${JSON.stringify(eventBlocks, null, 2)}
 Routines: ${JSON.stringify(routineBlocks, null, 2)}
 Standalone Tasks: ${JSON.stringify(tasks, null, 2)}
 
-ANALYSIS STEPS:
-1. Priority Order Analysis:
-a) First: Identify all events (these cannot be moved)
-b) Second: Extract user's specific instructions for tasks and timing
-c) Third: Check for existing routines that fit around a & b
-d) Fourth: Determine if user wants remaining time filled
-   - Look for phrases like "organize my whole day" or "fill the rest"
-   - Note any intensity preferences ("productive", "relaxed", etc.)
+SCHEDULING PRINCIPLES:
 
-2. Conflict Detection:
-- Check if user's requested times conflict with events
-- Identify overlaps between specific requests and routines
-- Note any timing conflicts in scheduleRationale
-- Suggest alternative times for conflicting requests
+1. Priority Hierarchy:
+   a) Fixed events (cannot be moved)
+   b) Routine handling (see detailed rules below)
+   c) User's specific task requests
+   d) High-priority backlog tasks
+   e) Deadline-driven project tasks
+   f) Other backlog tasks
 
-3. Schedule Building:
-FIRST PRIORITY - Events:
-- Place all events in their exact time slots
-- These are immutable and must be respected
-- Mark with isEvent: true and include eventId
+2. Routine Handling Rules:
+   - After placing events, analyze routines for this day's schedule
+   - Check user input for:
+     * Explicitly requested routines (keep as specified)
+     * Modified routine timings (honor new times)
+     * Routine cancellations (skip these routines)
+     * Unmentioned routines (add within their allowed windows)
+   - For each routine:
+     * Verify if already included in user's specific requests
+     * If not mentioned and not conflicting, place in preferred time window
+     * If conflicting with events, try alternate times within allowed window
+     * Skip routine only if explicitly cancelled or no valid time slot exists
 
-SECOND PRIORITY - User's Specific Instructions:
-- Schedule all specifically requested activities
-- If conflict with event, explain in rationale
-- Look for matches with existing tasks in backlog
-- Use existing task IDs when found
+3. Break and Energy Management:
+   [Previous break management rules remain the same]
 
-THIRD PRIORITY - Routines:
-- Include user's regular routines where they fit
-- Mark with isRoutine: true and include routineId
-- Skip routines that conflict with higher priorities
+4. Backlog Integration:
+   [Previous backlog integration rules remain the same]
 
-FOURTH PRIORITY - Remaining Time:
-IF user requested full day organization:
-- Fill gaps with optimized task selection
-- Use behavioral psychology principles
-- Match task intensity to energy levels
-- Group similar tasks together
+5. Cognitive Load Distribution:
+   [Previous cognitive load rules remain the same]
 
-IF user didn't request full day:
-- Add suggestive blocks
-- Provide recommendations
-- Keep blocks flexible
-- Include productivity tips
+SCHEDULE BUILDING PROCESS:
 
-4. Schedule Optimization:
-- Look for natural task groupings
-- Suggest minor timing adjustments for better flow
-- Add appropriate buffer times
-- Maintain energy level awareness
+1. Event and Routine Framework:
+   - Place all fixed events
+   - Process routines according to Routine Handling Rules
+   - Document any routine conflicts or adjustments
+   
+2. User Request Integration:
+   - Add specifically requested tasks
+   - Skip duplicate routines already handled
+   - Resolve any conflicts with placed routines
 
-SCHEDULE GENERATION INSTRUCTIONS:
-1. Follow priority order strictly (Events > Specific Instructions > Routines > Optional Filling)
-2. For each block:
-   - Use existing task IDs when matching backlog items
-   - Generate unique IDs for new tasks
-   - Include clear descriptions with context
-   - Note any conflicts or adjustments made
+3. Backlog Integration:
+   [Previous backlog integration steps remain the same]
+
+4. Break Optimization:
+   [Previous break optimization steps remain the same]
+
+5. Final Review:
+   [Previous review steps plus:]
+   - Verify routine placement and conflicts
+   - Confirm cancelled routines were skipped
+   - Check routine timing windows were respected
 
 Return ONLY a JSON object with this structure:
 {
   "scheduleRationale": "Detailed explanation covering:
-    - How events were prioritized
-    - How specific instructions were incorporated
-    - Any conflicts and resolutions
-    - Which routines were included/excluded and why
-    - Why remaining time was filled or left as suggestions
-    - Energy flow considerations
-    - Any tasks that couldn't be scheduled due to conflicts",
+    - How events were placed
+    - How routines were handled (included, modified, or skipped)
+    - How specific instructions were prioritized
+    - Which backlog tasks were chosen and why
+    - Break and energy management strategy
+    - Task grouping and context maintenance
+    - Any scheduling conflicts and resolutions
+    - Deadline considerations
+    - Tasks that couldn't be scheduled",
   "blocks": [
     {
-      "name": "Block name (specific or suggestive)",
-      "startTime": "HH:MM format",
-      "endTime": "HH:MM format",
+      "name": "Block name (descriptive of activity)",
+      "startTime": "HH:MM",
+      "endTime": "HH:MM",
       "isEvent": boolean,
       "isRoutine": boolean,
       "isStandaloneBlock": boolean,
-      "eventId": existing-id-if-found or null,
-      "routineId": existing-id-if-found or null,
+      "eventId": "existing-id-if-found or null",
+      "routineId": "existing-id-if-found or null",
       "tasks": [
         {
-          "id": "existing-id-if-found or null,
+          "id": "existing-id-if-found or null",
           "name": "Task name",
-          "description": "Context including conflict resolution if any, setup needs, and whether this was specifically requested",
+          "description": "Include context, deadline info, and relation to user requests",
           "duration": number,
           "priority": "High" | "Medium" | "Low",
           "isRoutineTask": boolean

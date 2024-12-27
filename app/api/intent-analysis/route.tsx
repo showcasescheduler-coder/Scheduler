@@ -20,6 +20,11 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+  console.log("here is all the data for the user");
+  console.log(tasks);
+  console.log(projects);
+  console.log(eventBlocks);
+  console.log(routineBlocks);
 
   const analyzeRequestPrompt = `You are a scheduling assistant analyzing user requests to determine how to handle schedule creation. Examine the following request carefully:
 
@@ -49,38 +54,39 @@ FALSE if:
 - User delegates task assignment decisions to the system
 
 2. Has Enough Data (hasEnoughData):
-Calculate Total Schedulable Minutes:
+IMPORTANT: Only analyze the data in the provided arrays. DO NOT consider tasks or events mentioned in the User Request text.
+
+Calculate Total Schedulable Minutes ONLY from array data:
 
 1. Projects Duration = Sum of all projects[].tasks[].duration
+   If projects array is empty, count as 0
 
 2. Standalone Tasks Duration = Sum of all tasks[].duration
+   If tasks array is empty, count as 0
 
-3. Events Duration = For each event: 
+3. Events Duration = For each event in eventBlocks array: 
    Convert endTime - startTime to minutes
-   (Example: "17:00" - "16:00" = 60 minutes)
+   If eventBlocks array is empty, count as 0
 
 4. Routines Duration = Sum of all routineBlocks[].tasks[].duration
+   If routineBlocks array is empty, count as 0
 
 5. Total Items Count = 
+   Count ONLY items in arrays:
    projects[].tasks.length + 
    tasks.length + 
    eventBlocks.length + 
    Sum of all routineBlocks[].tasks.length
 
-Total Schedulable Minutes = Projects Duration + Standalone Tasks Duration + Events Duration + Routines Duration
+If ANY of the arrays are empty OR undefined, count their contribution as 0.
 
-Return TRUE only if BOTH:
-- (Total Schedulable Minutes / Total Available Minutes) >= 0.5 (50%)
-- Total Items Count >= 3
+Return FALSE if:
+- ALL arrays are empty, OR
+- Total Items Count is less than 3, OR
+- Total Schedulable Minutes / Total Available Minutes is less than 0.5 (50%)
 
-Return FALSE otherwise.
-
-Example:
-From your data:
-- Project task "Software Installation": 60 minutes
-- Standalone task "Get cash out for mum": 5 minutes
-- Event "meeting with tom": 60 minutes (17:00 - 16:00)
-- Routine tasks: 10 minutes (5 + 5 for brush teeth and medication)
+Document your calculations in hasEnoughDataReason showing:
+"Arrays contain: [X] projects, [Y] tasks, [Z] events, [W] routines. Total items: [N]. Total schedulable minutes: [M]. This [does/doesn't] meet minimum requirements because [explanation]"
 
 3. Schedule Intensity (intensity):
 "light" if:
@@ -108,6 +114,7 @@ Return ONLY a JSON object with this structure:
 {
   "hasSpecificInstructions": boolean,
   "hasEnoughData": boolean,
+  "hasEnoughDataReason": string,
   "intensity": "light" | "balanced" | "efficient"
 }`;
 
@@ -117,6 +124,7 @@ Return ONLY a JSON object with this structure:
     return NextResponse.json({
       hasSpecificInstructions: analysis.hasSpecificInstructions,
       hasEnoughData: analysis.hasEnoughData,
+      hasEnoughDataReason: analysis.hasEnoughDataReason,
       intensity: analysis.intensity,
     });
   } catch (error) {
