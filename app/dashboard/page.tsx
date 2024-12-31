@@ -77,6 +77,33 @@ import { Progress } from "@/components/ui/progress";
 import { useRouter } from "next/navigation";
 import ScheduleGenerationSpinner from "../components/ScheduleGenerationSpinner";
 import FocusSession from "@/dialog/startBlockModal";
+// Add these imports at the top of your file
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { TaskCard } from "@/app/components/TaskCard";
+import { TimeBlock } from "../components/TimeBlock";
+import { arrayMove } from "@dnd-kit/sortable";
+import { createPortal } from "react-dom";
+import {
+  DragStartEvent,
+  DragEndEvent,
+  DragOverEvent,
+  Active,
+} from "@dnd-kit/core";
 
 interface Task {
   _id: string;
@@ -122,6 +149,11 @@ interface Block {
   __v: number;
   isStandaloneBlock?: boolean;
   meetingLink: string;
+}
+
+interface DragData {
+  type: "Task" | "Block";
+  task: Task;
 }
 
 export default function Component() {
@@ -173,6 +205,8 @@ export default function Component() {
   const [focusSessionBlock, setFocusSessionBlock] = useState<Block | null>(
     null
   );
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [previousTask, setPreviousTask] = useState<Task | null>(null);
 
   const router = useRouter();
 
@@ -1445,6 +1479,140 @@ export default function Component() {
     setIsDialogOpen(true);
   };
 
+  // Add these DnD event handlers
+  const onDragStart = (event: DragStartEvent) => {
+    const dragData = event.active.data.current as DragData;
+    const task = dragData.task;
+    const newTask = {
+      ...task,
+      blockId: task.blockId,
+      _id: task._id,
+      index: (task as any).index, // Type assertion for just this usage
+    };
+    setActiveTask(task);
+    setPreviousTask(newTask);
+  };
+
+  const onDragEnd = async (event: DragEndEvent) => {
+    if (!day?.blocks) return;
+
+    try {
+      const response = await fetch("/api/drag-end", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          blocks: day.blocks,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update");
+      }
+
+      console.log(response);
+    } catch (error) {
+      console.error("Error updating task positions:", error);
+      toast.error("Failed to save changes");
+      // Optionally refresh to ensure DB consistency
+      mutate();
+    }
+  };
+
+  const onDragOver = async (event: { active: any; over: any }) => {
+    const { active, over } = event;
+
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    if (activeId === overId) return;
+
+    const isActiveATask = active.data.current?.type === "Task";
+    const isOverATask = over.data.current?.type === "Task";
+    const isOverABlock = over.data.current?.type === "Block";
+
+    if (!isActiveATask) return;
+
+    // Find the block the task is being dragged over (either directly or via another task)
+    const targetBlockId = isOverABlock
+      ? overId
+      : over.data.current?.task?.blockId;
+    const sourceBlockId = active.data.current?.task?.blockId;
+
+    // If we're moving between blocks
+    if (sourceBlockId !== targetBlockId) {
+      mutate((currentDay: { blocks: any }) => {
+        const allBlocks = [...currentDay.blocks];
+        const sourceBlock = allBlocks.find(
+          (block) => block._id === sourceBlockId
+        );
+        const targetBlock = allBlocks.find(
+          (block) => block._id === targetBlockId
+        );
+
+        if (!sourceBlock || !targetBlock) return currentDay;
+
+        // Find the task being moved
+        const taskIndex = sourceBlock.tasks.findIndex(
+          (t: { _id: any }) => t._id === activeId
+        );
+        if (taskIndex === -1) return currentDay;
+
+        // Remove task from source block
+        const [task] = sourceBlock.tasks.splice(taskIndex, 1);
+
+        // Update task's blockId
+        task.blockId = targetBlockId;
+
+        // Add task to target block
+        if (isOverATask) {
+          // If dropping on a task, find its position and insert before it
+          const overTaskIndex = targetBlock.tasks.findIndex(
+            (t: { _id: any }) => t._id === overId
+          );
+          targetBlock.tasks.splice(overTaskIndex, 0, task);
+        } else {
+          // If dropping directly on a block, add to the end
+          targetBlock.tasks.push(task);
+        }
+
+        return {
+          ...currentDay,
+          blocks: allBlocks,
+        };
+      }, false);
+    }
+
+    // If we're reordering within the same block
+    else if (isOverATask && sourceBlockId === targetBlockId) {
+      mutate((currentDay: { blocks: any[] }) => {
+        const block = currentDay.blocks.find((b) => b._id === sourceBlockId);
+        if (!block) return currentDay;
+
+        const oldIndex = block.tasks.findIndex(
+          (t: { _id: any }) => t._id === activeId
+        );
+        const newIndex = block.tasks.findIndex(
+          (t: { _id: any }) => t._id === overId
+        );
+
+        if (oldIndex === -1 || newIndex === -1) return currentDay;
+
+        const newTasks = arrayMove(block.tasks, oldIndex, newIndex);
+
+        return {
+          ...currentDay,
+          blocks: currentDay.blocks.map((b) =>
+            b._id === sourceBlockId ? { ...b, tasks: newTasks } : b
+          ),
+        };
+      }, false);
+    }
+  };
+
   // if (!day) {
   //   return (
   //     <div className="flex h-screen w-full">
@@ -1452,6 +1620,8 @@ export default function Component() {
   //     </div>
   //   );
   // }
+
+  // Add this inside your Component, before the return statement
 
   return (
     <div className="flex h-screen bg-white font-sans text-gray-900">
@@ -1669,255 +1839,205 @@ export default function Component() {
                     )}
                   />
                 ) : (
-                  <div className="space-y-4">
-                    {sortedBlocks.map((block: Block) => (
-                      <Card
-                        key={block._id}
-                        className="border-gray-200 shadow-sm"
-                      >
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <CardTitle className="text-base font-medium flex-1">
-                            <div className="flex items-center gap-2">
-                              {block.name}
-                              {block.isStandaloneBlock && (
-                                <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-                                  <Sparkles className="mr-1 h-3 w-3" />
-                                  <span className="hidden sm:inline">
-                                    AI Optimized
-                                  </span>
-                                </span>
-                              )}
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger>
-                                    <Info className="h-4 w-4 text-gray-400" />
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="max-w-xs">
-                                      {block.description}
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                              <BlockProgress tasks={block.tasks} />
-                            </div>
-                          </CardTitle>
-                          <div className="flex items-center space-x-2">
-                            <div className="hidden md:flex items-center text-sm text-gray-500">
-                              <Clock className="mr-1.5 h-3.5 w-3.5" />
-                              {block.startTime} - {block.endTime}
-                            </div>
+                  <DndContext
+                    onDragStart={onDragStart}
+                    onDragOver={onDragOver}
+                    onDragEnd={onDragEnd}
+                    collisionDetection={closestCenter}
+                  >
+                    <div className="space-y-4">
+                      {sortedBlocks.map((block: Block) => (
+                        <TimeBlock
+                          block={block}
+                          onDeleteBlock={handleDeleteBlock}
+                          onEditBlock={(block) => {
+                            setSelectedBlock(block);
+                            setIsEditBlockDialogOpen(true);
+                          }}
+                          onAddTask={(blockId) => handleAddTask(blockId)}
+                          onCompleteBlock={handleCompleteBlock}
+                          onTaskCompletion={handleTaskCompletion}
+                          onEditTask={handleEditTask}
+                          onRemoveTask={handleRemoveTaskFromBlock}
+                          onDeleteTask={handleDeleteTask}
+                          updatingTasks={updatingTasks}
+                          updatingTaskId={updatingTaskId}
+                          onStartFocusSession={(block) =>
+                            setFocusSessionBlock(block)
+                          }
+                        />
+                        // <Card
+                        //   key={block._id}
+                        //   className="border-gray-200 shadow-sm"
+                        // >
+                        //   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        //     <CardTitle className="text-base font-medium flex-1">
+                        //       <div className="flex items-center gap-2">
+                        //         {block.name}
+                        //         {block.isStandaloneBlock && (
+                        //           <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
+                        //             <Sparkles className="mr-1 h-3 w-3" />
+                        //             <span className="hidden sm:inline">
+                        //               AI Optimized
+                        //             </span>
+                        //           </span>
+                        //         )}
+                        //         <TooltipProvider>
+                        //           <Tooltip>
+                        //             <TooltipTrigger>
+                        //               <Info className="h-4 w-4 text-gray-400" />
+                        //             </TooltipTrigger>
+                        //             <TooltipContent>
+                        //               <p className="max-w-xs">
+                        //                 {block.description}
+                        //               </p>
+                        //             </TooltipContent>
+                        //           </Tooltip>
+                        //         </TooltipProvider>
+                        //         <BlockProgress tasks={block.tasks} />
+                        //       </div>
+                        //     </CardTitle>
+                        //     <div className="flex items-center space-x-2">
+                        //       <div className="hidden md:flex items-center text-sm text-gray-500">
+                        //         <Clock className="mr-1.5 h-3.5 w-3.5" />
+                        //         {block.startTime} - {block.endTime}
+                        //       </div>
 
-                            <DropdownMenu modal={false}>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem className="md:hidden">
-                                  <Clock className="mr-2 h-4 w-4" />
-                                  <span>
-                                    {block.startTime} - {block.endTime}
-                                  </span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onSelect={(e) => {
-                                    e.preventDefault();
-                                    setSelectedBlock(block);
-                                    setIsEditBlockDialogOpen(true);
-                                  }}
-                                >
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  <span>Edit Block</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteBlock(block)}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  <span>Delete Block</span>
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          {block.tasks.map((task: Task) => (
-                            <Card
-                              key={task._id}
-                              className="mb-3 border-gray-200 bg-gradient-to-br from-white to-slate-50 relative overflow-hidden shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] hover:shadow-[0_4px_12px_-4px_rgba(0,0,0,0.12)] transition-shadow duration-200"
-                            >
-                              <CardContent className="p-4">
-                                <div className="flex items-center space-x-4">
-                                  <GripVertical className="h-5 w-5 text-gray-400 cursor-move flex-shrink-0" />
-                                  <Checkbox
-                                    id={`task-${task._id}`}
-                                    checked={task.completed}
-                                    onCheckedChange={(checked) =>
-                                      handleTaskCompletion(
-                                        task._id,
-                                        checked as boolean
-                                      )
-                                    }
-                                    className="flex-shrink-0 mt-0.5"
-                                    disabled={
-                                      updatingTasks &&
-                                      updatingTaskId === task._id
-                                    }
-                                  />
-
-                                  <div className="flex-grow min-w-0">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center space-x-2 min-w-0">
-                                        <label
-                                          htmlFor={`task-${task._id}`}
-                                          className="text-sm font-medium text-gray-900 truncate leading-none pt-0.5"
-                                        >
-                                          {task.name}
-                                        </label>
-
-                                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 flex-shrink-0">
-                                          {task.duration}
-                                          <span className="hidden md:inline">
-                                            min
-                                          </span>
-                                        </span>
-
-                                        {/* Task type indicator - different for mobile and desktop */}
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger>
-                                              {/* Circle for mobile */}
-                                              <div className="md:hidden h-2.5 w-2.5 rounded-full bg-purple-500 flex-shrink-0" />
-                                              {/* Badge with text for desktop */}
-                                              <span className="hidden md:inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 flex-shrink-0">
-                                                {task.type}
-                                              </span>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              <p>{task.type}</p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      </div>
-
-                                      <DropdownMenu modal={false}>
-                                        <DropdownMenuTrigger className="focus:outline-none">
-                                          <MoreVertical className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                          <DropdownMenuItem
-                                            onSelect={(e) => {
-                                              e.preventDefault();
-                                              setEditingTask(task);
-                                              setIsEditDialogOpen(true);
-                                            }}
-                                          >
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            Edit Task
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem
-                                            onClick={() =>
-                                              handleRemoveTaskFromBlock(
-                                                task,
-                                                block
-                                              )
-                                            }
-                                          >
-                                            <Clock className="mr-2 h-4 w-4" />
-                                            Remove from Block
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem
-                                            onClick={() =>
-                                              handleDeleteTask(task, block)
-                                            }
-                                            className="text-red-600"
-                                          >
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Delete Task
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    </div>
-                                  </div>
-                                </div>
-                              </CardContent>
-                              <div
-                                className={`absolute top-0 right-0 bottom-0 w-1 ${
-                                  task.priority === "High"
-                                    ? "bg-red-500"
-                                    : task.priority === "Medium"
-                                    ? "bg-yellow-500"
-                                    : "bg-green-500"
-                                }`}
-                                aria-label="Priority Indicator"
-                              />
-                            </Card>
-                          ))}
-                          <div className="flex justify-between items-center mt-4">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 text-sm"
-                              onClick={() => handleAddTask(block._id)}
-                            >
-                              <Plus className="h-4 w-4 mr-1" />
-                              Add Task
-                            </Button>
-                            <div className="space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 text-sm text-green-600 hover:bg-green-50 hover:text-green-700"
-                                onClick={() => handleCompleteBlock(block._id)}
-                              >
-                                <Check className="h-4 w-4 md:mr-1" />
-                                <span className="hidden md:inline">
-                                  Complete
-                                </span>
-                              </Button>
-                              {block.meetingLink ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                                  asChild
-                                >
-                                  <a
-                                    href={block.meetingLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center"
-                                  >
-                                    <LinkIcon className="h-4 w-4 md:mr-1" />
-                                    <span className="hidden md:inline">
-                                      Join Meeting
-                                    </span>
-                                  </a>
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                                  onClick={() => setFocusSessionBlock(block)}
-                                >
-                                  <Clock className="h-4 w-4 md:mr-1" />
-                                  <span className="hidden md:inline">
-                                    Start
-                                  </span>
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                        //       <DropdownMenu modal={false}>
+                        //         <DropdownMenuTrigger asChild>
+                        //           <Button
+                        //             variant="ghost"
+                        //             size="icon"
+                        //             className="h-8 w-8 p-0"
+                        //           >
+                        //             <MoreVertical className="h-4 w-4" />
+                        //           </Button>
+                        //         </DropdownMenuTrigger>
+                        //         <DropdownMenuContent align="end">
+                        //           <DropdownMenuItem className="md:hidden">
+                        //             <Clock className="mr-2 h-4 w-4" />
+                        //             <span>
+                        //               {block.startTime} - {block.endTime}
+                        //             </span>
+                        //           </DropdownMenuItem>
+                        //           <DropdownMenuItem
+                        //             onSelect={(e) => {
+                        //               e.preventDefault();
+                        //               setSelectedBlock(block);
+                        //               setIsEditBlockDialogOpen(true);
+                        //             }}
+                        //           >
+                        //             <Edit className="mr-2 h-4 w-4" />
+                        //             <span>Edit Block</span>
+                        //           </DropdownMenuItem>
+                        //           <DropdownMenuItem
+                        //             onClick={() => handleDeleteBlock(block)}
+                        //           >
+                        //             <Trash2 className="mr-2 h-4 w-4" />
+                        //             <span>Delete Block</span>
+                        //           </DropdownMenuItem>
+                        //         </DropdownMenuContent>
+                        //       </DropdownMenu>
+                        //     </div>
+                        //   </CardHeader>
+                        //   <CardContent>
+                        //     {block.tasks.map((task: Task) => (
+                        //       <TaskCard
+                        //         key={task._id}
+                        //         task={task}
+                        //         block={block}
+                        //         updatingTasks={updatingTasks}
+                        //         updatingTaskId={updatingTaskId}
+                        //         onTaskCompletion={handleTaskCompletion}
+                        //         onEditTask={(task) => {
+                        //           setEditingTask(task);
+                        //           setIsEditDialogOpen(true);
+                        //         }}
+                        //         onRemoveTask={handleRemoveTaskFromBlock}
+                        //         onDeleteTask={handleDeleteTask}
+                        //       />
+                        //     ))}
+                        //     <div className="flex justify-between items-center mt-4">
+                        //       <Button
+                        //         variant="outline"
+                        //         size="sm"
+                        //         className="h-8 text-sm"
+                        //         onClick={() => handleAddTask(block._id)}
+                        //       >
+                        //         <Plus className="h-4 w-4 mr-1" />
+                        //         Add Task
+                        //       </Button>
+                        //       <div className="space-x-2">
+                        //         <Button
+                        //           variant="outline"
+                        //           size="sm"
+                        //           className="h-8 text-sm text-green-600 hover:bg-green-50 hover:text-green-700"
+                        //           onClick={() => handleCompleteBlock(block._id)}
+                        //         >
+                        //           <Check className="h-4 w-4 md:mr-1" />
+                        //           <span className="hidden md:inline">
+                        //             Complete
+                        //           </span>
+                        //         </Button>
+                        //         {block.meetingLink ? (
+                        //           <Button
+                        //             variant="outline"
+                        //             size="sm"
+                        //             className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                        //             asChild
+                        //           >
+                        //             <a
+                        //               href={block.meetingLink}
+                        //               target="_blank"
+                        //               rel="noopener noreferrer"
+                        //               className="flex items-center"
+                        //             >
+                        //               <LinkIcon className="h-4 w-4 md:mr-1" />
+                        //               <span className="hidden md:inline">
+                        //                 Join Meeting
+                        //               </span>
+                        //             </a>
+                        //           </Button>
+                        //         ) : (
+                        //           <Button
+                        //             variant="outline"
+                        //             size="sm"
+                        //             className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                        //             onClick={() => setFocusSessionBlock(block)}
+                        //           >
+                        //             <Clock className="h-4 w-4 md:mr-1" />
+                        //             <span className="hidden md:inline">
+                        //               Start
+                        //             </span>
+                        //           </Button>
+                        //         )}
+                        //       </div>
+                        //     </div>
+                        //   </CardContent>
+                        // </Card>
+                      ))}
+                    </div>
+                    {activeTask &&
+                      createPortal(
+                        <DragOverlay>
+                          <TaskCard
+                            task={activeTask}
+                            block={
+                              sortedBlocks.find(
+                                (block) => block._id === activeTask.blockId
+                              ) || sortedBlocks[0]
+                            } // Provide a fallback block
+                            updatingTasks={updatingTasks}
+                            updatingTaskId={updatingTaskId}
+                            onTaskCompletion={handleTaskCompletion}
+                            onEditTask={handleEditTask}
+                            onRemoveTask={handleRemoveTaskFromBlock}
+                            onDeleteTask={handleDeleteTask}
+                          />
+                        </DragOverlay>,
+                        document.body
+                      )}
+                  </DndContext>
                 )}
               </>
             )}
