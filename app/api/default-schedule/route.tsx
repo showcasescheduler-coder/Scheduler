@@ -36,6 +36,7 @@ SCHEDULE CREATION PRIORITIES:
    - Place all events for today's date first - these cannot be moved
    - Identify and prioritize any tasks with due dates in the next 48 hours
    - Honor any existing routines the user has created
+   - For routines, ONLY use routineId values that exist in the provided routineBlocks array, otherwise use null
 
 2. Context Analysis:
    - Determine schedule type from user input (study, work, exercise, personal, etc.)
@@ -82,6 +83,14 @@ SCHEDULE CREATION PRIORITIES:
    - Make tasks demonstrate the intended use of each block
    - Keep tasks flexible enough for easy customization
 
+ROUTINE ID RULES:
+- The routineId field in blocks MUST either:
+  1. Match an existing id from the routineBlocks array provided above, OR
+  2. Be set to null
+- NEVER create new or fictional routine IDs
+- When creating a new block that doesn't match an existing routine, always set routineId to null
+- Before setting a routineId, verify it exists in the routineBlocks array
+
 RESPONSE FORMAT:
 Return ONLY a JSON object with this structure:
 {
@@ -99,7 +108,7 @@ Return ONLY a JSON object with this structure:
       "isRoutine": boolean,
       "isStandaloneBlock": boolean,
       "eventId": string | null,
-      "routineId": string | null,
+      "routineId": string | null,  // Must match an existing routine ID or be null
       "blockType": "deep-work" | "planning" | "break" | "admin" | "collaboration",
       "energyLevel": "high" | "medium" | "low",
       "tasks": [
@@ -127,7 +136,8 @@ ADDITIONAL GUIDELINES:
 7. Ensure logical flow
 8. Include buffer time
 9. Balance focus and renewal
-10. Create tasks that guide without restricting`;
+10. Create tasks that guide without restricting
+11. Validate all routineIds against provided routineBlocks`;
 
   try {
     const schedule = await getAnthropicResponse(apiKey, createSchedulePrompt);
