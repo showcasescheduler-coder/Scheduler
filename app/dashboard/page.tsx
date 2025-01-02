@@ -1848,6 +1848,7 @@ export default function Component() {
                     <div className="space-y-4">
                       {sortedBlocks.map((block: Block) => (
                         <TimeBlock
+                          key={block._id}
                           block={block}
                           onDeleteBlock={handleDeleteBlock}
                           onEditBlock={(block) => {
