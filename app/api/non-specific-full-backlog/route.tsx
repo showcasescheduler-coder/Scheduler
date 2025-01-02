@@ -98,13 +98,7 @@ VALIDATION RULES:
 Return ONLY a JSON object with this structure:
 {
   "currentTime": "${new Date().toTimeString().slice(0, 5)}",
-  "scheduleRationale": "Detailed explanation including:
-    - How deadline-critical tasks were handled
-    - Which user-specified items were scheduled
-    - How routines were placed
-    - Break placement strategy
-    - Any scheduling conflicts or unscheduled items
-    - Why certain tasks couldn't be scheduled",
+  "scheduleRationale": "Brief explanation of key decisions and conflicts",
   "blocks": [
     {
       "name": "Block name",
