@@ -107,7 +107,7 @@ import {
 
 interface Task {
   _id: string;
-  blockId: string;
+  block: string;
   dayId: string;
   name: string;
   description: string;
@@ -153,7 +153,8 @@ interface Block {
 
 interface DragData {
   type: "Task" | "Block";
-  task: Task;
+  task?: Task;
+  block?: Block;
 }
 
 export default function Component() {
@@ -1479,18 +1480,19 @@ export default function Component() {
     setIsDialogOpen(true);
   };
 
-  // Add these DnD event handlers
+  // Updated onDragStart handler with correct block property
   const onDragStart = (event: DragStartEvent) => {
-    const dragData = event.active.data.current as DragData;
-    const task = dragData.task;
-    const newTask = {
-      ...task,
-      blockId: task.blockId,
-      _id: task._id,
-      index: (task as any).index, // Type assertion for just this usage
-    };
-    setActiveTask(task);
-    setPreviousTask(newTask);
+    const { active } = event;
+    const dragData = active.data.current as DragData;
+
+    if (dragData?.task) {
+      setActiveTask(dragData.task);
+      setPreviousTask({
+        ...dragData.task,
+        block: dragData.task.block,
+        _id: dragData.task._id,
+      });
+    }
   };
 
   const onDragEnd = async (event: DragEndEvent) => {
@@ -1519,8 +1521,8 @@ export default function Component() {
       mutate();
     }
   };
-
-  const onDragOver = async (event: { active: any; over: any }) => {
+  // Improved onDragOver handler with fixed downward movement
+  const onDragOver = async (event: DragOverEvent) => {
     const { active, over } = event;
 
     if (!over) return;
@@ -1530,87 +1532,83 @@ export default function Component() {
 
     if (activeId === overId) return;
 
-    const isActiveATask = active.data.current?.type === "Task";
-    const isOverATask = over.data.current?.type === "Task";
-    const isOverABlock = over.data.current?.type === "Block";
+    const activeData = active.data.current as DragData;
+    const overData = over.data.current as DragData;
 
-    if (!isActiveATask) return;
+    if (!activeData?.task) return;
 
-    // Find the block the task is being dragged over (either directly or via another task)
-    const targetBlockId = isOverABlock
-      ? overId
-      : over.data.current?.task?.blockId;
-    const sourceBlockId = active.data.current?.task?.blockId;
+    // Get target block ID - either directly from a block or from the task's block property
+    const targetBlockId =
+      overData?.type === "Block" ? overId.toString() : overData?.task?.block;
 
-    // If we're moving between blocks
-    if (sourceBlockId !== targetBlockId) {
-      mutate((currentDay: { blocks: any }) => {
-        const allBlocks = [...currentDay.blocks];
-        const sourceBlock = allBlocks.find(
-          (block) => block._id === sourceBlockId
+    const sourceBlockId = activeData.task.block;
+
+    if (!targetBlockId || !sourceBlockId) return;
+
+    mutate((currentDay: Day) => {
+      const updatedBlocks = [...currentDay.blocks];
+
+      // Find source and target blocks
+      const sourceBlock = updatedBlocks.find(
+        (b) => typeof b !== "string" && b._id === sourceBlockId
+      );
+      const targetBlock = updatedBlocks.find(
+        (b) => typeof b !== "string" && b._id === targetBlockId
+      );
+
+      if (
+        !sourceBlock ||
+        !targetBlock ||
+        typeof sourceBlock === "string" ||
+        typeof targetBlock === "string"
+      ) {
+        return currentDay;
+      }
+
+      // First, remove the task from its original position
+      const taskIndex = sourceBlock.tasks.findIndex((t) => t._id === activeId);
+      if (taskIndex === -1) return currentDay;
+
+      const [movedTask] = sourceBlock.tasks.splice(taskIndex, 1);
+      movedTask.block = targetBlockId;
+
+      // If we're moving within the same block
+      if (sourceBlockId === targetBlockId) {
+        const overTaskIndex = targetBlock.tasks.findIndex(
+          (t) => t._id === overId
         );
-        const targetBlock = allBlocks.find(
-          (block) => block._id === targetBlockId
-        );
-
-        if (!sourceBlock || !targetBlock) return currentDay;
-
-        // Find the task being moved
-        const taskIndex = sourceBlock.tasks.findIndex(
-          (t: { _id: any }) => t._id === activeId
-        );
-        if (taskIndex === -1) return currentDay;
-
-        // Remove task from source block
-        const [task] = sourceBlock.tasks.splice(taskIndex, 1);
-
-        // Update task's blockId
-        task.blockId = targetBlockId;
-
-        // Add task to target block
-        if (isOverATask) {
-          // If dropping on a task, find its position and insert before it
-          const overTaskIndex = targetBlock.tasks.findIndex(
-            (t: { _id: any }) => t._id === overId
-          );
-          targetBlock.tasks.splice(overTaskIndex, 0, task);
+        // Insert at the correct position
+        if (overTaskIndex !== -1) {
+          // When moving downward, we need to account for the removed item
+          const adjustedOverIndex =
+            overTaskIndex < taskIndex ? overTaskIndex : overTaskIndex;
+          targetBlock.tasks.splice(adjustedOverIndex, 0, movedTask);
         } else {
-          // If dropping directly on a block, add to the end
-          targetBlock.tasks.push(task);
+          // If dropping directly on the block, append to the end
+          targetBlock.tasks.push(movedTask);
         }
+      } else {
+        // Moving to a different block
+        if (overData?.type === "Task" && overData.task) {
+          const overTaskIndex = targetBlock.tasks.findIndex(
+            (t) => t._id === overData.task?._id
+          );
+          if (overTaskIndex !== -1) {
+            targetBlock.tasks.splice(overTaskIndex, 0, movedTask);
+          } else {
+            targetBlock.tasks.push(movedTask);
+          }
+        } else {
+          // Dropping directly on a block
+          targetBlock.tasks.push(movedTask);
+        }
+      }
 
-        return {
-          ...currentDay,
-          blocks: allBlocks,
-        };
-      }, false);
-    }
-
-    // If we're reordering within the same block
-    else if (isOverATask && sourceBlockId === targetBlockId) {
-      mutate((currentDay: { blocks: any[] }) => {
-        const block = currentDay.blocks.find((b) => b._id === sourceBlockId);
-        if (!block) return currentDay;
-
-        const oldIndex = block.tasks.findIndex(
-          (t: { _id: any }) => t._id === activeId
-        );
-        const newIndex = block.tasks.findIndex(
-          (t: { _id: any }) => t._id === overId
-        );
-
-        if (oldIndex === -1 || newIndex === -1) return currentDay;
-
-        const newTasks = arrayMove(block.tasks, oldIndex, newIndex);
-
-        return {
-          ...currentDay,
-          blocks: currentDay.blocks.map((b) =>
-            b._id === sourceBlockId ? { ...b, tasks: newTasks } : b
-          ),
-        };
-      }, false);
-    }
+      return {
+        ...currentDay,
+        blocks: updatedBlocks,
+      };
+    }, false);
   };
 
   // if (!day) {
@@ -2025,7 +2023,7 @@ export default function Component() {
                             task={activeTask}
                             block={
                               sortedBlocks.find(
-                                (block) => block._id === activeTask.blockId
+                                (block) => block._id === activeTask.block
                               ) || sortedBlocks[0]
                             } // Provide a fallback block
                             updatingTasks={updatingTasks}

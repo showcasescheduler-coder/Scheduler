@@ -2,7 +2,7 @@ import React from "react";
 
 interface Task {
   _id: string;
-  blockId: string;
+  block: string;
   dayId: string;
   name: string;
   description: string;

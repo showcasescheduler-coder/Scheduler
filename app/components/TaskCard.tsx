@@ -20,7 +20,7 @@ import { GripVertical, MoreVertical, Edit, Clock, Trash2 } from "lucide-react";
 
 interface Task {
   _id: string;
-  blockId: string;
+  block: string;
   dayId: string;
   name: string;
   description: string;

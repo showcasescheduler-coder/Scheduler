@@ -16,7 +16,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface Task {
   _id: string;
-  blockId: string;
+  block: string;
   dayId: string;
   name: string;
   description: string;
