@@ -73,7 +73,13 @@ const AuthModal = ({ isOpen, onClose, actionType }: AuthModalProps) => {
 
             {/* Sign Up Button */}
             <SignUpButton mode="modal">
-              <Button className="w-full bg-blue-600 hover:bg-blue-700 h-11">
+              <Button
+                className="w-full bg-blue-600 hover:bg-blue-700 h-11"
+                onClick={() => {
+                  // Close the AuthModal before Clerk's modal opens
+                  onClose();
+                }}
+              >
                 <Sparkles className="h-4 w-4 mr-2" />
                 Start Free Trial
               </Button>
