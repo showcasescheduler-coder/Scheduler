@@ -22,10 +22,11 @@ export default function Component() {
   const [thoughts, setThoughts] = useState([""]);
   const [selectedDate, setSelectedDate] = React.useState(new Date());
   const [prompt, setPrompt] = useState("");
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const { setPromptText } = useAppContext();
+  const { setPromptText, setIsGeneratingSchedule } = useAppContext();
   const router = useRouter();
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -85,6 +86,7 @@ export default function Component() {
       .filter((thought) => thought.trim() !== "")
       .join("\n");
     setPromptText(cleanThoughts);
+    setIsGeneratingSchedule(true);
     router.push("/dashboard");
   };
 
@@ -97,6 +99,10 @@ export default function Component() {
       // Otherwise append to the list
       return [...prev, text];
     });
+  };
+
+  const handleAuthClick = () => {
+    setIsSheetOpen(false);
   };
 
   const navItems = ["Features", "How It Works", "Research", "Pricing"];
@@ -145,7 +151,7 @@ export default function Component() {
 
           {/* Mobile Navigation */}
           <div className="ml-auto md:hidden">
-            <Sheet>
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="sm" className="px-2">
                   <Menu className="h-5 w-5" />
@@ -167,6 +173,7 @@ export default function Component() {
                       <Button
                         className="w-full bg-blue-600 text-white hover:bg-blue-700"
                         size="sm"
+                        onClick={handleAuthClick}
                       >
                         Sign Up
                       </Button>
@@ -175,6 +182,7 @@ export default function Component() {
                       <Button
                         className="w-full bg-white text-blue-600 hover:bg-blue-50 border border-blue-600"
                         size="sm"
+                        onClick={handleAuthClick}
                       >
                         Sign In
                       </Button>

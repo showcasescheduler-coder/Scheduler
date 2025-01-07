@@ -192,9 +192,9 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px] p-0">
-        <DialogHeader className="p-6 pb-2">
-          <div className="flex items-center gap-2">
+      <DialogContent className="sm:max-w-md border rounded-lg shadow-lg">
+        <DialogHeader className="px-6 pt-6 pb-2">
+          <div className="flex items-center gap-2 mb-1.5">
             <Clock className="h-4 w-4 text-blue-600" />
             <DialogTitle className="text-base font-medium">
               Add Event
@@ -207,7 +207,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
           onValueChange={setActiveTab}
           className="w-full"
         >
-          <div className="px-6">
+          <div className="px-6 mb-4">
             <TabsList className="w-full">
               <TabsTrigger value="newEvent" className="flex-1">
                 New Event
@@ -218,7 +218,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
             </TabsList>
           </div>
 
-          <TabsContent value="newEvent" className="p-6 pt-4 space-y-4">
+          <TabsContent value="newEvent" className="px-6 space-y-4">
             <div className="space-y-2">
               <Input
                 id="event-name"
@@ -226,7 +226,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                 placeholder="Event name"
                 value={newEvent.name}
                 onChange={handleInputChange}
-                className="h-8"
+                className="h-9"
               />
             </div>
             <div className="space-y-2">
@@ -246,7 +246,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                   placeholder="Start time"
                   value={newEvent.startTime}
                   onChange={handleInputChange}
-                  className="h-8"
+                  className="h-9"
                 />
               </div>
               <div className="space-y-2">
@@ -256,7 +256,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                   placeholder="End time"
                   value={newEvent.endTime}
                   onChange={handleInputChange}
-                  className="h-8"
+                  className="h-9"
                 />
               </div>
             </div>
@@ -268,7 +268,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                   placeholder="Meeting link (optional)"
                   value={newEvent.meetingLink}
                   onChange={handleInputChange}
-                  className="h-8 pl-8"
+                  className="h-9 pl-8"
                 />
               </div>
             </div>
@@ -276,7 +276,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
               value={newEvent.priority}
               onValueChange={handleSelectChange("priority")}
             >
-              <SelectTrigger className="h-8">
+              <SelectTrigger className="h-9">
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
               <SelectContent>
@@ -285,13 +285,14 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                 <SelectItem value="High">High</SelectItem>
               </SelectContent>
             </Select>
+
             <div className="flex justify-end gap-2 pt-4 mt-4 border-t">
-              <Button variant="outline" onClick={onClose} className="h-8">
+              <Button variant="outline" onClick={onClose} className="h-9">
                 Cancel
               </Button>
               <Button
                 onClick={handleNewEventSubmit}
-                className="h-8 bg-blue-600 hover:bg-blue-700"
+                className="h-9 bg-blue-600 hover:bg-blue-700"
               >
                 Add Event
               </Button>
@@ -305,10 +306,10 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                   events.map((event) => (
                     <Card
                       key={event._id}
-                      className={event.block ? "opacity-50" : ""}
+                      className={`border ${event.block ? "opacity-50" : ""}`}
                     >
                       <CardContent className="p-3 flex items-center justify-between">
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           <h4 className="text-sm font-medium">{event.name}</h4>
                           <p className="text-xs text-gray-500">
                             {event.description}
@@ -331,7 +332,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 shrink-0"
+                          className="h-9 shrink-0"
                           onClick={() => addEventToBlock(event._id)}
                           disabled={!!event.block}
                         >

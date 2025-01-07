@@ -90,16 +90,7 @@ SCHEDULE BUILDING PROCESS:
 
 Return ONLY a JSON object with this structure:
 {
-  "scheduleRationale": "Detailed explanation covering:
-    - How events were placed
-    - How routines were handled (included, modified, or skipped)
-    - How specific instructions were prioritized
-    - Which backlog tasks were chosen and why
-    - Break and energy management strategy
-    - Task grouping and context maintenance
-    - Any scheduling conflicts and resolutions
-    - Deadline considerations
-    - Tasks that couldn't be scheduled",
+  "scheduleRationale": "Brief explanation of key decisions and conflicts",
   "blocks": [
     {
       "name": "Block name (descriptive of activity)",
@@ -113,11 +104,14 @@ Return ONLY a JSON object with this structure:
       "tasks": [
         {
           "id": "existing-id-if-found or null",
-          "name": "Task name",
-          "description": "Include context, deadline info, and relation to user requests",
+          "name": string,
+          "description": string,
           "duration": number,
           "priority": "High" | "Medium" | "Low",
-          "isRoutineTask": boolean
+          "isRoutineTask": boolean,
+          "projectId": string or null,
+          "type": "deep-work" | "planning" | "break" | "admin" | "collaboration",
+          "isUserSpecified": boolean, 
         }
       ]
     }

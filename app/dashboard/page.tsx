@@ -88,6 +88,11 @@ import {
   DragOverlay,
 } from "@dnd-kit/core";
 import {
+  restrictToVerticalAxis,
+  restrictToWindowEdges,
+} from "@dnd-kit/modifiers";
+
+import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
@@ -108,6 +113,7 @@ import {
 interface Task {
   _id: string;
   block: string;
+  blockId?: string;
   dayId: string;
   name: string;
   description: string;
@@ -120,6 +126,10 @@ interface Task {
   createdAt: string;
   updatedAt: string;
   __v: number;
+  deadline?: string;
+  project?: string;
+  routine?: string;
+  projectId?: string;
 }
 
 type EditableBlockFields = {
@@ -158,8 +168,12 @@ interface DragData {
 }
 
 export default function Component() {
-  const { selectedDay, setSelectedDay: setContextSelectedDay } =
-    useAppContext();
+  const {
+    selectedDay,
+    setSelectedDay: setContextSelectedDay,
+    isGeneratingSchedule,
+    setIsGeneratingSchedule,
+  } = useAppContext();
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -208,6 +222,19 @@ export default function Component() {
   );
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [previousTask, setPreviousTask] = useState<Task | null>(null);
+  const lastUpdateRef = useRef<number>(0);
+  const THROTTLE_MS = 150; // Minimum time between updates
+  const updateQueueRef = useRef<any>(null);
+  const isUpdatingRef = useRef(false);
+  const frameRef = useRef<number>();
+
+  const throttledMutate = (updateFn: any) => {
+    const now = Date.now();
+    if (now - lastUpdateRef.current > THROTTLE_MS) {
+      lastUpdateRef.current = now;
+      mutate(updateFn, false);
+    }
+  };
 
   const router = useRouter();
 
@@ -276,8 +303,30 @@ export default function Component() {
     );
   };
 
+  const processUpdate = (updateFn: any) => {
+    const now = Date.now();
+
+    // If we have a queued update, cancel it
+    if (frameRef.current) {
+      cancelAnimationFrame(frameRef.current);
+    }
+
+    // Store the latest update
+    updateQueueRef.current = updateFn;
+
+    // Schedule the next update
+    frameRef.current = requestAnimationFrame(() => {
+      if (updateQueueRef.current) {
+        mutate(updateQueueRef.current, false);
+        updateQueueRef.current = null;
+        isUpdatingRef.current = false;
+      }
+    });
+  };
+
   useEffect(() => {
     if (day && day.blocks) {
+      console.log("Day data updated, setting sorted blocks");
       setSortedBlocks(getFilteredBlocks());
     }
   }, [day, activeTab]);
@@ -287,10 +336,8 @@ export default function Component() {
     if (promptText && !hasProcessedPrompt) {
       // Update your generateSchedule function
       const generateSchedule = async () => {
-        setIsLoading(true);
         setGenerationProgress(0);
         setGenerationStatus("Initializing...");
-
         try {
           // Intent Analysis
           setGenerationProgress(10);
@@ -343,7 +390,7 @@ export default function Component() {
           console.error("Failed to generate schedule:", error);
         } finally {
           await new Promise((resolve) => setTimeout(resolve, 500)); // Give time to see 100%
-          setIsLoading(false);
+          setIsGeneratingSchedule(false);
           // IMPORTANT: mark that we've processed
           setHasProcessedPrompt(true);
           setGenerationProgress(0);
@@ -436,6 +483,14 @@ export default function Component() {
 
     fetchTasks();
   }, [setTasks]);
+
+  useEffect(() => {
+    return () => {
+      if (frameRef.current) {
+        cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, []);
 
   const OpenNewBlockModal = () => {
     setIsAddBlockDialogOpen(true);
@@ -783,10 +838,10 @@ export default function Component() {
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
 
-    setIsLoading(true);
+    setIsGeneratingSchedule(true);
+    setGenerationProgress(0);
+    setGenerationStatus("Initializing...");
     setIsDialogOpen(false);
-    // setGenerationProgress(0);
-    // setGenerationStep("Initializing...");
 
     // Get the date and day of the week from the state
     const selectedDate = new Date(day.date);
@@ -795,16 +850,71 @@ export default function Component() {
       weekday: "long",
     });
 
-    // Filter out completed standalone tasks
-    const incompleteTasks = tasks.filter(
-      (task) => !task.isRoutineTask && !task.completed
-    );
-    console.log("tasks", tasks);
+    // Fetch the other day's schedule (today if we're looking at tomorrow, or tomorrow if we're looking at today)
+    let otherDaySchedule = null;
+    const isTomorrow = selectedDate.getDate() === new Date().getDate() + 1;
 
-    // Filter out completed tasks from projects
+    try {
+      if (isTomorrow) {
+        // If we're on tomorrow's page, get today's schedule
+        const response = await fetch("/api/get-today", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            date: new Date().toISOString().split("T")[0],
+          }),
+        });
+        if (response.ok) {
+          otherDaySchedule = await response.json();
+        }
+      } else {
+        // If we're on today's page, get tomorrow's schedule
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const response = await fetch("/api/get-tomorrow", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            date: tomorrow.toISOString().split("T")[0],
+          }),
+        });
+        if (response.ok) {
+          otherDaySchedule = await response.json();
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching other day schedule:", error);
+    }
+
+    const isTaskAssigned = (taskId: string) => {
+      // Check current day's blocks
+      const isAssignedToday = day.blocks.some((block: Block) =>
+        block.tasks?.some((task) => task._id === taskId)
+      );
+
+      // Check other day's blocks
+      const isAssignedOtherDay =
+        otherDaySchedule?.blocks?.some((block: Block) =>
+          block.tasks?.some((task) => task._id === taskId)
+        ) || false;
+
+      return isAssignedToday || isAssignedOtherDay;
+    };
+
+    // Filter out completed standalone tasks AND tasks that are already assigned
+    const incompleteTasks = tasks.filter(
+      (task) =>
+        !task.isRoutineTask && !task.completed && !isTaskAssigned(task._id)
+    );
+
+    // Filter out completed tasks from projects AND tasks that are already assigned
     const projectsWithIncompleteTasks = projects.map((project) => ({
       ...project,
-      tasks: project.tasks.filter((task) => !task.completed),
+      tasks: project.tasks.filter(
+        (task) => !task.completed && !isTaskAssigned(task._id)
+      ),
     }));
 
     // Optimize tasks
@@ -868,26 +978,24 @@ export default function Component() {
       });
 
     // Filter and optimize routines
-    const optimizedRoutines = routines
-      .filter((routine) => routine.days.includes(selectedDayOfWeek))
-      .map((routine) => ({
-        name: routine.name,
-        description: routine.description,
-        startTimeWindow: {
-          earliestStart: routine.startTime, // When this routine can start
-          latestStart: routine.endTime, // When this routine needs to end by
-        },
-        totalDuration: routine.tasks.reduce(
-          (sum, task) => sum + Number(task.duration),
-          0
-        ),
-        tasks: routine.tasks.map((task) => ({
-          name: task.name,
-          description: task.description,
-          duration: Number(task.duration),
-          priority: task.priority,
-        })),
-      }));
+    const optimizedRoutines = routines.map((routine) => ({
+      name: routine.name,
+      description: routine.description,
+      startTimeWindow: {
+        earliestStart: routine.startTime, // When this routine can start
+        latestStart: routine.endTime, // When this routine needs to end by
+      },
+      totalDuration: routine.tasks.reduce(
+        (sum, task) => sum + Number(task.duration),
+        0
+      ),
+      tasks: routine.tasks.map((task) => ({
+        name: task.name,
+        description: task.description,
+        duration: Number(task.duration),
+        priority: task.priority,
+      })),
+    }));
 
     const optimizedProjects = projectsWithIncompleteTasks.map((project) => ({
       id: project._id,
@@ -914,13 +1022,13 @@ export default function Component() {
     console.log(userInput);
 
     try {
-      // Initial setup
-      // setGenerationProgress(5);
-      // setGenerationStep("Preparing data for analysis...");
+      // Intent Analysis
+      setGenerationProgress(10);
+      setGenerationStatus("Analyzing your requirements...");
 
       if (isPreviewMode) {
-        // setGenerationProgress(20);
-        // setGenerationStep("Analyzing intent and requirements...");
+        setGenerationProgress(30);
+        setGenerationStatus("Regenerating schedule...");
         const regeneratedSchedule = await fetch("/api/regenerate-schedule", {
           method: "POST",
           headers: {
@@ -939,19 +1047,20 @@ export default function Component() {
           signal, // Add abort signal
         });
         // After first API response
-        // setGenerationProgress(40);
-        // setGenerationStep("Processing schedule structure...");
+        setGenerationProgress(60);
+        setGenerationStatus("Optimizing block placement...");
         const regeneratedScedhuleJson = await regeneratedSchedule.json();
         console.log(regeneratedScedhuleJson);
         if (regeneratedScedhuleJson.blocks) {
+          setGenerationProgress(100);
+          setGenerationStatus("Schedule generated successfully!");
           setPreviewSchedule(regeneratedScedhuleJson);
           setIsPreviewMode(true);
         }
       } else {
         // First API call
-        // setGenerationProgress(20);
-        // setGenerationStep("Analyzing intent and requirements...");
-
+        setGenerationProgress(30);
+        setGenerationStatus("Analyzing schedule requirements...");
         console.log(optimizedProjects);
         console.log(optimizedEvents);
         console.log(optimizedRoutines);
@@ -975,8 +1084,8 @@ export default function Component() {
           signal, // Add abort signal
         });
         // After first API response
-        // setGenerationProgress(40);
-        // setGenerationStep("Processing schedule structure...");
+        setGenerationProgress(50);
+        setGenerationStatus("Processing schedule structure...");
         const baseSchedulejson = await baseSchedule.json();
         console.log("Intent analaysis", baseSchedulejson);
         console.log(
@@ -989,8 +1098,8 @@ export default function Component() {
           baseSchedulejson.hasSpecificInstructions === false
         ) {
           console.log("running the default schedule");
-          // setGenerationProgress(60);
-          // setGenerationStep("Generating default schedule...");
+          setGenerationProgress(30);
+          setGenerationStatus("Analyzing schedule requirements...");
           const defaultScedhule = await fetch("/api/default-schedule", {
             method: "POST",
             headers: {
@@ -1007,15 +1116,15 @@ export default function Component() {
             }),
             signal, // Add abort signal
           });
-          // setGenerationProgress(80);
-          // setGenerationStep("Finalizing schedule...");
+          setGenerationProgress(60);
+          setGenerationStatus("Analyzing schedule requirements...");
 
           const defaultScedhuleJson = await defaultScedhule.json();
           console.log(defaultScedhuleJson);
 
           if (defaultScedhuleJson.blocks) {
-            // setGenerationProgress(90);
-            // setGenerationStep("Preparing preview...");
+            setGenerationProgress(90);
+            setGenerationStatus("Analyzing schedule requirements...");
             setPreviewSchedule(defaultScedhuleJson);
             setIsPreviewMode(true);
           }
@@ -1026,8 +1135,8 @@ export default function Component() {
           baseSchedulejson.hasSpecificInstructions === true
         ) {
           console.log("running the specific schedule");
-          // setGenerationProgress(60);
-          // setGenerationStep("Generating Specific schedule...");
+          setGenerationProgress(30);
+          setGenerationStatus("Analyzing schedule requirements...");
           const userSpecificScedhule = await fetch(
             "/api/user-specific-prompt",
             {
@@ -1047,13 +1156,13 @@ export default function Component() {
               signal, // Add abort signal
             }
           );
-          // setGenerationProgress(80);
-          // setGenerationStep("Finalizing schedule...");
+          setGenerationProgress(60);
+          setGenerationStatus("Analyzing schedule requirements...");
           const userSpecificScedhuleJson = await userSpecificScedhule.json();
           console.log(userSpecificScedhuleJson);
           if (userSpecificScedhuleJson.blocks) {
-            // setGenerationProgress(90);
-            // setGenerationStep("Preparing preview...");
+            setGenerationProgress(90);
+            setGenerationStatus("Analyzing schedule requirements...");
             setPreviewSchedule(userSpecificScedhuleJson);
             setIsPreviewMode(true);
           }
@@ -1063,8 +1172,8 @@ export default function Component() {
           baseSchedulejson.hasEnoughData === true &&
           baseSchedulejson.hasSpecificInstructions === false
         ) {
-          // setGenerationProgress(60);
-          // setGenerationStep("Generating default schedule...");
+          setGenerationProgress(30);
+          setGenerationStatus("Analyzing schedule requirements...");
           console.log("running the fully automated schedule generation");
           const automatedSchedule = await fetch(
             "/api/non-specific-full-backlog",
@@ -1085,13 +1194,13 @@ export default function Component() {
               signal, // Add abort signal
             }
           );
-          // setGenerationProgress(80);
-          // setGenerationStep("Finalizing schedule...");
+          setGenerationProgress(60);
+          setGenerationStatus("Analyzing schedule requirements...");
           const automatedScheduleJson = await automatedSchedule.json();
           console.log(automatedScheduleJson);
           if (automatedScheduleJson.blocks) {
-            // setGenerationProgress(90);
-            // setGenerationStep("Preparing preview...");
+            setGenerationProgress(90);
+            setGenerationStatus("Analyzing schedule requirements...");
             setPreviewSchedule(automatedScheduleJson);
             setIsPreviewMode(true);
           }
@@ -1102,8 +1211,8 @@ export default function Component() {
           baseSchedulejson.hasSpecificInstructions === true
         ) {
           console.log("running the specific schedule with full blocks");
-          // setGenerationProgress(60);
-          // setGenerationStep("Generating specific schedule...");
+          setGenerationProgress(30);
+          setGenerationStatus("Analyzing schedule requirements...");
           const userSpecificFullBacklog = await fetch(
             "/api/specific-full-backlog",
             {
@@ -1123,14 +1232,14 @@ export default function Component() {
               signal, // Add abort signal
             }
           );
-          // setGenerationProgress(80);
-          // setGenerationStep("Finalizing schedule...");
+          setGenerationProgress(60);
+          setGenerationStatus("Analyzing schedule requirements...");
           const userSpecificFullBacklogJson =
             await userSpecificFullBacklog.json();
           console.log(userSpecificFullBacklogJson);
           if (userSpecificFullBacklogJson.blocks) {
-            // setGenerationProgress(90);
-            // setGenerationStep("Preparing preview...");
+            setGenerationProgress(90);
+            setGenerationStatus("Analyzing schedule requirements...");
             setPreviewSchedule(userSpecificFullBacklogJson);
             setIsPreviewMode(true);
           }
@@ -1218,12 +1327,15 @@ export default function Component() {
 
       // setGenerationProgress(100);
       // setGenerationStep("Schedule generated successfully!");
+      setGenerationProgress(100);
+      setGenerationStatus("Schedule generated successfully!");
     } catch (error) {
       console.error("Error in schedule generation process:", error);
     } finally {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      setIsLoading(false);
-      // setGenerationProgress(0);
+      setIsGeneratingSchedule(false);
+      setGenerationProgress(0);
+      setGenerationStatus("");
       abortControllerRef.current = null;
     }
   };
@@ -1480,18 +1592,24 @@ export default function Component() {
     setIsDialogOpen(true);
   };
 
-  // Updated onDragStart handler with correct block property
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Minimum distance before drag starts
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // // Updated onDragStart handler with correct block property
   const onDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const dragData = active.data.current as DragData;
 
     if (dragData?.task) {
       setActiveTask(dragData.task);
-      setPreviousTask({
-        ...dragData.task,
-        block: dragData.task.block,
-        _id: dragData.task._id,
-      });
     }
   };
 
@@ -1521,11 +1639,16 @@ export default function Component() {
       mutate();
     }
   };
-  // Improved onDragOver handler with fixed downward movement
-  const onDragOver = async (event: DragOverEvent) => {
-    const { active, over } = event;
 
-    if (!over) return;
+  // Add this inside your Component, before the return statement
+
+  const onDragOver = (event: DragOverEvent) => {
+    console.log("DragOver Event started:", event);
+    const { active, over } = event;
+    if (!over || !day?.blocks) {
+      console.log("No over element found");
+      return;
+    }
 
     const activeId = active.id;
     const overId = over.id;
@@ -1535,91 +1658,150 @@ export default function Component() {
     const activeData = active.data.current as DragData;
     const overData = over.data.current as DragData;
 
-    if (!activeData?.task) return;
+    const isActiveTask = activeData?.type === "Task";
+    const isOverTask = overData?.type === "Task";
+    const isOverBlock = overData?.type === "Block";
 
-    // Get target block ID - either directly from a block or from the task's block property
-    const targetBlockId =
-      overData?.type === "Block" ? overId.toString() : overData?.task?.block;
+    const activeTask = activeData?.task;
+    if (!activeTask) return;
 
-    const sourceBlockId = activeData.task.block;
+    // Get the block ID from either block or blockId field
+    const getBlockId = (task: any) => task.block || task.blockId;
+    const activeBlockId = getBlockId(activeTask);
 
-    if (!targetBlockId || !sourceBlockId) return;
+    if (isActiveTask && isOverTask) {
+      console.log("is active and over tasks");
+      const overTask = overData?.task;
+      if (!overTask) return;
 
-    mutate((currentDay: Day) => {
-      const updatedBlocks = [...currentDay.blocks];
+      const overBlockId = getBlockId(overTask);
 
-      // Find source and target blocks
-      const sourceBlock = updatedBlocks.find(
-        (b) => typeof b !== "string" && b._id === sourceBlockId
+      const activeBlock = day.blocks.find(
+        (block: { _id: any }) => block._id === activeBlockId
       );
-      const targetBlock = updatedBlocks.find(
-        (b) => typeof b !== "string" && b._id === targetBlockId
+      console.log("Active Block ID:", activeBlockId);
+      console.log("Active Block:", activeBlock);
+
+      const overBlock = day.blocks.find(
+        (block: { _id: any }) => block._id === overBlockId
       );
+      console.log("Over Block ID:", overBlockId);
+      console.log("Over Block:", overBlock);
 
-      if (
-        !sourceBlock ||
-        !targetBlock ||
-        typeof sourceBlock === "string" ||
-        typeof targetBlock === "string"
-      ) {
-        return currentDay;
-      }
+      if (!activeBlock || !overBlock) return;
 
-      // First, remove the task from its original position
-      const taskIndex = sourceBlock.tasks.findIndex((t) => t._id === activeId);
-      if (taskIndex === -1) return currentDay;
-
-      const [movedTask] = sourceBlock.tasks.splice(taskIndex, 1);
-      movedTask.block = targetBlockId;
-
-      // If we're moving within the same block
-      if (sourceBlockId === targetBlockId) {
-        const overTaskIndex = targetBlock.tasks.findIndex(
-          (t) => t._id === overId
+      if (activeBlock._id === overBlock._id) {
+        const oldIndex = activeBlock.tasks.findIndex(
+          (task: { _id: string }) => task._id === activeTask._id
         );
-        // Insert at the correct position
-        if (overTaskIndex !== -1) {
-          // When moving downward, we need to account for the removed item
-          const adjustedOverIndex =
-            overTaskIndex < taskIndex ? overTaskIndex : overTaskIndex;
-          targetBlock.tasks.splice(adjustedOverIndex, 0, movedTask);
-        } else {
-          // If dropping directly on the block, append to the end
-          targetBlock.tasks.push(movedTask);
-        }
+        const newIndex = activeBlock.tasks.findIndex(
+          (task: { _id: string }) => task._id === overTask._id
+        );
+
+        if (oldIndex === -1 || newIndex === -1) return;
+        console.log("going to update task now.");
+
+        processUpdate((currentDay: Day) => ({
+          ...currentDay,
+          blocks: currentDay.blocks.map((block) => {
+            if (typeof block === "string" || block._id !== activeBlock._id)
+              return block;
+
+            const newTasks = [...block.tasks];
+            const [movedTask] = newTasks.splice(oldIndex, 1);
+            // Ensure the task has both block and blockId set correctly
+            const updatedMovedTask = {
+              ...movedTask,
+              block: block._id,
+              blockId: block._id,
+            };
+            newTasks.splice(newIndex, 0, updatedMovedTask);
+
+            return {
+              ...block,
+              tasks: newTasks,
+            };
+          }),
+        }));
       } else {
-        // Moving to a different block
-        if (overData?.type === "Task" && overData.task) {
-          const overTaskIndex = targetBlock.tasks.findIndex(
-            (t) => t._id === overData.task?._id
-          );
-          if (overTaskIndex !== -1) {
-            targetBlock.tasks.splice(overTaskIndex, 0, movedTask);
-          } else {
-            targetBlock.tasks.push(movedTask);
-          }
-        } else {
-          // Dropping directly on a block
-          targetBlock.tasks.push(movedTask);
-        }
+        const updatedTask = activeTask as any; // Most aggressive bypass
+        updatedTask.block = overBlock._id;
+        updatedTask.blockId = overBlock._id;
+
+        processUpdate((currentDay: Day) => ({
+          ...currentDay,
+          blocks: currentDay.blocks.map((block) => {
+            if (typeof block === "string") return block;
+
+            if (block._id === activeBlock._id) {
+              return {
+                ...block,
+                tasks: block.tasks.filter(
+                  (task) => task._id !== activeTask._id
+                ),
+              };
+            }
+
+            if (block._id === overBlock._id) {
+              const newTasks = [...block.tasks];
+              const insertIndex = newTasks.findIndex(
+                (task) => task._id === overTask._id
+              );
+              newTasks.splice(insertIndex, 0, updatedTask);
+
+              return {
+                ...block,
+                tasks: newTasks,
+              };
+            }
+
+            return block;
+          }),
+        }));
       }
+    }
 
-      return {
-        ...currentDay,
-        blocks: updatedBlocks,
+    if (isActiveTask && isOverBlock) {
+      const overBlock = overData?.block;
+      if (!overBlock) return;
+
+      const activeBlock = day.blocks.find(
+        (block: { _id: any }) => block._id === activeBlockId
+      );
+      if (!activeBlock || activeBlock._id === overBlock._id) return;
+
+      const updatedTask = {
+        ...activeTask,
+        block: overBlock._id,
+        blockId: overBlock._id, // Set both to ensure consistency
       };
-    }, false);
+
+      console.log("going to update task now");
+
+      processUpdate((currentDay: Day) => ({
+        ...currentDay,
+        blocks: currentDay.blocks.map((block) => {
+          if (typeof block === "string") return block;
+
+          if (block._id === activeBlock._id) {
+            return {
+              ...block,
+              tasks: block.tasks.filter((task) => task._id !== activeTask._id),
+            };
+          }
+
+          if (block._id === overBlock._id) {
+            return {
+              ...block,
+              tasks: [...block.tasks, updatedTask],
+            };
+          }
+
+          return block;
+        }),
+      }));
+    }
   };
-
-  // if (!day) {
-  //   return (
-  //     <div className="flex h-screen w-full">
-  //       <LoadingSpinner />
-  //     </div>
-  //   );
-  // }
-
-  // Add this inside your Component, before the return statement
 
   return (
     <div className="flex h-screen bg-white font-sans text-gray-900">
@@ -1628,15 +1810,12 @@ export default function Component() {
         <SidebarContent />
       </aside>
       {isLoading ? (
-        promptText ? ( // If we're loading AND there's a promptText, show the schedule generation spinner
-          <ScheduleGenerationSpinner
-            progress={generationProgress}
-            status={generationStatus}
-          />
-        ) : (
-          // Otherwise show the regular loading spinner
-          <LoadingSpinner />
-        )
+        <LoadingSpinner />
+      ) : isGeneratingSchedule ? (
+        <ScheduleGenerationSpinner
+          progress={generationProgress}
+          status={generationStatus}
+        />
       ) : isPreviewMode && previewSchedule ? (
         <SchedulePreview
           schedule={previewSchedule}
@@ -1838,10 +2017,12 @@ export default function Component() {
                   />
                 ) : (
                   <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
                     onDragStart={onDragStart}
                     onDragOver={onDragOver}
                     onDragEnd={onDragEnd}
-                    collisionDetection={closestCenter}
+                    modifiers={[restrictToVerticalAxis, restrictToWindowEdges]}
                   >
                     <div className="space-y-4">
                       {sortedBlocks.map((block: Block) => (

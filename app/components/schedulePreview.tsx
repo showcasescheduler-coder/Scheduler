@@ -123,7 +123,7 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
     "accept"
   );
   const [isGeneratingSchedule, setIsGeneratingSchedule] = useState(false);
-  const { setIsPreviewMode, setPreviewSchedule } = useAppContext();
+  const { setIsPreviewMode, setPreviewSchedule, setDay } = useAppContext();
   const { isSignedIn, isLoaded } = useAuth(); // Add this to check auth status
   const [isSaving, setIsSaving] = useState(false); // Add this state
 
@@ -155,7 +155,9 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
     }
 
     try {
-      setIsSaving(true); // Start loading
+      setIsSaving(true);
+      console.log("Starting save process...");
+
       const schedulerResponse = await fetch("/api/scheduler", {
         method: "POST",
         headers: {
@@ -172,15 +174,41 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
         throw new Error(`Scheduler error! status: ${schedulerResponse.status}`);
       }
 
-      await mutate();
+      // Get the updated day data
+      const freshDay = await schedulerResponse.json();
+
+      // Normalize the data by ensuring all tasks use 'block' instead of 'blockId'
+      const normalizedDay = {
+        ...freshDay,
+        blocks: freshDay.blocks.map((block: any) => ({
+          ...block,
+          tasks: block.tasks.map((task: any) => ({
+            ...task,
+            block: block._id, // Set block to the block's ID
+            blockId: undefined, // Remove blockId field
+          })),
+        })),
+      };
+
+      console.log(normalizedDay);
+
+      // First update the state
+      setDay(normalizedDay);
+
+      // Then trigger a revalidation
+      mutate();
+
+      // Hide the preview mode
       setIsPreviewMode(false);
       setPreviewSchedule(null);
+
       toast.success("Schedule saved successfully!");
     } catch (error) {
       console.error("Error saving schedule:", error);
       toast.error("Failed to save schedule. Please try again.");
     } finally {
-      setIsSaving(false); // End loading
+      console.log("Save process complete");
+      setIsSaving(false);
     }
   };
 

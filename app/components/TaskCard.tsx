@@ -120,11 +120,12 @@ export function TaskCard({
             <Checkbox
               id={`task-${task._id}`}
               checked={task.completed}
-              onCheckedChange={(checked) =>
-                onTaskCompletion(task._id, checked as boolean)
-              }
+              onCheckedChange={(checked) => {
+                // only call if there's an actual change
+                if (checked === task.completed) return;
+                onTaskCompletion(task._id, Boolean(checked));
+              }}
               className="flex-shrink-0 mt-0.5"
-              disabled={updatingTasks && updatingTaskId === task._id}
             />
 
             <div className="flex-grow min-w-0">

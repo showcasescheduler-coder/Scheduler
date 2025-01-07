@@ -95,6 +95,8 @@ type AppContextType = {
   >;
   isPreviewMode: boolean;
   setIsPreviewMode: React.Dispatch<React.SetStateAction<boolean>>;
+  isGeneratingSchedule: boolean;
+  setIsGeneratingSchedule: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -144,6 +146,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [previewSchedule, setPreviewSchedule] =
     useState<PreviewSchedule | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isGeneratingSchedule, setIsGeneratingSchedule] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -404,6 +407,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setPreviewSchedule,
         isPreviewMode,
         setIsPreviewMode,
+        isGeneratingSchedule,
+        setIsGeneratingSchedule,
       }}
     >
       {children}

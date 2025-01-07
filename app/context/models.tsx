@@ -33,7 +33,7 @@ export interface Event {
 }
 
 export interface Project {
-  completed: unknown;
+  completed: boolean;
   _id: string;
   name: string;
   description: string;

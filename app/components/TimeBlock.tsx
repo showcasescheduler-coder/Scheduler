@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -117,6 +117,10 @@ export function TimeBlock({
   const allTasksCompleted =
     block.tasks.length > 0 && block.tasks.every((task) => task.completed);
 
+  const taskIds = useMemo(() => {
+    return block.tasks.map((task) => task._id);
+  }, [block.tasks]);
+
   return (
     <Card ref={setNodeRef} className="border-gray-200 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -176,10 +180,7 @@ export function TimeBlock({
       </CardHeader>
 
       <CardContent>
-        <SortableContext
-          items={block.tasks.map((task) => task._id)}
-          strategy={verticalListSortingStrategy}
-        >
+        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           {block.tasks.map((task) => (
             <TaskCard
               key={task._id}

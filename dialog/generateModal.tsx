@@ -26,7 +26,6 @@ export const ScheduleGenerationDialog: React.FC<
 > = ({ isOpen, onClose, onGenerateSchedule, isPreviewMode }) => {
   const [thoughts, setThoughts] = useState([""]);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  console.log(isPreviewMode);
 
   useEffect(() => {
     if (isOpen) {

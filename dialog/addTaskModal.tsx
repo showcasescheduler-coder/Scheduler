@@ -132,7 +132,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   });
 
   const [todaySchedule, setTodaySchedule] = useState<Day | null>(null);
-  const [isLoadingTodaySchedule, setIsLoadingTodaySchedule] = useState(false);
+  const [tomorrowSchedule, setTomorrowSchedule] = useState<Day | null>(null);
+  const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
 
   // Check if selected day is tomorrow and get today's date in YYYY-MM-DD format
   const { isTomorrow, todayDate } = useMemo(() => {
@@ -146,10 +147,41 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     return { isTomorrow, todayDate };
   }, [day.date]);
 
+  // Update the useEffect to fetch the appropriate schedule
   useEffect(() => {
-    const fetchTodaySchedule = async () => {
-      if (isTomorrow && !todaySchedule) {
-        setIsLoadingTodaySchedule(true);
+    const fetchSchedule = async () => {
+      if (!isTomorrow && !tomorrowSchedule) {
+        // If we're on today's view, fetch tomorrow's schedule
+        setIsLoadingSchedule(true);
+        try {
+          const tomorrow = new Date(todayDate);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const tomorrowDate = tomorrow.toISOString().split("T")[0];
+
+          const response = await fetch("/api/get-tomorrow", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId,
+              date: tomorrowDate,
+            }),
+          });
+          if (!response.ok) {
+            throw new Error("Failed to fetch tomorrow's schedule");
+          }
+          const data = await response.json();
+          console.log("Fetched tomorrow's schedule:", data);
+          setTomorrowSchedule(data);
+        } catch (error) {
+          console.error("Error fetching tomorrow's schedule:", error);
+        } finally {
+          setIsLoadingSchedule(false);
+        }
+      } else if (isTomorrow && !todaySchedule) {
+        // If we're on tomorrow's view, fetch today's schedule
+        setIsLoadingSchedule(true);
         try {
           const response = await fetch("/api/get-today", {
             method: "POST",
@@ -170,12 +202,12 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
         } catch (error) {
           console.error("Error fetching today's schedule:", error);
         } finally {
-          setIsLoadingTodaySchedule(false);
+          setIsLoadingSchedule(false);
         }
       }
     };
 
-    fetchTodaySchedule();
+    fetchSchedule();
   }, [isTomorrow, userId, todayDate]);
 
   // // Fetch today's schedule if needed
@@ -294,7 +326,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     }
   };
 
-  // Simplified synchronous isTaskAssigned function
+  // Then update the isTaskAssigned function
   const isTaskAssigned = (task: Task) => {
     // If task has no block, it's not assigned
     if (!task.block) return false;
@@ -302,14 +334,20 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     // Get block IDs from the current day
     const currentDayBlockIds = day.blocks.map((block: any) => block._id);
 
-    // If it's tomorrow and we have today's schedule, check both days
+    // If we're looking at tomorrow's schedule, check today
     if (isTomorrow && todaySchedule?.blocks) {
-      console.log("its tommorow");
       const todayBlockIds = todaySchedule.blocks.map((block: any) => block._id);
-
-      // If the task is assigned to any block in today's schedule,
-      // it cannot be assigned to tomorrow's schedule
       if (todayBlockIds.includes(task.block)) {
+        return true;
+      }
+    }
+
+    // If we're looking at today's schedule, check tomorrow
+    if (!isTomorrow && tomorrowSchedule?.blocks) {
+      const tomorrowBlockIds = tomorrowSchedule.blocks.map(
+        (block: any) => block._id
+      );
+      if (tomorrowBlockIds.includes(task.block)) {
         return true;
       }
     }
@@ -317,7 +355,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     // Check if it's assigned in the current day's schedule
     return currentDayBlockIds.includes(task.block);
   };
-
   // const isTaskAssigned = (task: Task) => {
   //   // If task has no block, it's not assigned
   //   if (!task.block) return false;
@@ -385,7 +422,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] p-0">
+      <DialogContent className="sm:max-w-[425px] p-6 border rounded-md shadow-sm">
         <DialogHeader className="p-6 pb-2">
           <div className="flex items-center gap-2">
             <ListTodo className="h-4 w-4 text-blue-600" />
@@ -395,7 +432,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
           </div>
         </DialogHeader>
 
-        {isLoadingTodaySchedule && (
+        {isLoadingSchedule && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-50">
             <div className="flex items-center space-x-2">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -569,60 +606,57 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                   ))}
                 </SelectContent>
               </Select>
-              <ScrollArea className="h-72 w-full rounded-md border">
-                <div className="p-4 space-y-4">
-                  {projects
-                    .find((p) => p._id === selectedProject)
-                    ?.tasks.filter((task) => task.completed === false)
-                    .map((task) => (
-                      <Card
-                        key={task._id}
-                        className={isTaskAssigned(task) ? "opacity-50" : ""}
-                      >
-                        <CardContent className="p-3 flex items-center justify-between">
-                          <div className="space-y-1">
-                            <h4 className="text-sm font-medium">{task.name}</h4>
-                            <p className="text-xs text-muted-foreground">
-                              {task.description}
-                            </p>
-                            <div className="flex items-center space-x-2">
-                              <Badge
-                                variant={
-                                  task.priority?.toLowerCase() as
-                                    | "default"
-                                    | "secondary"
-                                    | "destructive"
-                                }
-                              >
-                                {task.priority}
-                              </Badge>
-                              {isTaskAssigned(task) && (
-                                <Badge variant="outline">
-                                  {isTomorrow &&
-                                  todaySchedule?.blocks.some(
-                                    (b) => b._id === task.block
-                                  )
-                                    ? "Assigned Today"
-                                    : "Assigned"}
+              <div className="w-full border rounded-md">
+                <ScrollArea className="h-[400px]">
+                  <div className="p-4 space-y-4">
+                    {projects
+                      .find((p) => p._id === selectedProject)
+                      ?.tasks.filter((task) => task.completed === false)
+                      .map((task) => (
+                        <Card
+                          key={task._id}
+                          className={isTaskAssigned(task) ? "opacity-50" : ""}
+                        >
+                          <CardContent className="p-3 flex items-center justify-between">
+                            <div className="space-y-1">
+                              <h4 className="text-sm font-medium leading-none">
+                                {task.name}
+                              </h4>
+                              <p className="text-xs text-muted-foreground">
+                                {task.description}
+                              </p>
+                              <div className="flex items-center space-x-2">
+                                <Badge variant="secondary">
+                                  {task.priority}
                                 </Badge>
-                              )}
+                                {isTaskAssigned(task) && (
+                                  <Badge variant="outline">
+                                    {isTomorrow &&
+                                    todaySchedule?.blocks.some(
+                                      (b) => b._id === task.block
+                                    )
+                                      ? "Assigned Today"
+                                      : "Assigned"}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="shrink-0"
-                            onClick={() => addTaskToBlock(task._id)}
-                            disabled={isTaskAssigned(task)}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-1" />
-                            {isTaskAssigned(task) ? "Assigned" : "Add"}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
-                </div>
-              </ScrollArea>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="shrink-0"
+                              onClick={() => addTaskToBlock(task._id)}
+                              disabled={isTaskAssigned(task)}
+                            >
+                              <PlusCircle className="h-4 w-4 mr-1" />
+                              {isTaskAssigned(task) ? "Assigned" : "Add"}
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      ))}
+                  </div>
+                </ScrollArea>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

@@ -157,6 +157,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
+    if (project?.completed) return; // Early return if project is completed
     const { name, value } = e.target;
     setProject((prev) => {
       if (!prev) return null;
@@ -168,6 +169,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
   };
 
   const handlePriorityChange = (value: string) => {
+    if (project?.completed) return;
     setProject((prev) => {
       if (!prev) return null;
       return {
@@ -199,7 +201,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
   };
 
   const handleAddTask = async () => {
-    if (!project || !newTask.name) return;
+    if (!project || !newTask.name || project.completed) return;
     try {
       const response = await fetch("/api/tasks", {
         method: "POST",
@@ -346,7 +348,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
 
   // Handle task deletion
   const handleDeleteTask = async (taskId: string, projectId: string) => {
-    if (!project || !confirm("Delete this task?")) return;
+    if (!project || project.completed || !confirm("Delete this task?")) return;
 
     try {
       const response = await fetch(`/api/projects/tasks/${taskId}`, {
@@ -403,7 +405,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
   };
 
   const handleTaskCompletion = async (taskId: string, completed: boolean) => {
-    if (!project) return;
+    if (!project || project.completed) return;
 
     // Store the current state for potential rollback
     const previousProject = { ...project };
@@ -522,7 +524,11 @@ export default function ProjectDetails({ params: { id } }: Props) {
                     </span>
                   </div>
                 </div>
-                <Button size="sm" onClick={handleSave}>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={project.completed}
+                >
                   Save
                 </Button>
               </div>
@@ -554,7 +560,11 @@ export default function ProjectDetails({ params: { id } }: Props) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" onClick={handleSave}>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={project.completed}
+                >
                   Save
                 </Button>
                 <Button
@@ -653,6 +663,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                         className="mt-2"
                         value={project.name}
                         onChange={handleInputChange}
+                        disabled={project.completed}
                       />
                     </div>
                     <div>
@@ -662,6 +673,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                         className="mt-2"
                         value={project.description}
                         onChange={handleInputChange}
+                        disabled={project.completed}
                       />
                     </div>
                     <div>
@@ -677,28 +689,14 @@ export default function ProjectDetails({ params: { id } }: Props) {
                               : ""
                           }
                           onChange={handleInputChange}
+                          disabled={project.completed}
                         />
-                        <Button variant="outline" size="icon">
+                        {/* <Button variant="outline" size="icon">
                           <Calendar className="h-4 w-4" />
-                        </Button>
+                        </Button> */}
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium">Status</label>
-                        <Select defaultValue="in-progress">
-                          <SelectTrigger className="mt-2">
-                            <SelectValue placeholder="Status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="planning">Planning</SelectItem>
-                            <SelectItem value="in-progress">
-                              In Progress
-                            </SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
                       <div>
                         <label className="text-sm font-medium">Priority</label>
                         <Select
@@ -709,6 +707,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                               : "Medium"
                           }
                           onValueChange={handlePriorityChange}
+                          disabled={project.completed}
                         >
                           <SelectTrigger className="mt-2">
                             <SelectValue placeholder="Priority" />
@@ -789,6 +788,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                                       checked === true
                                     )
                                   }
+                                  disabled={project.completed}
                                   className="ml-2"
                                 />
                               </TableCell>
@@ -814,6 +814,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                                       variant="ghost"
                                       size="icon"
                                       className="h-8 w-8"
+                                      disabled={project.completed}
                                     >
                                       <MoreHorizontal className="h-4 w-4" />
                                     </Button>
@@ -853,6 +854,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                       variant="ghost"
                       className="gap-1"
                       onClick={() => setIsTaskDialogOpen(true)}
+                      disabled={project.completed}
                     >
                       <PlusCircle className="h-3.5 w-3.5" />
                       Add Task
@@ -878,6 +880,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                   <Button
                     onClick={() => setIsTaskDialogOpen(true)}
                     className="bg-blue-600 hover:bg-blue-700"
+                    disabled={project.completed}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Task
@@ -885,7 +888,11 @@ export default function ProjectDetails({ params: { id } }: Props) {
                   <Button
                     variant="outline"
                     onClick={() => setIsGenerateTasksDialogOpen(true)}
-                    disabled={generatingTasks || project.tasks.length > 0}
+                    disabled={
+                      generatingTasks ||
+                      project.tasks.length > 0 ||
+                      project.completed
+                    }
                   >
                     <Sparkles className="h-4 w-4 mr-2" />
                     AI Generate
@@ -1233,6 +1240,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
             <Button
               className="bg-blue-600 hover:bg-blue-700 text-white"
               onClick={handleAddTask}
+              disabled={project.completed}
             >
               Add Task
             </Button>
