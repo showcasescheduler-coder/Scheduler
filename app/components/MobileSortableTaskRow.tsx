@@ -27,14 +27,19 @@ interface Task {
   type?: "deep-work" | "planning" | "break" | "admin" | "collaboration";
 }
 
-interface Project {
+export interface Project {
+  completed: boolean;
   _id: string;
   name: string;
-  description?: string;
-  deadline: string;
+  description: string;
+  deadline: Date;
+  time: string;
   priority: string;
-  completed: boolean;
-  tasks: Task[];
+  tasks: ProjectTask[];
+}
+
+export interface ProjectTask extends Task {
+  projectId: string;
 }
 
 interface MobileSortableTaskRowProps {
