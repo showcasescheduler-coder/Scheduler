@@ -123,6 +123,15 @@ export function TimeBlock({
 
   return (
     <Card ref={setNodeRef} className="border-gray-200 shadow-sm">
+      {/* Mobile time strip */}
+      <div className="md:hidden w-full bg-gray-100 border-b flex items-center justify-center py-2">
+        <div className="flex items-center text-gray-700 font-medium">
+          <Clock className="mr-2 h-4 w-4" />
+          <span>
+            {block.startTime} - {block.endTime}
+          </span>
+        </div>
+      </div>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-base font-medium flex-1">
           <div className="flex items-center gap-2">
@@ -160,12 +169,12 @@ export function TimeBlock({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem className="md:hidden">
+              {/* <DropdownMenuItem className="md:hidden">
                 <Clock className="mr-2 h-4 w-4" />
                 <span>
                   {block.startTime} - {block.endTime}
                 </span>
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               <DropdownMenuItem onClick={() => onEditBlock(block)}>
                 <Edit className="mr-2 h-4 w-4" />
                 <span>Edit Block</span>
@@ -178,7 +187,6 @@ export function TimeBlock({
           </DropdownMenu>
         </div>
       </CardHeader>
-
       <CardContent>
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           {block.tasks.map((task) => (
