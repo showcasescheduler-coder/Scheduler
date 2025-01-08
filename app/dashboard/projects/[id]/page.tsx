@@ -487,29 +487,70 @@ export default function ProjectDetails({ params: { id } }: Props) {
     })
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id || !project) return;
 
-    setProject((prev) => {
-      if (!prev) return null;
+    // Store previous state for rollback
+    const previousProject = { ...project };
+    const previousProjects = [...projects];
 
-      const oldIndex = prev.tasks.findIndex((task) => task._id === active.id);
-      const newIndex = prev.tasks.findIndex((task) => task._id === over.id);
+    try {
+      // Calculate the new task order first
+      const oldIndex = project.tasks.findIndex(
+        (task) => task._id === active.id
+      );
+      const newIndex = project.tasks.findIndex((task) => task._id === over.id);
 
-      const newTasks = [...prev.tasks];
+      const newTasks = [...project.tasks];
       const [movedTask] = newTasks.splice(oldIndex, 1);
       newTasks.splice(newIndex, 0, movedTask);
 
-      return {
-        ...prev,
-        tasks: newTasks,
-      } as Project;
-    });
+      // Get the new order of task IDs from our calculated array
+      const updatedTaskOrder = newTasks.map((task) => task._id);
+
+      // Optimistically update the UI with our calculated array
+      setProject((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          tasks: newTasks,
+        } as Project;
+      });
+
+      // Send the update to the server using our pre-calculated order
+      const response = await fetch("/api/reorder-project-tasks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project._id,
+          taskIds: updatedTaskOrder,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update task order");
+      }
+
+      const { project: updatedProject } = await response.json();
+
+      // Update both project states with server response
+      setProject(updatedProject);
+      setProjects((prev) =>
+        prev.map((p) => (p._id === updatedProject._id ? updatedProject : p))
+      );
+    } catch (error) {
+      console.error("Error updating task order:", error);
+      // Revert to previous state if there's an error
+      setProject(previousProject);
+      setProjects(previousProjects);
+    }
   };
 
   if (!project) return null;
+
+  console.log(project);
 
   return (
     <div className="flex h-screen bg-white">
