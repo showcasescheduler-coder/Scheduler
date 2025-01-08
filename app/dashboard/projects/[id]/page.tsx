@@ -19,6 +19,7 @@ import {
   Edit,
   Trash2,
   MoreVertical,
+  GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -83,6 +84,24 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import MobileNav from "@/app/components/MobileNav";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import SortableTaskRow from "@/app/components/SortableTaskRow";
+import MobileSortableTaskRow from "@/app/components/MobileSortableTaskRow";
 
 interface Props {
   params: { id: string };
@@ -461,6 +480,35 @@ export default function ProjectDetails({ params: { id } }: Props) {
     }
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    setProject((prev) => {
+      if (!prev) return null;
+
+      const oldIndex = prev.tasks.findIndex((task) => task._id === active.id);
+      const newIndex = prev.tasks.findIndex((task) => task._id === over.id);
+
+      const newTasks = [...prev.tasks];
+      const [movedTask] = newTasks.splice(oldIndex, 1);
+      newTasks.splice(newIndex, 0, movedTask);
+
+      return {
+        ...prev,
+        tasks: newTasks,
+      } as Project;
+    });
+  };
+
   if (!project) return null;
 
   return (
@@ -763,88 +811,126 @@ export default function ProjectDetails({ params: { id } }: Props) {
 
                   <CardContent className="p-4">
                     <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-[50px]">Done</TableHead>
-                            <TableHead className="w-[60%]">Task</TableHead>
-                            {/* <TableHead className="w-[25%]">Due Date</TableHead> */}
-                            <TableHead className="w-[15%] text-center">
-                              Actions
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {getFilteredTasks().map((task) => (
-                            <TableRow key={task._id}>
-                              <TableCell>
-                                <Checkbox
-                                  checked={task.completed}
-                                  onCheckedChange={(
-                                    checked: boolean | string
-                                  ) =>
-                                    handleTaskCompletion(
-                                      task._id,
-                                      checked === true
-                                    )
-                                  }
-                                  disabled={project.completed}
-                                  className="ml-2"
-                                />
-                              </TableCell>
-                              <TableCell className="py-3">
-                                <div className="space-y-1">
-                                  <div className="font-medium">{task.name}</div>
-                                  {task.description && (
-                                    <div className="text-sm text-gray-500 truncate max-w-[280px]">
-                                      {task.description}
-                                    </div>
-                                  )}
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[80px]">
+                                <div className="flex items-center gap-2">
+                                  <span>Order</span>
                                 </div>
-                              </TableCell>
-                              {/* <TableCell className="align-top py-3">
-                                <div className="text-sm font-medium">
-                                  {format(parseISO(task.deadline), "MMM dd")}
-                                </div>
-                              </TableCell> */}
-                              <TableCell className="text-center">
-                                <DropdownMenu modal={false}>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8"
-                                      disabled={project.completed}
-                                    >
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                      onSelect={(e) => {
-                                        e.preventDefault();
-                                        setEditingTask(task);
-                                        setIsEditDialogOpen(true);
-                                      }}
-                                    >
-                                      <Edit className="mr-2 h-4 w-4" />
-                                      <span>Edit Task</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onSelect={() =>
-                                        handleDeleteTask(task._id, project._id)
-                                      }
-                                    >
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      <span>Delete Task</span>
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
+                              </TableHead>
+                              <TableHead className="w-[50px]">Done</TableHead>
+                              <TableHead className="w-[60%]">Task</TableHead>
+                              {/* <TableHead className="w-[25%]">Due Date</TableHead> */}
+                              <TableHead className="w-[15%] text-center">
+                                Actions
+                              </TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            <SortableContext
+                              items={getFilteredTasks().map((task) => task._id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {getFilteredTasks().map((task, index) => (
+                                <MobileSortableTaskRow
+                                  key={task._id}
+                                  task={task}
+                                  index={index}
+                                  project={project}
+                                  onComplete={handleTaskCompletion}
+                                  onDelete={handleDeleteTask}
+                                  onEdit={setEditingTask}
+                                />
+                                //   <TableRow key={task._id}>
+                                //     <TableCell>
+                                //       <div className="flex items-center gap-2">
+                                //         <GripVertical className="h-4 w-4 text-gray-400" />
+                                //         <span className="text-sm text-gray-500">
+                                //           {index + 1}
+                                //         </span>
+                                //       </div>
+                                //     </TableCell>
+                                //     <TableCell>
+                                //       <Checkbox
+                                //         checked={task.completed}
+                                //         onCheckedChange={(
+                                //           checked: boolean | string
+                                //         ) =>
+                                //           handleTaskCompletion(
+                                //             task._id,
+                                //             checked === true
+                                //           )
+                                //         }
+                                //         disabled={project.completed}
+                                //         className="ml-2"
+                                //       />
+                                //     </TableCell>
+                                //     <TableCell className="py-3">
+                                //       <div className="space-y-1">
+                                //         <div className="font-medium">
+                                //           {task.name}
+                                //         </div>
+                                //         {task.description && (
+                                //           <div className="text-sm text-gray-500 truncate max-w-[280px]">
+                                //             {task.description}
+                                //           </div>
+                                //         )}
+                                //       </div>
+                                //     </TableCell>
+                                //     {/* <TableCell className="align-top py-3">
+                                //   <div className="text-sm font-medium">
+                                //     {format(parseISO(task.deadline), "MMM dd")}
+                                //   </div>
+                                // </TableCell> */}
+                                //     <TableCell className="text-center">
+                                //       <DropdownMenu modal={false}>
+                                //         <DropdownMenuTrigger asChild>
+                                //           <Button
+                                //             variant="ghost"
+                                //             size="icon"
+                                //             className="h-8 w-8"
+                                //             disabled={project.completed}
+                                //           >
+                                //             <MoreHorizontal className="h-4 w-4" />
+                                //           </Button>
+                                //         </DropdownMenuTrigger>
+                                //         <DropdownMenuContent align="end">
+                                //           <DropdownMenuItem
+                                //             onSelect={(e) => {
+                                //               e.preventDefault();
+                                //               setEditingTask(task);
+                                //               setIsEditDialogOpen(true);
+                                //             }}
+                                //           >
+                                //             <Edit className="mr-2 h-4 w-4" />
+                                //             <span>Edit Task</span>
+                                //           </DropdownMenuItem>
+                                //           <DropdownMenuItem
+                                //             onSelect={() =>
+                                //               handleDeleteTask(
+                                //                 task._id,
+                                //                 project._id
+                                //               )
+                                //             }
+                                //           >
+                                //             <Trash2 className="mr-2 h-4 w-4" />
+                                //             <span>Delete Task</span>
+                                //           </DropdownMenuItem>
+                                //         </DropdownMenuContent>
+                                //       </DropdownMenu>
+                                //     </TableCell>
+                                //   </TableRow>
+                              ))}
+                            </SortableContext>
+                          </TableBody>
+                        </Table>
+                      </DndContext>
                     </div>
                   </CardContent>
 
@@ -930,99 +1016,132 @@ export default function ProjectDetails({ params: { id } }: Props) {
 
               {/* Tasks Table */}
               <div className="bg-white rounded-md border border-gray-200">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">Done</TableHead>
-                      <TableHead className="w-[300px]">Task</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getFilteredTasks().map((task) => (
-                      <TableRow key={task._id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={task.completed}
-                            onCheckedChange={(checked: boolean | string) =>
-                              handleTaskCompletion(task._id, checked === true)
-                            }
-                            className="ml-2"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{task.name}</div>
-                            {task.description && (
-                              <div className="text-sm text-gray-500 truncate max-w-[280px]">
-                                {task.description}
-                              </div>
-                            )}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[80px]">
+                          <div className="flex items-center gap-2">
+                            <span>Order</span>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {format(parseISO(task.deadline), "MMM dd")}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              task.priority === "High"
-                                ? "bg-red-100 text-red-800"
-                                : task.priority === "Medium"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-green-100 text-green-800"
-                            }`}
-                          >
-                            {task.priority}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm text-gray-500">
-                            {task.duration}m
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu modal={false}>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  setEditingTask(task);
-                                  setIsEditDialogOpen(true);
-                                }}
-                              >
-                                <Edit className="mr-2 h-4 w-4" />
-                                <span>Edit Task</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onSelect={() =>
-                                  handleDeleteTask(task._id, project._id)
-                                }
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                <span>Delete Task</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                        </TableHead>
+                        <TableHead className="w-[50px]">Done</TableHead>
+                        <TableHead className="w-[300px]">Task</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Priority</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      <SortableContext
+                        items={getFilteredTasks().map((task) => task._id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {getFilteredTasks().map((task, index) => (
+                          <SortableTaskRow
+                            key={task._id}
+                            task={task}
+                            index={index}
+                            project={project}
+                            onComplete={handleTaskCompletion}
+                            onDelete={handleDeleteTask}
+                            onEdit={setEditingTask}
+                          />
+                          // <TableRow key={task._id}>
+                          //   <TableCell>
+                          //     <div className="flex items-center gap-2">
+                          //       <GripVertical className="h-4 w-4 text-gray-400" />
+                          //       <span className="text-sm text-gray-500">
+                          //         {index + 1}
+                          //       </span>
+                          //     </div>
+                          //   </TableCell>
+                          //   <TableCell>
+                          //     <Checkbox
+                          //       checked={task.completed}
+                          //       onCheckedChange={(checked: boolean | string) =>
+                          //         handleTaskCompletion(task._id, checked === true)
+                          //       }
+                          //       className="ml-2"
+                          //     />
+                          //   </TableCell>
+                          //   <TableCell>
+                          //     <div>
+                          //       <div className="font-medium">{task.name}</div>
+                          //       {task.description && (
+                          //         <div className="text-sm text-gray-500 truncate max-w-[280px]">
+                          //           {task.description}
+                          //         </div>
+                          //       )}
+                          //     </div>
+                          //   </TableCell>
+                          //   <TableCell>
+                          //     <div className="text-sm">
+                          //       {format(parseISO(task.deadline), "MMM dd")}
+                          //     </div>
+                          //   </TableCell>
+                          //   <TableCell>
+                          //     <span
+                          //       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          //         task.priority === "High"
+                          //           ? "bg-red-100 text-red-800"
+                          //           : task.priority === "Medium"
+                          //           ? "bg-yellow-100 text-yellow-800"
+                          //           : "bg-green-100 text-green-800"
+                          //       }`}
+                          //     >
+                          //       {task.priority}
+                          //     </span>
+                          //   </TableCell>
+                          //   <TableCell>
+                          //     <div className="text-sm text-gray-500">
+                          //       {task.duration}m
+                          //     </div>
+                          //   </TableCell>
+                          //   <TableCell className="text-right">
+                          //     <DropdownMenu modal={false}>
+                          //       <DropdownMenuTrigger asChild>
+                          //         <Button
+                          //           variant="ghost"
+                          //           size="icon"
+                          //           className="h-8 w-8"
+                          //         >
+                          //           <MoreHorizontal className="h-4 w-4" />
+                          //         </Button>
+                          //       </DropdownMenuTrigger>
+                          //       <DropdownMenuContent align="end">
+                          //         <DropdownMenuItem
+                          //           onSelect={(e) => {
+                          //             e.preventDefault();
+                          //             setEditingTask(task);
+                          //             setIsEditDialogOpen(true);
+                          //           }}
+                          //         >
+                          //           <Edit className="mr-2 h-4 w-4" />
+                          //           <span>Edit Task</span>
+                          //         </DropdownMenuItem>
+                          //         <DropdownMenuItem
+                          //           onSelect={() =>
+                          //             handleDeleteTask(task._id, project._id)
+                          //           }
+                          //         >
+                          //           <Trash2 className="mr-2 h-4 w-4" />
+                          //           <span>Delete Task</span>
+                          //         </DropdownMenuItem>
+                          //       </DropdownMenuContent>
+                          //     </DropdownMenu>
+                          //   </TableCell>
+                          // </TableRow>
+                        ))}
+                      </SortableContext>
+                    </TableBody>
+                  </Table>
+                </DndContext>
               </div>
             </div>
           </div>
