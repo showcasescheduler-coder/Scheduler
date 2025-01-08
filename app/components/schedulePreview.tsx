@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, UserButton } from "@clerk/nextjs";
 import {
   Clock,
   Plus,
@@ -41,6 +41,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import MobileNav from "./MobileNav";
+import { format, parseISO, isBefore } from "date-fns";
 
 // interface Task {
 //   id: string;
@@ -302,6 +305,38 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
         <LoadingSpinner />
       ) : (
         <div className="space-y-6">
+          <div className="md:hidden px-4 py-3 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              {/* Left: Menu Button - Always present */}
+              <div className="w-8">
+                {" "}
+                {/* Fixed width container */}
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-64 p-0">
+                    <MobileNav />
+                  </SheetContent>
+                </Sheet>
+              </div>
+
+              {/* Center: Date display - Always present */}
+              <div className="text-sm font-medium">
+                {format(new Date(), "MMM d, yyyy")}
+              </div>
+
+              {/* Right: User button or placeholder - Always same width */}
+              <div className="w-8">
+                {" "}
+                {/* Fixed width container */}
+                {isSignedIn ? <UserButton /> : <div className="h-8" />}
+              </div>
+            </div>
+          </div>
+
           <Card className="border-blue-100">
             <CardHeader>
               <div className="flex items-center justify-between">
