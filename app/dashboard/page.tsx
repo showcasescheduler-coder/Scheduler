@@ -830,13 +830,54 @@ export default function Component() {
     }
   };
 
-  const generateScheduleTest = async (
-    userInput: string,
-    startTime: string,
-    endTime: string
-  ) => {
+  const roundToNearestHalfHour = (date: Date): string => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+
+    // Round minutes to nearest 30
+    const roundedMinutes = Math.round(minutes / 30) * 30;
+
+    // Handle case where rounding pushes us to the next hour
+    let finalHours = hours;
+    let finalMinutes = roundedMinutes;
+
+    if (roundedMinutes === 60) {
+      finalHours = (hours + 1) % 24;
+      finalMinutes = 0;
+    }
+
+    // Format as HH:mm
+    return `${String(finalHours).padStart(2, "0")}:${String(
+      finalMinutes
+    ).padStart(2, "0")}`;
+  };
+
+  const getScheduleTimes = (
+    selectedDay: "today" | "tomorrow"
+  ): { startTime: string; endTime: string } => {
+    const endTime = "22:00"; // 10:00 PM for both cases
+
+    if (selectedDay === "today") {
+      // For today, start from current time rounded to nearest half hour
+      const currentTime = new Date();
+      return {
+        startTime: roundToNearestHalfHour(currentTime),
+        endTime,
+      };
+    } else {
+      // For tomorrow, start at 8:00 AM
+      return {
+        startTime: "08:00",
+        endTime,
+      };
+    }
+  };
+
+  const generateScheduleTest = async (userInput: string) => {
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
+
+    const { startTime, endTime } = getScheduleTimes(selectedDay);
 
     setIsGeneratingSchedule(true);
     setGenerationProgress(0);
@@ -997,22 +1038,26 @@ export default function Component() {
       })),
     }));
 
+    // Modified code with sequence numbers:
     const optimizedProjects = projectsWithIncompleteTasks.map((project) => ({
       id: project._id,
       name: project.name,
       description: project.description,
       deadline: project.deadline,
       priority: project.priority,
-      tasks: project.tasks.map((task) => ({
+      tasks: project.tasks.map((task, index) => ({
         id: task._id,
         name: task.name,
         description: task.description,
         completed: task.completed,
-        priority: task.priority,
+        // priority: task.priority,
         duration: Number(task.duration),
         projectId: project._id,
-        deadline: task.deadline,
+        // deadline: task.deadline,
+        sequence: index, // Add explicit sequence number
+        mustFollowSequence: true, // Flag to indicate strict ordering
       })),
+      requiresSequentialExecution: true, // Project-level flag for ordering
     }));
 
     console.log(optimizedProjects);
@@ -1175,6 +1220,10 @@ export default function Component() {
           setGenerationProgress(30);
           setGenerationStatus("Analyzing schedule requirements...");
           console.log("running the fully automated schedule generation");
+          console.log(
+            "this is the projects object that is bering send through",
+            optimizedProjects
+          );
           const automatedSchedule = await fetch(
             "/api/non-specific-full-backlog",
             {
@@ -2227,11 +2276,9 @@ export default function Component() {
       <ScheduleGenerationDialog
         isOpen={isDialogOpen}
         onClose={setIsDialogOpen}
-        onGenerateSchedule={(
-          userInput: string,
-          startTime: string,
-          endTime: string
-        ) => generateScheduleTest(userInput, startTime, endTime)}
+        onGenerateSchedule={(userInput: string) =>
+          generateScheduleTest(userInput)
+        }
         isPreviewMode={isPreviewMode}
       />
       <AddEventModal

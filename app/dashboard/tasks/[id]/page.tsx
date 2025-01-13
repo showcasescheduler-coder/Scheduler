@@ -53,8 +53,12 @@ interface Task {
   duration: number;
   deadline: string;
   completed: boolean;
-  status?: string; // Make status optional
-  type?: "deep-work" | "planning" | "break" | "admin" | "collaboration"; // Make
+  status?: string;
+  type?: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  timeWindow?: {
+    start?: string;
+    end?: string;
+  };
 }
 
 export default function TaskDetails({ params: { id } }: Props) {
@@ -111,6 +115,19 @@ export default function TaskDetails({ params: { id } }: Props) {
       return {
         ...prev,
         deadline: date ? format(date, "yyyy-MM-dd") : prev.deadline,
+      };
+    });
+  };
+
+  const handleTimeWindowChange = (field: "start" | "end", value: string) => {
+    setTask((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        timeWindow: {
+          ...prev.timeWindow,
+          [field]: value,
+        },
       };
     });
   };
@@ -342,6 +359,45 @@ export default function TaskDetails({ params: { id } }: Props) {
                           />
                           <Clock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                         </div>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-blue-500" />
+                          Time Window
+                        </label>
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <div>
+                            <label className="text-xs text-gray-500 mb-1">
+                              Start Time
+                            </label>
+                            <Input
+                              type="time"
+                              value={task?.timeWindow?.start || ""}
+                              onChange={(e) =>
+                                handleTimeWindowChange("start", e.target.value)
+                              }
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-500 mb-1">
+                              End Time
+                            </label>
+                            <Input
+                              type="time"
+                              value={task?.timeWindow?.end || ""}
+                              onChange={(e) =>
+                                handleTimeWindowChange("end", e.target.value)
+                              }
+                              className="mt-1"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Optional: Set a time window for when this task needs
+                          to be completed
+                        </p>
                       </div>
 
                       <div>

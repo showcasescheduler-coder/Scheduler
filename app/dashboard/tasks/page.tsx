@@ -72,8 +72,12 @@ interface Task {
   duration: number;
   deadline: string;
   completed: boolean;
-  status?: string; // Make status optional
-  type?: "deep-work" | "planning" | "break" | "admin" | "collaboration"; // Make
+  status?: string;
+  type?: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  timeWindow?: {
+    start?: string;
+    end?: string;
+  };
 }
 
 export default function StandaloneTasks() {
@@ -90,7 +94,11 @@ export default function StandaloneTasks() {
     duration: 5,
     deadline: "",
     completed: false,
-    type: "deep-work", // Set a default value
+    type: "deep-work",
+    timeWindow: {
+      start: "",
+      end: "",
+    },
   });
   const [activeTab, setActiveTab] = useState("active");
 
@@ -315,6 +323,48 @@ export default function StandaloneTasks() {
                       name="description"
                       value={newTask.description}
                       onChange={handleInputChange}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="timeWindow.start" className="text-right">
+                      Time Window Start
+                    </Label>
+                    <Input
+                      id="timeWindow.start"
+                      name="timeWindow.start"
+                      type="time"
+                      value={newTask.timeWindow?.start || ""}
+                      onChange={(e) =>
+                        setNewTask((prev) => ({
+                          ...prev,
+                          timeWindow: {
+                            ...prev.timeWindow,
+                            start: e.target.value,
+                          },
+                        }))
+                      }
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="timeWindow.end" className="text-right">
+                      Time Window End
+                    </Label>
+                    <Input
+                      id="timeWindow.end"
+                      name="timeWindow.end"
+                      type="time"
+                      value={newTask.timeWindow?.end || ""}
+                      onChange={(e) =>
+                        setNewTask((prev) => ({
+                          ...prev,
+                          timeWindow: {
+                            ...prev.timeWindow,
+                            end: e.target.value,
+                          },
+                        }))
+                      }
                       className="col-span-3"
                     />
                   </div>

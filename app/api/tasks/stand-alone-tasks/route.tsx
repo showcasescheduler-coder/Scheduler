@@ -27,6 +27,14 @@ export async function POST(request: NextRequest) {
       deadline: taskData.deadline,
       userId: userId,
       type: taskData.type,
+      ...(taskData.timeWindow?.start || taskData.timeWindow?.end
+        ? {
+            timeWindow: {
+              start: taskData.timeWindow.start || null,
+              end: taskData.timeWindow.end || null,
+            },
+          }
+        : {}),
     };
 
     const task = new Task(taskToCreate);

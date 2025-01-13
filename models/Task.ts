@@ -13,6 +13,10 @@ export interface ITask {
   routine?: mongoose.Types.ObjectId;
   block?: mongoose.Types.ObjectId;
   type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  timeWindow?: {
+    start?: string; // Format: "HH:mm"
+    end?: string; // Format: "HH:mm"
+  };
 }
 
 const TaskSchema = new mongoose.Schema(
@@ -39,6 +43,10 @@ const TaskSchema = new mongoose.Schema(
       type: String,
       enum: ["deep-work", "planning", "break", "admin", "collaboration"],
       required: true,
+    },
+    timeWindow: {
+      start: { type: String }, // Format: "HH:mm"
+      end: { type: String }, // Format: "HH:mm"
     },
   },
   { timestamps: true, strict: false }
