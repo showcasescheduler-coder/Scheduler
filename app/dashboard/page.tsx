@@ -1072,6 +1072,7 @@ export default function Component() {
       setGenerationStatus("Analyzing your requirements...");
 
       if (isPreviewMode) {
+        // Keep regeneration logic as is
         setGenerationProgress(30);
         setGenerationStatus("Regenerating schedule...");
         const regeneratedSchedule = await fetch("/api/regenerate-schedule", {
@@ -1089,29 +1090,21 @@ export default function Component() {
             startTime: startTime,
             endTime: endTime,
           }),
-          signal, // Add abort signal
+          signal,
         });
-        // After first API response
         setGenerationProgress(60);
         setGenerationStatus("Optimizing block placement...");
-        const regeneratedScedhuleJson = await regeneratedSchedule.json();
-        console.log(regeneratedScedhuleJson);
-        if (regeneratedScedhuleJson.blocks) {
+        const regeneratedScheduleJson = await regeneratedSchedule.json();
+        if (regeneratedScheduleJson.blocks) {
           setGenerationProgress(100);
           setGenerationStatus("Schedule generated successfully!");
-          setPreviewSchedule(regeneratedScedhuleJson);
+          setPreviewSchedule(regeneratedScheduleJson);
           setIsPreviewMode(true);
         }
       } else {
         // First API call
         setGenerationProgress(30);
         setGenerationStatus("Analyzing schedule requirements...");
-        console.log(optimizedProjects);
-        console.log(optimizedEvents);
-        console.log(optimizedRoutines);
-        console.log(optimizedTasks);
-        console.log(userInput);
-
         const baseSchedule = await fetch("/api/intent-analysis", {
           method: "POST",
           headers: {
@@ -1126,26 +1119,18 @@ export default function Component() {
             startTime: startTime,
             endTime: endTime,
           }),
-          signal, // Add abort signal
+          signal,
         });
-        // After first API response
+
         setGenerationProgress(50);
         setGenerationStatus("Processing schedule structure...");
         const baseSchedulejson = await baseSchedule.json();
-        console.log("Intent analaysis", baseSchedulejson);
-        console.log(
-          baseSchedulejson.hasEnoughData === false &&
-            baseSchedulejson.hasSpecificInstructions
-        );
 
-        if (
-          baseSchedulejson.hasEnoughData === false &&
-          baseSchedulejson.hasSpecificInstructions === false
-        ) {
+        // Simplified conditional logic - just two paths
+        if (!baseSchedulejson.hasEnoughData) {
+          // Default schedule for minimal data
           console.log("running the default schedule");
-          setGenerationProgress(30);
-          setGenerationStatus("Analyzing schedule requirements...");
-          const defaultScedhule = await fetch("/api/default-schedule", {
+          const defaultSchedule = await fetch("/api/default-schedule", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -1159,71 +1144,17 @@ export default function Component() {
               startTime: startTime,
               endTime: endTime,
             }),
-            signal, // Add abort signal
+            signal,
           });
-          setGenerationProgress(60);
-          setGenerationStatus("Analyzing schedule requirements...");
 
-          const defaultScedhuleJson = await defaultScedhule.json();
-          console.log(defaultScedhuleJson);
-
-          if (defaultScedhuleJson.blocks) {
-            setGenerationProgress(90);
-            setGenerationStatus("Analyzing schedule requirements...");
-            setPreviewSchedule(defaultScedhuleJson);
+          const defaultScheduleJson = await defaultSchedule.json();
+          if (defaultScheduleJson.blocks) {
+            setPreviewSchedule(defaultScheduleJson);
             setIsPreviewMode(true);
           }
-        }
-
-        if (
-          baseSchedulejson.hasEnoughData === false &&
-          baseSchedulejson.hasSpecificInstructions === true
-        ) {
-          console.log("running the specific schedule");
-          setGenerationProgress(30);
-          setGenerationStatus("Analyzing schedule requirements...");
-          const userSpecificScedhule = await fetch(
-            "/api/user-specific-prompt",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                projects: optimizedProjects,
-                eventBlocks: events,
-                routineBlocks: routines,
-                tasks: optimizedTasks,
-                userInput: userInput,
-                startTime: startTime,
-                endTime: endTime,
-              }),
-              signal, // Add abort signal
-            }
-          );
-          setGenerationProgress(60);
-          setGenerationStatus("Analyzing schedule requirements...");
-          const userSpecificScedhuleJson = await userSpecificScedhule.json();
-          console.log(userSpecificScedhuleJson);
-          if (userSpecificScedhuleJson.blocks) {
-            setGenerationProgress(90);
-            setGenerationStatus("Analyzing schedule requirements...");
-            setPreviewSchedule(userSpecificScedhuleJson);
-            setIsPreviewMode(true);
-          }
-        }
-
-        if (
-          baseSchedulejson.hasEnoughData === true &&
-          baseSchedulejson.hasSpecificInstructions === false
-        ) {
-          setGenerationProgress(30);
-          setGenerationStatus("Analyzing schedule requirements...");
-          console.log("running the fully automated schedule generation");
-          console.log(
-            "this is the projects object that is bering send through",
-            optimizedProjects
-          );
+        } else {
+          // Full backlog schedule - handles both specific and non-specific cases
+          console.log("running the non-specific full backlog schedule");
           const automatedSchedule = await fetch(
             "/api/non-specific-full-backlog",
             {
@@ -1240,142 +1171,18 @@ export default function Component() {
                 startTime: startTime,
                 endTime: endTime,
               }),
-              signal, // Add abort signal
+              signal,
             }
           );
-          setGenerationProgress(60);
-          setGenerationStatus("Analyzing schedule requirements...");
+
           const automatedScheduleJson = await automatedSchedule.json();
-          console.log(automatedScheduleJson);
           if (automatedScheduleJson.blocks) {
-            setGenerationProgress(90);
-            setGenerationStatus("Analyzing schedule requirements...");
             setPreviewSchedule(automatedScheduleJson);
             setIsPreviewMode(true);
           }
         }
-
-        if (
-          baseSchedulejson.hasEnoughData === true &&
-          baseSchedulejson.hasSpecificInstructions === true
-        ) {
-          console.log("running the specific schedule with full blocks");
-          setGenerationProgress(30);
-          setGenerationStatus("Analyzing schedule requirements...");
-          const userSpecificFullBacklog = await fetch(
-            "/api/specific-full-backlog",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                projects: optimizedProjects,
-                eventBlocks: events,
-                routineBlocks: routines,
-                tasks: optimizedTasks,
-                userInput: userInput,
-                startTime: startTime,
-                endTime: endTime,
-              }),
-              signal, // Add abort signal
-            }
-          );
-          setGenerationProgress(60);
-          setGenerationStatus("Analyzing schedule requirements...");
-          const userSpecificFullBacklogJson =
-            await userSpecificFullBacklog.json();
-          console.log(userSpecificFullBacklogJson);
-          if (userSpecificFullBacklogJson.blocks) {
-            setGenerationProgress(90);
-            setGenerationStatus("Analyzing schedule requirements...");
-            setPreviewSchedule(userSpecificFullBacklogJson);
-            setIsPreviewMode(true);
-          }
-        }
-
-        // const response = await fetch("/api/generate-schedule-test", {
-        //   method: "POST",
-        //   headers: {
-        //     "Content-Type": "application/json",
-        //   },
-        //   body: JSON.stringify({
-        //     baseSchedulejson: baseSchedulejson,
-        //     userInput: userInput,
-        //     startTime: startTime,
-        //     endTime: endTime,
-        //     eventBlocks: optimizedEvents,
-        //     routineBlocks: optimizedRoutines,
-        //   }),
-        // });
-
-        // if (!response.ok) {
-        //   throw new Error("Failed to generate initial schedule");
-        // }
-
-        // const generatedSchedule = await response.json();
-        // console.log("Generated Initial Schedule:", generatedSchedule);
-
-        // // New API call to generate-schedule-add-tasks
-        // const taskIntegrationResponse = await fetch(
-        //   "/api/generate-schedule-add-tasks",
-        //   {
-        //     method: "POST",
-        //     headers: {
-        //       "Content-Type": "application/json",
-        //     },
-        //     body: JSON.stringify({
-        //       generatedSchedule: generatedSchedule,
-        //       userInput: userInput,
-        //       startTime: startTime,
-        //       endTime: endTime,
-        //       projects: optimizedProjects,
-        //       standaloneTasks: optimizedTasks,
-        //     }),
-        //   }
-        // );
-
-        // if (!taskIntegrationResponse.ok) {
-        //   throw new Error("Failed to integrate tasks into schedule");
-        // }
-
-        // const finalSchedule = await taskIntegrationResponse.json();
-        // console.log("Final Schedule with Integrated Tasks:", finalSchedule);
-
-        // console.log("Optimizing schedule for flow and productivity...");
-
-        // // New API call to optimize for flow and productivity
-        // const flowOptimizationResponse = await fetch(
-        //   "/api/optimize-schedule-flow",
-        //   {
-        //     method: "POST",
-        //     headers: {
-        //       "Content-Type": "application/json",
-        //     },
-        //     body: JSON.stringify({
-        //       currentSchedule: finalSchedule,
-        //       userPreferences: {
-        //         peakProductivityHours: ["09:00", "14:00"], // Example data, adjust as needed
-        //         preferredWorkPattern: "longer focused sessions",
-        //       },
-        //     }),
-        //   }
-        // );
-
-        // if (!flowOptimizationResponse.ok) {
-        //   throw new Error("Failed to optimize schedule for flow");
-        // }
-
-        // const optimizedSchedule = await flowOptimizationResponse.json();
-        // console.log("Flow-Optimized Schedule:", optimizedSchedule);
-
-        // // Here you can update your state or perform any other actions with the final schedule
-        // // For example:
-        // // setSchedule(finalSchedule);
       }
 
-      // setGenerationProgress(100);
-      // setGenerationStep("Schedule generated successfully!");
       setGenerationProgress(100);
       setGenerationStatus("Schedule generated successfully!");
     } catch (error) {
@@ -1387,6 +1194,328 @@ export default function Component() {
       setGenerationStatus("");
       abortControllerRef.current = null;
     }
+
+    // try {
+    //   // Intent Analysis
+    //   setGenerationProgress(10);
+    //   setGenerationStatus("Analyzing your requirements...");
+
+    //   if (isPreviewMode) {
+    //     setGenerationProgress(30);
+    //     setGenerationStatus("Regenerating schedule...");
+    //     const regeneratedSchedule = await fetch("/api/regenerate-schedule", {
+    //       method: "POST",
+    //       headers: {
+    //         "Content-Type": "application/json",
+    //       },
+    //       body: JSON.stringify({
+    //         previewSchedule: previewSchedule,
+    //         projects: optimizedProjects,
+    //         eventBlocks: events,
+    //         routineBlocks: routines,
+    //         tasks: optimizedTasks,
+    //         userInput: userInput,
+    //         startTime: startTime,
+    //         endTime: endTime,
+    //       }),
+    //       signal, // Add abort signal
+    //     });
+    //     // After first API response
+    //     setGenerationProgress(60);
+    //     setGenerationStatus("Optimizing block placement...");
+    //     const regeneratedScedhuleJson = await regeneratedSchedule.json();
+    //     console.log(regeneratedScedhuleJson);
+    //     if (regeneratedScedhuleJson.blocks) {
+    //       setGenerationProgress(100);
+    //       setGenerationStatus("Schedule generated successfully!");
+    //       setPreviewSchedule(regeneratedScedhuleJson);
+    //       setIsPreviewMode(true);
+    //     }
+    //   } else {
+    //     // First API call
+    //     setGenerationProgress(30);
+    //     setGenerationStatus("Analyzing schedule requirements...");
+    //     console.log(optimizedProjects);
+    //     console.log(optimizedEvents);
+    //     console.log(optimizedRoutines);
+    //     console.log(optimizedTasks);
+    //     console.log(userInput);
+
+    //     const baseSchedule = await fetch("/api/intent-analysis", {
+    //       method: "POST",
+    //       headers: {
+    //         "Content-Type": "application/json",
+    //       },
+    //       body: JSON.stringify({
+    //         projects: optimizedProjects,
+    //         eventBlocks: optimizedEvents,
+    //         routineBlocks: optimizedRoutines,
+    //         tasks: optimizedTasks,
+    //         userInput: userInput,
+    //         startTime: startTime,
+    //         endTime: endTime,
+    //       }),
+    //       signal, // Add abort signal
+    //     });
+    //     // After first API response
+    //     setGenerationProgress(50);
+    //     setGenerationStatus("Processing schedule structure...");
+    //     const baseSchedulejson = await baseSchedule.json();
+    //     console.log("Intent analaysis", baseSchedulejson);
+    //     console.log(
+    //       baseSchedulejson.hasEnoughData === false &&
+    //         baseSchedulejson.hasSpecificInstructions
+    //     );
+
+    //     if (
+    //       baseSchedulejson.hasEnoughData === false &&
+    //       baseSchedulejson.hasSpecificInstructions === false
+    //     ) {
+    //       console.log("running the default schedule");
+    //       setGenerationProgress(30);
+    //       setGenerationStatus("Analyzing schedule requirements...");
+    //       const defaultScedhule = await fetch("/api/default-schedule", {
+    //         method: "POST",
+    //         headers: {
+    //           "Content-Type": "application/json",
+    //         },
+    //         body: JSON.stringify({
+    //           projects: optimizedProjects,
+    //           eventBlocks: events,
+    //           routineBlocks: routines,
+    //           tasks: optimizedTasks,
+    //           userInput: userInput,
+    //           startTime: startTime,
+    //           endTime: endTime,
+    //         }),
+    //         signal, // Add abort signal
+    //       });
+    //       setGenerationProgress(60);
+    //       setGenerationStatus("Analyzing schedule requirements...");
+
+    //       const defaultScedhuleJson = await defaultScedhule.json();
+    //       console.log(defaultScedhuleJson);
+
+    //       if (defaultScedhuleJson.blocks) {
+    //         setGenerationProgress(90);
+    //         setGenerationStatus("Analyzing schedule requirements...");
+    //         setPreviewSchedule(defaultScedhuleJson);
+    //         setIsPreviewMode(true);
+    //       }
+    //     }
+
+    //     if (
+    //       baseSchedulejson.hasEnoughData === false &&
+    //       baseSchedulejson.hasSpecificInstructions === true
+    //     ) {
+    //       console.log("running the specific schedule");
+    //       setGenerationProgress(30);
+    //       setGenerationStatus("Analyzing schedule requirements...");
+    //       const userSpecificScedhule = await fetch(
+    //         "/api/user-specific-prompt",
+    //         {
+    //           method: "POST",
+    //           headers: {
+    //             "Content-Type": "application/json",
+    //           },
+    //           body: JSON.stringify({
+    //             projects: optimizedProjects,
+    //             eventBlocks: events,
+    //             routineBlocks: routines,
+    //             tasks: optimizedTasks,
+    //             userInput: userInput,
+    //             startTime: startTime,
+    //             endTime: endTime,
+    //           }),
+    //           signal, // Add abort signal
+    //         }
+    //       );
+    //       setGenerationProgress(60);
+    //       setGenerationStatus("Analyzing schedule requirements...");
+    //       const userSpecificScedhuleJson = await userSpecificScedhule.json();
+    //       console.log(userSpecificScedhuleJson);
+    //       if (userSpecificScedhuleJson.blocks) {
+    //         setGenerationProgress(90);
+    //         setGenerationStatus("Analyzing schedule requirements...");
+    //         setPreviewSchedule(userSpecificScedhuleJson);
+    //         setIsPreviewMode(true);
+    //       }
+    //     }
+
+    //     if (
+    //       baseSchedulejson.hasEnoughData === true &&
+    //       baseSchedulejson.hasSpecificInstructions === false
+    //     ) {
+    //       setGenerationProgress(30);
+    //       setGenerationStatus("Analyzing schedule requirements...");
+    //       console.log("running the fully automated schedule generation");
+    //       console.log(
+    //         "this is the projects object that is bering send through",
+    //         optimizedProjects
+    //       );
+    //       const automatedSchedule = await fetch(
+    //         "/api/non-specific-full-backlog",
+    //         {
+    //           method: "POST",
+    //           headers: {
+    //             "Content-Type": "application/json",
+    //           },
+    //           body: JSON.stringify({
+    //             projects: optimizedProjects,
+    //             eventBlocks: optimizedEvents,
+    //             routineBlocks: optimizedRoutines,
+    //             tasks: optimizedTasks,
+    //             userInput: userInput,
+    //             startTime: startTime,
+    //             endTime: endTime,
+    //           }),
+    //           signal, // Add abort signal
+    //         }
+    //       );
+    //       setGenerationProgress(60);
+    //       setGenerationStatus("Analyzing schedule requirements...");
+    //       const automatedScheduleJson = await automatedSchedule.json();
+    //       console.log(automatedScheduleJson);
+    //       if (automatedScheduleJson.blocks) {
+    //         setGenerationProgress(90);
+    //         setGenerationStatus("Analyzing schedule requirements...");
+    //         setPreviewSchedule(automatedScheduleJson);
+    //         setIsPreviewMode(true);
+    //       }
+    //     }
+
+    //     if (
+    //       baseSchedulejson.hasEnoughData === true &&
+    //       baseSchedulejson.hasSpecificInstructions === true
+    //     ) {
+    //       console.log("running the specific schedule with full blocks");
+    //       setGenerationProgress(30);
+    //       setGenerationStatus("Analyzing schedule requirements...");
+    //       const userSpecificFullBacklog = await fetch(
+    //         "/api/specific-full-backlog",
+    //         {
+    //           method: "POST",
+    //           headers: {
+    //             "Content-Type": "application/json",
+    //           },
+    //           body: JSON.stringify({
+    //             projects: optimizedProjects,
+    //             eventBlocks: events,
+    //             routineBlocks: routines,
+    //             tasks: optimizedTasks,
+    //             userInput: userInput,
+    //             startTime: startTime,
+    //             endTime: endTime,
+    //           }),
+    //           signal, // Add abort signal
+    //         }
+    //       );
+    //       setGenerationProgress(60);
+    //       setGenerationStatus("Analyzing schedule requirements...");
+    //       const userSpecificFullBacklogJson =
+    //         await userSpecificFullBacklog.json();
+    //       console.log(userSpecificFullBacklogJson);
+    //       if (userSpecificFullBacklogJson.blocks) {
+    //         setGenerationProgress(90);
+    //         setGenerationStatus("Analyzing schedule requirements...");
+    //         setPreviewSchedule(userSpecificFullBacklogJson);
+    //         setIsPreviewMode(true);
+    //       }
+    //     }
+
+    //     // const response = await fetch("/api/generate-schedule-test", {
+    //     //   method: "POST",
+    //     //   headers: {
+    //     //     "Content-Type": "application/json",
+    //     //   },
+    //     //   body: JSON.stringify({
+    //     //     baseSchedulejson: baseSchedulejson,
+    //     //     userInput: userInput,
+    //     //     startTime: startTime,
+    //     //     endTime: endTime,
+    //     //     eventBlocks: optimizedEvents,
+    //     //     routineBlocks: optimizedRoutines,
+    //     //   }),
+    //     // });
+
+    //     // if (!response.ok) {
+    //     //   throw new Error("Failed to generate initial schedule");
+    //     // }
+
+    //     // const generatedSchedule = await response.json();
+    //     // console.log("Generated Initial Schedule:", generatedSchedule);
+
+    //     // // New API call to generate-schedule-add-tasks
+    //     // const taskIntegrationResponse = await fetch(
+    //     //   "/api/generate-schedule-add-tasks",
+    //     //   {
+    //     //     method: "POST",
+    //     //     headers: {
+    //     //       "Content-Type": "application/json",
+    //     //     },
+    //     //     body: JSON.stringify({
+    //     //       generatedSchedule: generatedSchedule,
+    //     //       userInput: userInput,
+    //     //       startTime: startTime,
+    //     //       endTime: endTime,
+    //     //       projects: optimizedProjects,
+    //     //       standaloneTasks: optimizedTasks,
+    //     //     }),
+    //     //   }
+    //     // );
+
+    //     // if (!taskIntegrationResponse.ok) {
+    //     //   throw new Error("Failed to integrate tasks into schedule");
+    //     // }
+
+    //     // const finalSchedule = await taskIntegrationResponse.json();
+    //     // console.log("Final Schedule with Integrated Tasks:", finalSchedule);
+
+    //     // console.log("Optimizing schedule for flow and productivity...");
+
+    //     // // New API call to optimize for flow and productivity
+    //     // const flowOptimizationResponse = await fetch(
+    //     //   "/api/optimize-schedule-flow",
+    //     //   {
+    //     //     method: "POST",
+    //     //     headers: {
+    //     //       "Content-Type": "application/json",
+    //     //     },
+    //     //     body: JSON.stringify({
+    //     //       currentSchedule: finalSchedule,
+    //     //       userPreferences: {
+    //     //         peakProductivityHours: ["09:00", "14:00"], // Example data, adjust as needed
+    //     //         preferredWorkPattern: "longer focused sessions",
+    //     //       },
+    //     //     }),
+    //     //   }
+    //     // );
+
+    //     // if (!flowOptimizationResponse.ok) {
+    //     //   throw new Error("Failed to optimize schedule for flow");
+    //     // }
+
+    //     // const optimizedSchedule = await flowOptimizationResponse.json();
+    //     // console.log("Flow-Optimized Schedule:", optimizedSchedule);
+
+    //     // // Here you can update your state or perform any other actions with the final schedule
+    //     // // For example:
+    //     // // setSchedule(finalSchedule);
+    //   }
+
+    //   // setGenerationProgress(100);
+    //   // setGenerationStep("Schedule generated successfully!");
+    //   setGenerationProgress(100);
+    //   setGenerationStatus("Schedule generated successfully!");
+    // } catch (error) {
+    //   console.error("Error in schedule generation process:", error);
+    // } finally {
+    //   await new Promise((resolve) => setTimeout(resolve, 500));
+    //   setIsGeneratingSchedule(false);
+    //   setGenerationProgress(0);
+    //   setGenerationStatus("");
+    //   abortControllerRef.current = null;
+    // }
   };
 
   const handleCompleteBlock = async (blockId: string) => {
