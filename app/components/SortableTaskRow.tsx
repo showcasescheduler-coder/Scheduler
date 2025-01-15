@@ -106,12 +106,12 @@ export const SortableTaskRow: React.FC<SortableTaskRowProps> = ({
           )}
         </div>
       </TableCell>
-      <TableCell>
+      {/* <TableCell>
         <div className="text-sm">
           {format(parseISO(task.deadline), "MMM dd")}
         </div>
-      </TableCell>
-      <TableCell>
+      </TableCell> */}
+      {/* <TableCell>
         <span
           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
             task.priority === "High"
@@ -123,7 +123,7 @@ export const SortableTaskRow: React.FC<SortableTaskRowProps> = ({
         >
           {task.priority}
         </span>
-      </TableCell>
+      </TableCell> */}
       <TableCell>
         <div className="text-sm text-gray-500">{task.duration}m</div>
       </TableCell>

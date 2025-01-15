@@ -32,6 +32,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import BlockProgress from "./BlockProgress";
+import BlockTypeBadge from "./BlockTypeBadge";
+import SourceBadge from "./SourceBadge";
 
 interface Task {
   _id: string;
@@ -136,6 +138,13 @@ export function TimeBlock({
         <CardTitle className="text-base font-medium flex-1">
           <div className="flex items-center gap-2">
             {block.name}
+            {block.blockType && <BlockTypeBadge type={block.blockType} />}
+            {/* <SourceBadge
+              isEvent={block.isEvent}
+              isRoutine={block.isRoutine}
+              eventId={block.eventId}
+              routineId={block.routineId}
+            /> */}
             {block.isStandaloneBlock && (
               <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
                 <Sparkles className="mr-1 h-3 w-3" />

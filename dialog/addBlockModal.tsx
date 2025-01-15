@@ -11,6 +11,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Clock } from "lucide-react";
 import { useState } from "react";
 
@@ -18,6 +25,16 @@ interface BlockData {
   name: string;
   startTime: string;
   endTime: string;
+  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  description?: string;
+}
+
+interface ValidationErrors {
+  name?: string;
+  startTime?: string;
+  endTime?: string;
+  blockType?: string;
+  timeRange?: string;
 }
 
 interface AddBlockDialogProps {
@@ -35,20 +52,70 @@ export function AddBlockDialog({
     name: "",
     startTime: "",
     endTime: "",
+    blockType: "deep-work",
+    description: "",
   });
+  const [errors, setErrors] = useState<ValidationErrors>({});
+
+  const validateForm = (): boolean => {
+    const newErrors: ValidationErrors = {};
+    let isValid = true;
+
+    // Name validation
+    if (!newBlock.name.trim()) {
+      newErrors.name = "Block name is required";
+      isValid = false;
+    }
+
+    // Time validation
+    if (!newBlock.startTime) {
+      newErrors.startTime = "Start time is required";
+      isValid = false;
+    }
+
+    if (!newBlock.endTime) {
+      newErrors.endTime = "End time is required";
+      isValid = false;
+    }
+
+    // Block type validation
+    if (!newBlock.blockType) {
+      newErrors.blockType = "Block type is required";
+      isValid = false;
+    }
+
+    // Time range validation
+    if (newBlock.startTime && newBlock.endTime) {
+      const start = new Date(`2000/01/01 ${newBlock.startTime}`);
+      const end = new Date(`2000/01/01 ${newBlock.endTime}`);
+
+      if (end <= start) {
+        newErrors.timeRange = "End time must be after start time";
+        isValid = false;
+      }
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
 
   const handleAddBlock = () => {
-    if (!newBlock.name || !newBlock.startTime || !newBlock.endTime) {
-      return; // Add validation if needed
+    if (validateForm()) {
+      onAddBlock(newBlock);
+      handleClose();
     }
-    onAddBlock(newBlock);
-    setNewBlock({ name: "", startTime: "", endTime: "" }); // Reset form
-    onOpenChange(false); // Close dialog
   };
 
   const handleClose = () => {
-    setNewBlock({ name: "", startTime: "", endTime: "" }); // Reset form
-    onOpenChange(false); // Close dialog
+    setNewBlock({
+      name: "",
+      startTime: "",
+      endTime: "",
+      blockType: "deep-work",
+      description: "",
+    });
+    setErrors({});
+    onOpenChange(false);
   };
 
   return (
@@ -70,7 +137,7 @@ export function AddBlockDialog({
           <div className="px-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name" className="text-sm font-medium">
-                Block Name
+                Block Name *
               </Label>
               <Input
                 id="name"
@@ -79,13 +146,45 @@ export function AddBlockDialog({
                 onChange={(e) =>
                   setNewBlock({ ...newBlock, name: e.target.value })
                 }
-                className="h-9"
+                className={`h-9 ${errors.name ? "border-red-500" : ""}`}
               />
+              {errors.name && (
+                <p className="text-xs text-red-500 mt-1">{errors.name}</p>
+              )}
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="blockType" className="text-sm font-medium">
+                Block Type *
+              </Label>
+              <Select
+                value={newBlock.blockType}
+                onValueChange={(value: BlockData["blockType"]) =>
+                  setNewBlock({ ...newBlock, blockType: value })
+                }
+              >
+                <SelectTrigger
+                  className={`h-9 ${errors.blockType ? "border-red-500" : ""}`}
+                >
+                  <SelectValue placeholder="Select block type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="deep-work">Deep Work</SelectItem>
+                  <SelectItem value="planning">Planning</SelectItem>
+                  <SelectItem value="break">Break</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="collaboration">Collaboration</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.blockType && (
+                <p className="text-xs text-red-500 mt-1">{errors.blockType}</p>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="startTime" className="text-sm font-medium">
-                  Start Time
+                  Start Time *
                 </Label>
                 <Input
                   id="startTime"
@@ -97,12 +196,17 @@ export function AddBlockDialog({
                       startTime: e.target.value,
                     })
                   }
-                  className="h-9"
+                  className={`h-9 ${errors.startTime ? "border-red-500" : ""}`}
                 />
+                {errors.startTime && (
+                  <p className="text-xs text-red-500 mt-1">
+                    {errors.startTime}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="endTime" className="text-sm font-medium">
-                  End Time
+                  End Time *
                 </Label>
                 <Input
                   id="endTime"
@@ -114,9 +218,30 @@ export function AddBlockDialog({
                       endTime: e.target.value,
                     })
                   }
-                  className="h-9"
+                  className={`h-9 ${errors.endTime ? "border-red-500" : ""}`}
                 />
+                {errors.endTime && (
+                  <p className="text-xs text-red-500 mt-1">{errors.endTime}</p>
+                )}
               </div>
+            </div>
+            {errors.timeRange && (
+              <p className="text-xs text-red-500 mt-1">{errors.timeRange}</p>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-sm font-medium">
+                Description
+              </Label>
+              <Input
+                id="description"
+                placeholder="Enter description (optional)"
+                value={newBlock.description}
+                onChange={(e) =>
+                  setNewBlock({ ...newBlock, description: e.target.value })
+                }
+                className="h-9"
+              />
             </div>
           </div>
         </div>

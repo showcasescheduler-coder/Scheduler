@@ -44,6 +44,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import MobileNav from "./MobileNav";
 import { format, parseISO, isBefore } from "date-fns";
+import BlockTypeBadge from "./BlockTypeBadge";
 
 // interface Task {
 //   id: string;
@@ -134,6 +135,8 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
     setAuthAction("accept");
     setShowAuthModal(true);
   };
+
+  console.log(schedule);
 
   const handleRegenerateClick = () => {
     if (!isSignedIn) {
@@ -381,6 +384,9 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
                   <CardTitle className="text-base font-medium">
                     <div className="flex items-center gap-2">
                       {block.name}
+                      {block.blockType && (
+                        <BlockTypeBadge type={block.blockType} />
+                      )}
                       {block.isStandaloneBlock && (
                         <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
                           <Sparkles className="mr-1 h-3 w-3" />

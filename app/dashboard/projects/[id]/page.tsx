@@ -146,8 +146,6 @@ export default function ProjectDetails({ params: { id } }: Props) {
     type: "deep-work",
   });
 
-  console.log(projects);
-
   // KEEP - Edit dialog states
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -229,6 +227,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
           ...newTask,
           projectId: project._id,
           status: "Todo",
+          priority: project.priority,
         }),
       });
       if (!response.ok) throw new Error("Failed to create task");
@@ -326,10 +325,10 @@ export default function ProjectDetails({ params: { id } }: Props) {
     );
   };
 
-  // const handleEditTask = (task: Task) => {
-  //   setEditingTask(task);
-  //   setIsEditTaskDialogOpen(true);
-  // };
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setIsEditDialogOpen(true);
+  };
 
   // Handle task updates
   const handleUpdateTask = async () => {
@@ -886,7 +885,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                                   project={project}
                                   onComplete={handleTaskCompletion}
                                   onDelete={handleDeleteTask}
-                                  onEdit={setEditingTask}
+                                  onEdit={handleEditTask}
                                 />
                                 //   <TableRow key={task._id}>
                                 //     <TableCell>
@@ -1072,8 +1071,8 @@ export default function ProjectDetails({ params: { id } }: Props) {
                         </TableHead>
                         <TableHead className="w-[50px]">Done</TableHead>
                         <TableHead className="w-[300px]">Task</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead>Priority</TableHead>
+                        {/* <TableHead>Due Date</TableHead>
+                        <TableHead>Priority</TableHead> */}
                         <TableHead>Duration</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -1091,7 +1090,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                             project={project}
                             onComplete={handleTaskCompletion}
                             onDelete={handleDeleteTask}
-                            onEdit={setEditingTask}
+                            onEdit={handleEditTask}
                           />
                           // <TableRow key={task._id}>
                           //   <TableCell>
@@ -1314,7 +1313,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                 className="col-span-3"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
+            {/* <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="deadline" className="text-right">
                 Deadline
               </Label>
@@ -1328,7 +1327,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                 }
                 className="col-span-3"
               />
-            </div>
+            </div> */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="task-duration" className="text-right">
                 Duration (minutes)
@@ -1348,7 +1347,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                 className="col-span-3"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
+            {/* <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="task-priority" className="text-right">
                 Priority
               </Label>
@@ -1367,7 +1366,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
                   <SelectItem value="High">High</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="task-type" className="text-right">
                 Type

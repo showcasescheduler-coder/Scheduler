@@ -26,6 +26,12 @@ import {
   X,
 } from "lucide-react";
 import React from "react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export interface Task {
   _id: string;
@@ -98,13 +104,15 @@ const CompletedDayView: React.FC<CompletedDayViewProps> = ({
   );
 
   return (
-    <Card className="h-[calc(100vh-4rem)]">
-      <CardContent className="h-full p-8 flex flex-col">
-        {/* Header */}
-        <div className="flex-none mb-8">
-          <div className="flex items-center justify-between">
+    <Card className="min-h-[calc(100vh-4rem)] w-full">
+      <CardContent className="h-full p-4 md:p-8 flex flex-col">
+        {/* Header section remains the same */}
+        <div className="flex-none mb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
-              <h1 className="text-2xl font-semibold">Day Complete</h1>
+              <h1 className="text-xl md:text-2xl font-semibold">
+                Day Complete
+              </h1>
               <p className="text-sm text-gray-500">
                 Summary of your completed tasks and blocks
               </p>
@@ -113,7 +121,7 @@ const CompletedDayView: React.FC<CompletedDayViewProps> = ({
               variant="outline"
               size="sm"
               onClick={onReactivateDay}
-              className="gap-2"
+              className="gap-2 w-full md:w-auto"
             >
               <RotateCcw className="h-4 w-4" />
               Reactivate Day
@@ -121,9 +129,9 @@ const CompletedDayView: React.FC<CompletedDayViewProps> = ({
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid gap-6 md:grid-cols-3 mb-8 flex-none">
-          <Card>
+        {/* Stats Cards section remains the same */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card className="bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
               <CheckCheck className="h-4 w-4 text-blue-600" />
@@ -136,7 +144,7 @@ const CompletedDayView: React.FC<CompletedDayViewProps> = ({
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Task Completion
@@ -151,7 +159,7 @@ const CompletedDayView: React.FC<CompletedDayViewProps> = ({
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Total Blocks
@@ -167,24 +175,30 @@ const CompletedDayView: React.FC<CompletedDayViewProps> = ({
           </Card>
         </div>
 
-        {/* Blocks and Tasks */}
-        <Card className="flex-grow flex flex-col min-h-0">
-          <CardHeader className="flex-none">
-            <CardTitle>Completed Blocks & Tasks</CardTitle>
-            <CardDescription>Your accomplishments for the day</CardDescription>
-          </CardHeader>
-          <CardContent className="overflow-y-auto flex-grow">
-            <div className="space-y-6">
+        {/* Completed Blocks & Tasks */}
+        <div className="flex-grow overflow-hidden flex flex-col min-h-0">
+          <div className="flex-none mb-4">
+            <h2 className="text-lg font-semibold">Completed Blocks & Tasks</h2>
+            <p className="text-sm text-gray-500">
+              Your accomplishments for the day
+            </p>
+          </div>
+
+          <div className="overflow-y-auto flex-grow">
+            <div className="space-y-4 pb-4">
               {completedBlocks.map((block) => (
-                <Card key={block._id} className="border border-blue-100">
+                <Card
+                  key={block._id}
+                  className="border border-blue-100 bg-white"
+                >
                   <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
                           <Clock className="h-4 w-4 text-blue-600" />
                         </div>
-                        <div>
-                          <h3 className="font-medium text-gray-900">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-medium text-gray-900 truncate">
                             {block.name}
                           </h3>
                           <p className="text-sm text-gray-500">
@@ -192,36 +206,47 @@ const CompletedDayView: React.FC<CompletedDayViewProps> = ({
                           </p>
                         </div>
                       </div>
-                      <span className="text-sm font-medium text-blue-600">
+                      <span className="text-sm font-medium text-blue-600 flex-shrink-0">
                         {block.tasks.filter((t) => t.completed).length}/
                         {block.tasks.length} tasks
                       </span>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="grid gap-2">
+                    <div className="space-y-2 w-full">
                       {block.tasks.map((task) => (
                         <div
                           key={task._id}
-                          className="flex items-center justify-between p-3 rounded-lg bg-gray-50/80 hover:bg-gray-50 transition-colors"
+                          className="relative flex items-center gap-2 p-3 rounded-lg bg-gray-50/80 hover:bg-gray-50 transition-colors w-full"
                         >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`h-6 w-6 rounded-full ${
-                                task.completed ? "bg-blue-100" : "bg-red-100"
-                              } flex items-center justify-center`}
-                            >
-                              {task.completed ? (
-                                <CheckCircle className="h-3 w-3 text-blue-600" />
-                              ) : (
-                                <X className="h-3 w-3 text-red-600" />
-                              )}
-                            </div>
-                            <span className="text-sm font-medium text-gray-700">
-                              {task.name}
-                            </span>
+                          <div
+                            className={`flex-shrink-0 h-6 w-6 rounded-full ${
+                              task.completed ? "bg-blue-100" : "bg-red-100"
+                            } flex items-center justify-center`}
+                          >
+                            {task.completed ? (
+                              <CheckCircle className="h-3 w-3 text-blue-600" />
+                            ) : (
+                              <X className="h-3 w-3 text-red-600" />
+                            )}
                           </div>
-                          <span className="px-2 py-1 rounded-full bg-white text-xs font-medium text-gray-600 border border-gray-100">
+
+                          <div className="flex-1 min-w-0 pr-16">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-sm font-medium text-gray-700 truncate block">
+                                    {task.name}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="max-w-xs">{task.name}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+
+                          <span className="absolute right-3 flex-shrink-0 px-2 py-1 rounded-full bg-white text-xs font-medium text-gray-600 border border-gray-100">
                             {task.duration}m
                           </span>
                         </div>
@@ -231,8 +256,8 @@ const CompletedDayView: React.FC<CompletedDayViewProps> = ({
                 </Card>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

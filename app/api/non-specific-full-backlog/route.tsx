@@ -138,11 +138,13 @@ CRITICAL: You must return ONLY a raw JSON object without any additional text, ma
       "name": "Clear descriptive name",
       "startTime": "HH:MM",
       "endTime": "HH:MM",
+      "description": "Block purpose and evidence-based placement rationale",
       "isEvent": boolean,
       "isRoutine": boolean,
       "isStandaloneBlock": boolean,
       "eventId": "MUST use exact _id from input Event when isRoutine is true",
       "routineId": "MUST use exact _id from input Routine when isRoutine is true",
+      "blockType": "deep-work" | "planning" | "break" | "admin" | "collaboration",
       "tasks": [
         {
           "id": "original_task_id or null",

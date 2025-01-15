@@ -94,6 +94,11 @@ export function TaskCard({
     transition,
   };
 
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onEditTask(task); // Call the passed down onEditTask function
+  };
+
   // If the task is being dragged, show a placeholder
   if (isDragging) {
     return (

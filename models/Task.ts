@@ -42,7 +42,7 @@ const TaskSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: ["deep-work", "planning", "break", "admin", "collaboration"],
-      required: true,
+      required: false,
     },
     timeWindow: {
       start: { type: String }, // Format: "HH:mm"

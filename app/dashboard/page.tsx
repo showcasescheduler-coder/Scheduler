@@ -27,7 +27,7 @@ import {
   BarChart2,
   FolderKanban,
 } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -222,6 +222,9 @@ export default function Component() {
   );
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [previousTask, setPreviousTask] = useState<Task | null>(null);
+  const [lastGenerationInput, setLastGenerationInput] = useState<string | null>(
+    null
+  );
   const lastUpdateRef = useRef<number>(0);
   const THROTTLE_MS = 150; // Minimum time between updates
   const updateQueueRef = useRef<any>(null);
@@ -705,7 +708,7 @@ export default function Component() {
 
   // Add this handler where you open the edit dialog:
   const handleEditTask = (task: Task) => {
-    console.log(task);
+    console.log("Is the edit task working");
     setSelectedTask(task);
     setIsEditTaskDialogOpen(true);
   };
@@ -878,7 +881,7 @@ export default function Component() {
     const signal = abortControllerRef.current.signal;
 
     const { startTime, endTime } = getScheduleTimes(selectedDay);
-
+    setLastGenerationInput(userInput);
     setIsGeneratingSchedule(true);
     setGenerationProgress(0);
     setGenerationStatus("Initializing...");
@@ -1065,7 +1068,7 @@ export default function Component() {
     console.log(optimizedRoutines);
     console.log(optimizedTasks);
     console.log(userInput);
-
+    let hasError = false;
     try {
       // Intent Analysis
       setGenerationProgress(10);
@@ -1186,336 +1189,22 @@ export default function Component() {
       setGenerationProgress(100);
       setGenerationStatus("Schedule generated successfully!");
     } catch (error) {
+      hasError = true;
       console.error("Error in schedule generation process:", error);
+      toast.error(
+        "Failed to generate schedule. Try again with your last input."
+      );
+      setIsDialogOpen(true);
     } finally {
       await new Promise((resolve) => setTimeout(resolve, 500));
       setIsGeneratingSchedule(false);
       setGenerationProgress(0);
       setGenerationStatus("");
       abortControllerRef.current = null;
+      if (!hasError) {
+        setLastGenerationInput(null); // Clear the input only on success
+      }
     }
-
-    // try {
-    //   // Intent Analysis
-    //   setGenerationProgress(10);
-    //   setGenerationStatus("Analyzing your requirements...");
-
-    //   if (isPreviewMode) {
-    //     setGenerationProgress(30);
-    //     setGenerationStatus("Regenerating schedule...");
-    //     const regeneratedSchedule = await fetch("/api/regenerate-schedule", {
-    //       method: "POST",
-    //       headers: {
-    //         "Content-Type": "application/json",
-    //       },
-    //       body: JSON.stringify({
-    //         previewSchedule: previewSchedule,
-    //         projects: optimizedProjects,
-    //         eventBlocks: events,
-    //         routineBlocks: routines,
-    //         tasks: optimizedTasks,
-    //         userInput: userInput,
-    //         startTime: startTime,
-    //         endTime: endTime,
-    //       }),
-    //       signal, // Add abort signal
-    //     });
-    //     // After first API response
-    //     setGenerationProgress(60);
-    //     setGenerationStatus("Optimizing block placement...");
-    //     const regeneratedScedhuleJson = await regeneratedSchedule.json();
-    //     console.log(regeneratedScedhuleJson);
-    //     if (regeneratedScedhuleJson.blocks) {
-    //       setGenerationProgress(100);
-    //       setGenerationStatus("Schedule generated successfully!");
-    //       setPreviewSchedule(regeneratedScedhuleJson);
-    //       setIsPreviewMode(true);
-    //     }
-    //   } else {
-    //     // First API call
-    //     setGenerationProgress(30);
-    //     setGenerationStatus("Analyzing schedule requirements...");
-    //     console.log(optimizedProjects);
-    //     console.log(optimizedEvents);
-    //     console.log(optimizedRoutines);
-    //     console.log(optimizedTasks);
-    //     console.log(userInput);
-
-    //     const baseSchedule = await fetch("/api/intent-analysis", {
-    //       method: "POST",
-    //       headers: {
-    //         "Content-Type": "application/json",
-    //       },
-    //       body: JSON.stringify({
-    //         projects: optimizedProjects,
-    //         eventBlocks: optimizedEvents,
-    //         routineBlocks: optimizedRoutines,
-    //         tasks: optimizedTasks,
-    //         userInput: userInput,
-    //         startTime: startTime,
-    //         endTime: endTime,
-    //       }),
-    //       signal, // Add abort signal
-    //     });
-    //     // After first API response
-    //     setGenerationProgress(50);
-    //     setGenerationStatus("Processing schedule structure...");
-    //     const baseSchedulejson = await baseSchedule.json();
-    //     console.log("Intent analaysis", baseSchedulejson);
-    //     console.log(
-    //       baseSchedulejson.hasEnoughData === false &&
-    //         baseSchedulejson.hasSpecificInstructions
-    //     );
-
-    //     if (
-    //       baseSchedulejson.hasEnoughData === false &&
-    //       baseSchedulejson.hasSpecificInstructions === false
-    //     ) {
-    //       console.log("running the default schedule");
-    //       setGenerationProgress(30);
-    //       setGenerationStatus("Analyzing schedule requirements...");
-    //       const defaultScedhule = await fetch("/api/default-schedule", {
-    //         method: "POST",
-    //         headers: {
-    //           "Content-Type": "application/json",
-    //         },
-    //         body: JSON.stringify({
-    //           projects: optimizedProjects,
-    //           eventBlocks: events,
-    //           routineBlocks: routines,
-    //           tasks: optimizedTasks,
-    //           userInput: userInput,
-    //           startTime: startTime,
-    //           endTime: endTime,
-    //         }),
-    //         signal, // Add abort signal
-    //       });
-    //       setGenerationProgress(60);
-    //       setGenerationStatus("Analyzing schedule requirements...");
-
-    //       const defaultScedhuleJson = await defaultScedhule.json();
-    //       console.log(defaultScedhuleJson);
-
-    //       if (defaultScedhuleJson.blocks) {
-    //         setGenerationProgress(90);
-    //         setGenerationStatus("Analyzing schedule requirements...");
-    //         setPreviewSchedule(defaultScedhuleJson);
-    //         setIsPreviewMode(true);
-    //       }
-    //     }
-
-    //     if (
-    //       baseSchedulejson.hasEnoughData === false &&
-    //       baseSchedulejson.hasSpecificInstructions === true
-    //     ) {
-    //       console.log("running the specific schedule");
-    //       setGenerationProgress(30);
-    //       setGenerationStatus("Analyzing schedule requirements...");
-    //       const userSpecificScedhule = await fetch(
-    //         "/api/user-specific-prompt",
-    //         {
-    //           method: "POST",
-    //           headers: {
-    //             "Content-Type": "application/json",
-    //           },
-    //           body: JSON.stringify({
-    //             projects: optimizedProjects,
-    //             eventBlocks: events,
-    //             routineBlocks: routines,
-    //             tasks: optimizedTasks,
-    //             userInput: userInput,
-    //             startTime: startTime,
-    //             endTime: endTime,
-    //           }),
-    //           signal, // Add abort signal
-    //         }
-    //       );
-    //       setGenerationProgress(60);
-    //       setGenerationStatus("Analyzing schedule requirements...");
-    //       const userSpecificScedhuleJson = await userSpecificScedhule.json();
-    //       console.log(userSpecificScedhuleJson);
-    //       if (userSpecificScedhuleJson.blocks) {
-    //         setGenerationProgress(90);
-    //         setGenerationStatus("Analyzing schedule requirements...");
-    //         setPreviewSchedule(userSpecificScedhuleJson);
-    //         setIsPreviewMode(true);
-    //       }
-    //     }
-
-    //     if (
-    //       baseSchedulejson.hasEnoughData === true &&
-    //       baseSchedulejson.hasSpecificInstructions === false
-    //     ) {
-    //       setGenerationProgress(30);
-    //       setGenerationStatus("Analyzing schedule requirements...");
-    //       console.log("running the fully automated schedule generation");
-    //       console.log(
-    //         "this is the projects object that is bering send through",
-    //         optimizedProjects
-    //       );
-    //       const automatedSchedule = await fetch(
-    //         "/api/non-specific-full-backlog",
-    //         {
-    //           method: "POST",
-    //           headers: {
-    //             "Content-Type": "application/json",
-    //           },
-    //           body: JSON.stringify({
-    //             projects: optimizedProjects,
-    //             eventBlocks: optimizedEvents,
-    //             routineBlocks: optimizedRoutines,
-    //             tasks: optimizedTasks,
-    //             userInput: userInput,
-    //             startTime: startTime,
-    //             endTime: endTime,
-    //           }),
-    //           signal, // Add abort signal
-    //         }
-    //       );
-    //       setGenerationProgress(60);
-    //       setGenerationStatus("Analyzing schedule requirements...");
-    //       const automatedScheduleJson = await automatedSchedule.json();
-    //       console.log(automatedScheduleJson);
-    //       if (automatedScheduleJson.blocks) {
-    //         setGenerationProgress(90);
-    //         setGenerationStatus("Analyzing schedule requirements...");
-    //         setPreviewSchedule(automatedScheduleJson);
-    //         setIsPreviewMode(true);
-    //       }
-    //     }
-
-    //     if (
-    //       baseSchedulejson.hasEnoughData === true &&
-    //       baseSchedulejson.hasSpecificInstructions === true
-    //     ) {
-    //       console.log("running the specific schedule with full blocks");
-    //       setGenerationProgress(30);
-    //       setGenerationStatus("Analyzing schedule requirements...");
-    //       const userSpecificFullBacklog = await fetch(
-    //         "/api/specific-full-backlog",
-    //         {
-    //           method: "POST",
-    //           headers: {
-    //             "Content-Type": "application/json",
-    //           },
-    //           body: JSON.stringify({
-    //             projects: optimizedProjects,
-    //             eventBlocks: events,
-    //             routineBlocks: routines,
-    //             tasks: optimizedTasks,
-    //             userInput: userInput,
-    //             startTime: startTime,
-    //             endTime: endTime,
-    //           }),
-    //           signal, // Add abort signal
-    //         }
-    //       );
-    //       setGenerationProgress(60);
-    //       setGenerationStatus("Analyzing schedule requirements...");
-    //       const userSpecificFullBacklogJson =
-    //         await userSpecificFullBacklog.json();
-    //       console.log(userSpecificFullBacklogJson);
-    //       if (userSpecificFullBacklogJson.blocks) {
-    //         setGenerationProgress(90);
-    //         setGenerationStatus("Analyzing schedule requirements...");
-    //         setPreviewSchedule(userSpecificFullBacklogJson);
-    //         setIsPreviewMode(true);
-    //       }
-    //     }
-
-    //     // const response = await fetch("/api/generate-schedule-test", {
-    //     //   method: "POST",
-    //     //   headers: {
-    //     //     "Content-Type": "application/json",
-    //     //   },
-    //     //   body: JSON.stringify({
-    //     //     baseSchedulejson: baseSchedulejson,
-    //     //     userInput: userInput,
-    //     //     startTime: startTime,
-    //     //     endTime: endTime,
-    //     //     eventBlocks: optimizedEvents,
-    //     //     routineBlocks: optimizedRoutines,
-    //     //   }),
-    //     // });
-
-    //     // if (!response.ok) {
-    //     //   throw new Error("Failed to generate initial schedule");
-    //     // }
-
-    //     // const generatedSchedule = await response.json();
-    //     // console.log("Generated Initial Schedule:", generatedSchedule);
-
-    //     // // New API call to generate-schedule-add-tasks
-    //     // const taskIntegrationResponse = await fetch(
-    //     //   "/api/generate-schedule-add-tasks",
-    //     //   {
-    //     //     method: "POST",
-    //     //     headers: {
-    //     //       "Content-Type": "application/json",
-    //     //     },
-    //     //     body: JSON.stringify({
-    //     //       generatedSchedule: generatedSchedule,
-    //     //       userInput: userInput,
-    //     //       startTime: startTime,
-    //     //       endTime: endTime,
-    //     //       projects: optimizedProjects,
-    //     //       standaloneTasks: optimizedTasks,
-    //     //     }),
-    //     //   }
-    //     // );
-
-    //     // if (!taskIntegrationResponse.ok) {
-    //     //   throw new Error("Failed to integrate tasks into schedule");
-    //     // }
-
-    //     // const finalSchedule = await taskIntegrationResponse.json();
-    //     // console.log("Final Schedule with Integrated Tasks:", finalSchedule);
-
-    //     // console.log("Optimizing schedule for flow and productivity...");
-
-    //     // // New API call to optimize for flow and productivity
-    //     // const flowOptimizationResponse = await fetch(
-    //     //   "/api/optimize-schedule-flow",
-    //     //   {
-    //     //     method: "POST",
-    //     //     headers: {
-    //     //       "Content-Type": "application/json",
-    //     //     },
-    //     //     body: JSON.stringify({
-    //     //       currentSchedule: finalSchedule,
-    //     //       userPreferences: {
-    //     //         peakProductivityHours: ["09:00", "14:00"], // Example data, adjust as needed
-    //     //         preferredWorkPattern: "longer focused sessions",
-    //     //       },
-    //     //     }),
-    //     //   }
-    //     // );
-
-    //     // if (!flowOptimizationResponse.ok) {
-    //     //   throw new Error("Failed to optimize schedule for flow");
-    //     // }
-
-    //     // const optimizedSchedule = await flowOptimizationResponse.json();
-    //     // console.log("Flow-Optimized Schedule:", optimizedSchedule);
-
-    //     // // Here you can update your state or perform any other actions with the final schedule
-    //     // // For example:
-    //     // // setSchedule(finalSchedule);
-    //   }
-
-    //   // setGenerationProgress(100);
-    //   // setGenerationStep("Schedule generated successfully!");
-    //   setGenerationProgress(100);
-    //   setGenerationStatus("Schedule generated successfully!");
-    // } catch (error) {
-    //   console.error("Error in schedule generation process:", error);
-    // } finally {
-    //   await new Promise((resolve) => setTimeout(resolve, 500));
-    //   setIsGeneratingSchedule(false);
-    //   setGenerationProgress(0);
-    //   setGenerationStatus("");
-    //   abortControllerRef.current = null;
-    // }
   };
 
   const handleCompleteBlock = async (blockId: string) => {
@@ -1981,6 +1670,8 @@ export default function Component() {
     }
   };
 
+  console.log(day);
+
   return (
     <div className="flex h-screen bg-white font-sans text-gray-900">
       {/* Desktop Sidebar */}
@@ -2061,7 +1752,7 @@ export default function Component() {
                   <h1 className="text-2xl font-semibold">
                     {formatDate(currentDate)}
                   </h1>
-                  <p className="text-sm text-gray-500">Alex James</p>
+                  {/* <p className="text-sm text-gray-500">Alex James</p> */}
                 </div>
                 <div className="flex items-center gap-4">
                   {/* Desktop Date Selector */}
@@ -2439,22 +2130,22 @@ export default function Component() {
       )}
       {/* Then, add this Dialog component outside of the task card, at the same level as other dialogs */}
       <Dialog
-        open={isEditDialogOpen}
+        open={isEditTaskDialogOpen}
         onOpenChange={(open) => {
-          setIsEditDialogOpen(open);
+          setIsEditTaskDialogOpen(open);
           if (!open) {
-            setEditingTask(null);
+            setSelectedTask(null);
           }
         }}
       >
-        {editingTask && (
+        {selectedTask && (
           <DialogContent>
             <EditTaskDialog
-              task={editingTask}
-              onClose={() => setIsEditDialogOpen(false)}
+              task={selectedTask}
+              onClose={() => setIsEditTaskDialogOpen(false)}
               onSave={async (updatedTask) => {
                 await handleSaveTask(updatedTask);
-                setIsEditDialogOpen(false);
+                setIsEditTaskDialogOpen(false);
               }}
             />
           </DialogContent>
