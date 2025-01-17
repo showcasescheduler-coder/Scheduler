@@ -1304,13 +1304,18 @@ export default function ProjectDetails({ params: { id } }: Props) {
               <Label htmlFor="task-description" className="text-right">
                 Description
               </Label>
-              <Input
-                id="task-description"
-                value={newTask.description || ""}
+              <Textarea
+                id="description"
+                name="description"
+                value={newTask.description}
                 onChange={(e) =>
-                  setNewTask({ ...newTask, description: e.target.value })
+                  setNewTask((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
                 }
-                className="col-span-3"
+                className="col-span-3 min-h-[100px]"
+                placeholder="Enter task description..."
               />
             </div>
             {/* <div className="grid grid-cols-4 items-center gap-4">
@@ -1445,15 +1450,18 @@ export default function ProjectDetails({ params: { id } }: Props) {
                 <Label htmlFor="edit-description" className="text-right">
                   Description
                 </Label>
-                <Input
-                  id="edit-description"
-                  value={editingTask.description || ""}
+                <Textarea
+                  id="description"
+                  name="description"
+                  value={newTask.description}
                   onChange={(e) =>
-                    setEditingTask((prev) =>
-                      prev ? { ...prev, description: e.target.value } : null
-                    )
+                    setNewTask((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
                   }
-                  className="col-span-3"
+                  className="col-span-3 min-h-[100px]"
+                  placeholder="Enter task description..."
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">

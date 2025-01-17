@@ -461,7 +461,7 @@ export default function Component() {
         setRoutines(data);
       } catch (error) {
         console.error("Error fetching routines:", error);
-        alert("Failed to fetch routines. Please try again.");
+        toast.error("Failed to fetch routines. Please try again.");
       }
     };
 
@@ -480,7 +480,7 @@ export default function Component() {
         setTasks(data);
       } catch (error) {
         console.error("Error fetching tasks:", error);
-        alert("Failed to fetch tasks. Please try again.");
+        toast.error("Failed to fetch tasks. Please try again.");
       }
     };
 
@@ -1435,8 +1435,7 @@ export default function Component() {
       (block) => block.status === "pending"
     );
     if (activeBlocks.length > 0) {
-      console.log("there are too many blocks");
-      alert("There are too many blocks");
+      toast.error("There are too many blocks");
       // toast.error(
       //   <div className="flex flex-col gap-2">
       //     <p>
@@ -1669,8 +1668,6 @@ export default function Component() {
       }));
     }
   };
-
-  console.log(day);
 
   return (
     <div className="flex h-screen bg-white font-sans text-gray-900">

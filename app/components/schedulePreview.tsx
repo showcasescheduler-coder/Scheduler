@@ -45,6 +45,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import MobileNav from "./MobileNav";
 import { format, parseISO, isBefore } from "date-fns";
 import BlockTypeBadge from "./BlockTypeBadge";
+import ScheduleInsights from "./ScheduleInsights"; // Adjust the import path based on your file structure
 
 // interface Task {
 //   id: string;
@@ -359,7 +360,14 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
               </p>
             </CardHeader>
             <CardContent className="text-sm text-gray-600 space-y-2">
-              <div className="space-y-3">
+              <ScheduleInsights
+                insights={schedule.scheduleRationale
+                  .split(".")
+                  .filter(Boolean)
+                  .slice(0, 3)
+                  .map((insight) => insight.trim())}
+              />
+              {/* <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Battery className="h-4 w-4 text-green-600 flex-shrink-0" />
                   <span className="line-clamp-2">{insights[0]}</span>
@@ -372,7 +380,7 @@ const SchedulePreview: React.FC<SchedulePreviewProps> = ({
                   <Brain className="h-4 w-4 text-purple-600 flex-shrink-0" />
                   <span className="line-clamp-2">{insights[2]}</span>
                 </div>
-              </div>
+              </div> */}
             </CardContent>
           </Card>
           <MobileActions />

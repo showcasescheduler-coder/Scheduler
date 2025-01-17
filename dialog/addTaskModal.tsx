@@ -172,7 +172,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
             throw new Error("Failed to fetch tomorrow's schedule");
           }
           const data = await response.json();
-          console.log("Fetched tomorrow's schedule:", data);
+          // console.log("Fetched tomorrow's schedule:", data);
           setTomorrowSchedule(data);
         } catch (error) {
           console.error("Error fetching tomorrow's schedule:", error);
@@ -328,16 +328,19 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   // Then update the isTaskAssigned function
   const isTaskAssigned = (task: Task) => {
+    // console.log(task);
     // If task has no block, it's not assigned
     if (!task.block) return false;
 
     // Get block IDs from the current day
     const currentDayBlockIds = day.blocks.map((block: any) => block._id);
 
-    // If we're looking at tomorrow's schedule, check today
+    // If we're looking at tomorrow's schedule, check today's blocks
     if (isTomorrow && todaySchedule?.blocks) {
-      const todayBlockIds = todaySchedule.blocks.map((block: any) => block._id);
-      if (todayBlockIds.includes(task.block)) {
+      const incompleteTaskBlock = todaySchedule.blocks.find(
+        (block: any) => block._id === task.block && block.status !== "complete"
+      );
+      if (incompleteTaskBlock) {
         return true;
       }
     }
@@ -352,6 +355,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       }
     }
 
+    console.log("Current block ids", currentDayBlockIds);
+    console.log("these are the tasks", task);
     // Check if it's assigned in the current day's schedule
     return currentDayBlockIds.includes(task.block);
   };
@@ -392,7 +397,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       }
 
       const data = await response.json();
-      console.log("New task created:", data.task);
+      // console.log("New task created:", data.task);
 
       // Update local state
       setTasks((prevTasks) => [...prevTasks, data.task]);
@@ -419,6 +424,12 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const tags = Array.from({ length: 50 }).map(
     (_, i, a) => `v1.2.0-beta.${a.length - i}`
   );
+
+  // console.log(projects);
+  // console.log("todays schedule", todaySchedule);
+  // console.log("tomorrows schedule", tomorrowSchedule);
+  // console.log(day);
+  // console.log(tasks);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -599,11 +610,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {projects.map((project) => (
-                    <SelectItem key={project._id} value={project._id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
+                  {projects
+                    .filter((project) => !project.completed)
+                    .map((project) => (
+                      <SelectItem key={project._id} value={project._id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <div className="w-full border rounded-md">

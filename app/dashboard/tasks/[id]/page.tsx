@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import MobileNav from "@/app/components/MobileNav";
 import { UserButton } from "@clerk/nextjs";
+import toast from "react-hot-toast";
 
 interface Props {
   params: { id: string };
@@ -149,11 +150,11 @@ export default function TaskDetails({ params: { id } }: Props) {
 
         const { task: updatedTask } = await response.json();
         updateTask(id, updatedTask);
-        alert("Task updated successfully!");
+        toast.success("Task updated successfully!");
         router.push("/dashboard/tasks"); // Navigate to tasks dashboard after successful save
       } catch (error) {
         console.error("Error updating task:", error);
-        alert("Failed to update task. Please try again.");
+        toast.error("Failed to update task. Please try again.");
       }
     }
   };

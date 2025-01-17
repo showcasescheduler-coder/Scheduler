@@ -16,7 +16,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { GripVertical, MoreVertical, Edit, Clock, Trash2 } from "lucide-react";
+import {
+  GripVertical,
+  MoreVertical,
+  Edit,
+  Clock,
+  Trash2,
+  Info,
+} from "lucide-react";
 
 interface Task {
   _id: string;
@@ -142,6 +149,16 @@ export function TaskCard({
                   >
                     {task.name}
                   </label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-4 w-4 text-gray-400" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">{task.description}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
 
                   <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 flex-shrink-0">
                     {task.duration}

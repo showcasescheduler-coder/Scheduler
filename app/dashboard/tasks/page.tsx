@@ -63,6 +63,8 @@ import {
 } from "@/components/ui/sheet";
 import { UserButton } from "@clerk/nextjs";
 import MobileNav from "@/app/components/MobileNav";
+import toast from "react-hot-toast";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Task {
   _id: string;
@@ -113,7 +115,7 @@ export default function StandaloneTasks() {
         setTasks(data);
       } catch (error) {
         console.error("Error fetching tasks:", error);
-        alert("Failed to fetch tasks. Please try again.");
+        toast.error("Failed to fetch tasks. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -156,10 +158,10 @@ export default function StandaloneTasks() {
         completed: false,
         type: "deep-work", // Reset to default type
       });
-      alert("Task created successfully!");
+      toast.success("Task created successfully!");
     } catch (error) {
       console.error("Error creating task:", error);
-      alert("Failed to create task. Please try again.");
+      toast.error("Failed to create task. Please try again.");
     }
   };
 
@@ -188,10 +190,10 @@ export default function StandaloneTasks() {
       if (!response.ok) throw new Error("Failed to delete task");
 
       setTasks((prevTasks) => prevTasks.filter((task) => task._id !== taskId));
-      alert("Task deleted successfully!");
+      toast.success("Task deleted successfully!");
     } catch (error) {
       console.error("Error deleting task:", error);
-      alert("Failed to delete task. Please try again.");
+      toast.error("Failed to delete task. Please try again.");
     }
   };
 
@@ -318,12 +320,18 @@ export default function StandaloneTasks() {
                     <Label htmlFor="description" className="text-right">
                       Description
                     </Label>
-                    <Input
+                    <Textarea
                       id="description"
                       name="description"
                       value={newTask.description}
-                      onChange={handleInputChange}
-                      className="col-span-3"
+                      onChange={(e) =>
+                        setNewTask((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
+                      className="col-span-3 min-h-[100px]"
+                      placeholder="Enter task description..."
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
