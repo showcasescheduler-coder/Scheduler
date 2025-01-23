@@ -98,7 +98,7 @@ Return ONLY a JSON object with this structure:
   "scheduleRationale": "Explain how the template provides structure while remaining customizable",
   "userStartTime": "${startTime}",
   "userEndTime": "${endTime}",
-  "blocks": [
+  "blocks": [ 
     {
       "name": "Generic but context-appropriate name (e.g., 'Morning Deep Work Block')",
       "startTime": "HH:MM",
@@ -107,8 +107,8 @@ Return ONLY a JSON object with this structure:
       "isEvent": boolean,
       "isRoutine": boolean,
       "isStandaloneBlock": boolean,
-      "eventId": string | null,
-      "routineId": string | null,  // Must match an existing routine ID or be null
+      "eventId": "MUST use exact _id from input Event when isRoutine is true or null",
+      "routineId": "MUST use exact _id from input Routine when isRoutine is trueor null",
       "blockType": "deep-work" | "planning" | "break" | "admin" | "collaboration",
       "energyLevel": "high" | "medium" | "low",
       "tasks": [

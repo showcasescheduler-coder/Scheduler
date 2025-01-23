@@ -32,6 +32,7 @@ const ScheduleGenerationSpinner: React.FC<ScheduleGenerationSpinnerProps> = ({
                 setCurrentStatus("Optimizing task distribution...");
                 break;
               case 60:
+                console.log("this is the 60% its fake");
                 setCurrentStatus("Finalizing block arrangements...");
                 break;
             }

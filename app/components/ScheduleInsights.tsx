@@ -1,7 +1,17 @@
 import React from "react";
-import { Battery, Zap, Brain } from "lucide-react";
+import { Battery, Zap, Brain, LucideIcon } from "lucide-react";
 
-const ScheduleInsights = ({ insights }) => {
+interface ScheduleInsightsProps {
+  insights: string[];
+}
+
+interface CategoryItem {
+  icon: LucideIcon;
+  color: string;
+  description: string;
+}
+
+const ScheduleInsights: React.FC<ScheduleInsightsProps> = ({ insights }) => {
   const categories = [
     { icon: Battery, color: "green", description: insights[0] },
     { icon: Zap, color: "yellow", description: insights[1] },

@@ -25,6 +25,7 @@ import { Routine, Task } from "@/app/context/models";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
 import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -44,6 +45,7 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const { isLoaded, userId } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     fetchRoutines();
@@ -112,31 +114,52 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
         {!selectedRoutine ? (
           <ScrollArea className="h-[400px] border-t border-b">
             <div className="p-6 space-y-3">
-              {routines.map((routine) => (
-                <Card
-                  key={routine._id}
-                  className="cursor-pointer hover:bg-gray-50 transition-colors"
-                  onClick={() => handleRoutineSelect(routine)}
-                >
-                  <CardContent className="p-4">
-                    <h4 className="text-sm font-medium">{routine.name}</h4>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {routine.description}
-                    </p>
-                    <ul className="mt-3 space-y-1.5">
-                      {routine.tasks.map((task: Task) => (
-                        <li
-                          key={task._id}
-                          className="flex items-start text-xs text-gray-600"
-                        >
-                          <Circle className="h-2 w-2 mr-2 mt-1 text-gray-400" />
-                          <span>{task.name}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              ))}
+              {routines.length > 0 ? (
+                routines.map((routine) => (
+                  <Card
+                    key={routine._id}
+                    className="cursor-pointer hover:bg-gray-50 transition-colors"
+                    onClick={() => handleRoutineSelect(routine)}
+                  >
+                    <CardContent className="p-4">
+                      <h4 className="text-sm font-medium">{routine.name}</h4>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {routine.description}
+                      </p>
+                      <ul className="mt-3 space-y-1.5">
+                        {routine.tasks.map((task: Task) => (
+                          <li
+                            key={task._id}
+                            className="flex items-start text-xs text-gray-600"
+                          >
+                            <Circle className="h-2 w-2 mr-2 mt-1 text-gray-400" />
+                            <span>{task.name}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center h-[300px] px-6">
+                  <div className="rounded-full bg-blue-50 p-3 mb-4">
+                    <Repeat className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <h3 className="text-base font-medium text-gray-900 mb-1">
+                    No routines yet
+                  </h3>
+                  <p className="text-sm text-gray-500 text-center mb-6">
+                    Create your first routine to add it to your schedule
+                  </p>
+                  <Button
+                    onClick={() => router.push("/dashboard/routines")}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Create a Routine
+                  </Button>
+                </div>
+              )}
             </div>
           </ScrollArea>
         ) : (

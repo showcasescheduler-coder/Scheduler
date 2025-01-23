@@ -25,6 +25,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Day not found" }, { status: 404 });
     }
 
+    // Remove block references from all tasks associated with this day's blocks
+    await Task.updateMany(
+      { dayId: day._id },
+      { $unset: { blockId: 1, block: 1 } },
+      { session }
+    );
+
+    // Simply clear the day's blocks array - we'll add new blocks to it
+    day.blocks = [];
+    await day.save({ session });
+    console.log("Cleared day's blocks array");
+
     // Array to store new block IDs
     const newBlockIds = [];
 

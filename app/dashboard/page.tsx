@@ -167,6 +167,15 @@ interface DragData {
   block?: Block;
 }
 
+interface ScheduleTemplate {
+  title: string;
+  icon: any;
+  description: string;
+  promptPoints: string[]; // Changed from prompt string to promptPoints array
+  color: string;
+  shortcut?: string;
+}
+
 export default function Component() {
   const {
     selectedDay,
@@ -225,6 +234,9 @@ export default function Component() {
   const [lastGenerationInput, setLastGenerationInput] = useState<string | null>(
     null
   );
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<ScheduleTemplate | null>(null);
+
   const lastUpdateRef = useRef<number>(0);
   const THROTTLE_MS = 150; // Minimum time between updates
   const updateQueueRef = useRef<any>(null);
@@ -277,6 +289,11 @@ export default function Component() {
       month: "short",
       day: "numeric",
     });
+  };
+
+  const handleTemplateSelect = (template: ScheduleTemplate) => {
+    setSelectedTemplate(template);
+    setIsDialogOpen(true);
   };
 
   // Then modify how you handle day selection in both mobile and desktop views:
@@ -492,6 +509,42 @@ export default function Component() {
       if (frameRef.current) {
         cancelAnimationFrame(frameRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Only handle keyboard shortcuts if Meta/Ctrl is pressed
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault(); // Prevent default browser behavior
+
+        switch (e.key.toLowerCase()) {
+          case "g": // Generate Schedule
+            // Remove the blocks check and just open the dialog
+            setIsDialogOpen(true);
+            break;
+
+          case "b": // Add Block
+            setIsAddBlockDialogOpen(true);
+            break;
+
+          case "e": // Add Event
+            setIsAddEventModalOpen(true);
+            break;
+
+          case "r": // Add Routine
+            setIsAddRoutineModalOpen(true);
+            break;
+        }
+      }
+    };
+
+    // Add event listener
+    window.addEventListener("keydown", handleKeyPress);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("keydown", handleKeyPress);
     };
   }, []);
 
@@ -887,6 +940,9 @@ export default function Component() {
     setGenerationStatus("Initializing...");
     setIsDialogOpen(false);
 
+    // Check if there are existing blocks
+    const hasExistingBlocks = day.blocks && day.blocks.length > 0;
+
     // Get the date and day of the week from the state
     const selectedDate = new Date(day.date);
     const formattedSelectedDate = selectedDate.toISOString().split("T")[0]; // Format: YYYY-MM-DD
@@ -1074,8 +1130,60 @@ export default function Component() {
       setGenerationProgress(10);
       setGenerationStatus("Analyzing your requirements...");
 
+      // Check if there are existing blocks in the day
+      if (day?.blocks && day.blocks.length > 0) {
+        setGenerationProgress(30);
+        setGenerationStatus("Updating existing schedule...");
+
+        const currentSchedule = isPreviewMode ? previewSchedule : day.blocks;
+
+        console.log("this is the schedule being sent", currentSchedule);
+
+        const incompleteBlocks = (
+          isPreviewMode ? previewSchedule : day.blocks
+        ).filter((block: Block) => block.status !== "complete");
+
+        const response = await fetch("/api/update-schedule", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            currentSchedule: incompleteBlocks,
+            eventBlocks: optimizedEvents,
+            routineBlocks: optimizedRoutines,
+            tasks: optimizedTasks,
+            projects: optimizedProjects,
+            userInput: userInput,
+            startTime: startTime,
+            endTime: endTime,
+            dayId: day._id,
+          }),
+          signal, // Pass the abort controller signal
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update schedule");
+        }
+
+        const updatedSchedule = await response.json();
+
+        console.log(updatedSchedule);
+
+        setGenerationProgress(100);
+        setGenerationStatus("Schedule updated successfully!");
+
+        if (updatedSchedule.blocks) {
+          setPreviewSchedule(updatedSchedule);
+          setIsPreviewMode(true);
+        }
+
+        return; // Exit the function after successful update
+      }
+
       if (isPreviewMode) {
         // Keep regeneration logic as is
+        console.log(previewSchedule);
         setGenerationProgress(30);
         setGenerationStatus("Regenerating schedule...");
         const regeneratedSchedule = await fetch("/api/regenerate-schedule", {
@@ -1431,29 +1539,31 @@ export default function Component() {
   };
 
   const handleGenerateSchedule = async () => {
-    const activeBlocks = sortedBlocks.filter(
-      (block) => block.status === "pending"
-    );
-    if (activeBlocks.length > 0) {
-      toast.error("There are too many blocks");
-      // toast.error(
-      //   <div className="flex flex-col gap-2">
-      //     <p>
-      //       Please complete or delete all active blocks before generating a new
-      //       schedule.
-      //     </p>
-      //     <p className="text-sm text-muted-foreground">
-      //       You have {activeBlocks.length} active block
-      //       {activeBlocks.length > 1 ? "s" : ""} remaining.
-      //     </p>
-      //   </div>,
-      //   {
-      //     duration: 5000,
-      //     position: "top-center",
-      //   }
-      // );
-      return;
-    }
+    // const activeBlocks = sortedBlocks.filter(
+    //   (block) => block.status === "pending"
+    // );
+    // if (activeBlocks.length > 0) {
+    //   toast.error("There are too many blocks");
+    //   // toast.error(
+    //   //   <div className="flex flex-col gap-2">
+    //   //     <p>
+    //   //       Please complete or delete all active blocks before generating a new
+    //   //       schedule.
+    //   //     </p>
+    //   //     <p className="text-sm text-muted-foreground">
+    //   //       You have {activeBlocks.length} active block
+    //   //       {activeBlocks.length > 1 ? "s" : ""} remaining.
+    //   //     </p>
+    //   //   </div>,
+    //   //   {
+    //   //     duration: 5000,
+    //   //     position: "top-center",
+    //   //   }
+    //   // );
+    //   return;
+    // }
+
+    console.log(day);
 
     setIsDialogOpen(true);
   };
@@ -1859,6 +1969,9 @@ export default function Component() {
                     activeTab={activeTab}
                     onGenerateSchedule={handleGenerateSchedule}
                     onAddBlock={() => setIsAddBlockDialogOpen(true)}
+                    onAddEvent={() => setIsAddEventModalOpen(true)}
+                    onAddRoutine={() => setIsAddRoutineModalOpen(true)}
+                    onTemplateSelect={handleTemplateSelect}
                   />
                 ) : activeTab === "completed" ? (
                   <div className="space-y-4">
@@ -2092,11 +2205,17 @@ export default function Component() {
       )}
       <ScheduleGenerationDialog
         isOpen={isDialogOpen}
-        onClose={setIsDialogOpen}
+        onClose={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            setSelectedTemplate(null); // Reset the selected template when drawer closes
+          }
+        }}
         onGenerateSchedule={(userInput: string) =>
           generateScheduleTest(userInput)
         }
         isPreviewMode={isPreviewMode}
+        initialPromptPoints={selectedTemplate?.promptPoints}
       />
       <AddEventModal
         isOpen={isAddEventModalOpen}

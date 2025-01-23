@@ -57,7 +57,13 @@ SCHEDULING PRINCIPLES:
 Return ONLY a JSON object with this structure:
 {
   "currentTime": "${new Date().toTimeString().slice(0, 5)}",
-  "scheduleRationale": "Detailed explanation of how the schedule honors their specific requests while optimizing for productivity. Highlight specific enhancements and explain the science behind the optimizations.",
+  "scheduleRationale": "Return exactly three insights separated by periods, in this order:
+
+    1. Acknowledgment of the user's specific requests and how they've been incorporated into the schedule. Focus on showing that you understood and honored their key requirements.
+
+    2. Clear explanation of how the schedule is organized and why tasks are placed where they are. Explain the logic behind the structure.
+
+    3. Brief highlight of helpful optimizations or enhancements that complement their requests without overriding them. Focus on value-added features.",  
   "userStartTime": "${startTime}",
   "userEndTime": "${endTime}",
   "blocks": [

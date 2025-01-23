@@ -142,8 +142,8 @@ CRITICAL: You must return ONLY a raw JSON object without any additional text, ma
       "isEvent": boolean,
       "isRoutine": boolean,
       "isStandaloneBlock": boolean,
-      "eventId": "MUST use exact _id from input Event when isRoutine is true",
-      "routineId": "MUST use exact _id from input Routine when isRoutine is true",
+      "eventId": "MUST use exact _id from input Event when isRoutine is true or null",
+      "routineId": "MUST use exact _id from input Routine when isRoutine is trueor null",
       "blockType": "deep-work" | "planning" | "break" | "admin" | "collaboration",
       "tasks": [
         {

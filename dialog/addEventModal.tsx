@@ -20,12 +20,19 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, CheckCircle, Clock, LinkIcon } from "lucide-react";
+import {
+  PlusCircle,
+  CheckCircle,
+  Clock,
+  LinkIcon,
+  Calendar,
+} from "lucide-react";
 import { Event } from "@/app/context/models";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
 import { useAuth } from "@clerk/nextjs";
 import { Day, Block } from "@/app/context/models";
+import { useRouter } from "next/navigation";
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -40,6 +47,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   blockId,
   updateDay,
 }) => {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<string>("newEvent");
   const { setBlocks, day, setDay } = useAppContext();
   const [events, setEvents] = useState<Event[]>([]);
@@ -343,9 +351,24 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                     </Card>
                   ))
                 ) : (
-                  <p className="text-center text-sm text-gray-500">
-                    No events found for this date.
-                  </p>
+                  <div className="flex flex-col items-center justify-center h-[300px] px-6">
+                    <div className="rounded-full bg-blue-50 p-3 mb-4">
+                      <Calendar className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <h3 className="text-base font-medium text-gray-900 mb-1">
+                      No events yet
+                    </h3>
+                    <p className="text-sm text-gray-500 text-center mb-6">
+                      Create your first event to add it to your schedule
+                    </p>
+                    <Button
+                      onClick={() => router.push("/dashboard/events")}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Create an Event
+                    </Button>
+                  </div>
                 )}
               </div>
             </ScrollArea>
