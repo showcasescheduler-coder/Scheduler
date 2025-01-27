@@ -1478,6 +1478,9 @@ import {
   CheckSquare,
   Calendar,
   LayoutList,
+  Brain,
+  GraduationCap,
+  Coffee,
 } from "lucide-react";
 
 interface NoBlocksCardProps {
@@ -1508,37 +1511,50 @@ const NoBlocksCard = ({
 }: NoBlocksCardProps) => {
   const templates = [
     {
-      title: "Productive Day",
-      icon: PlusCircle,
-      description: "Deep work in morning, meetings afternoon, planning evening",
+      title: "Deep Work Focus Day",
+      icon: Brain,
+      description: "Optimize your day for intense focus and complex tasks",
       promptPoints: [
-        "Deep focused work blocks in the morning",
-        "Team meetings and collaborations in the afternoon",
-        "Planning and review session in the evening",
+        "Begin with a science-backed morning routine (light exposure, movement, and protein-rich breakfast)",
+        "Schedule 2-3 deep work blocks (90 minutes each) during your peak energy hours",
+        "Place challenging tasks in the morning when cognitive function is highest",
+        "Include 15-20 minute breaks between deep work for optimal recovery",
+        "Add a midday walk or movement break to boost afternoon energy",
+        "Schedule lighter tasks and communication during natural energy dips",
+        "End with a calming evening routine (dim lights, light reading, next-day planning)",
       ],
       color: "blue",
     },
     {
-      title: "Event Day",
-      icon: CalendarPlus,
-      description: "Balance your events with focused work and breaks",
-      promptPoints: [
-        "Organize the day around my calendar events",
-        "Add buffer time before and after meetings",
-        "Include focused work sessions between events",
-      ],
-      color: "purple",
-    },
-    {
-      title: "Routine Day",
+      title: "Balanced Routine Day",
       icon: Repeat,
-      description: "Structure your day around your key routines",
+      description:
+        "Create consistent daily rhythms for sustainable productivity",
       promptPoints: [
-        "Start with a morning productivity routine",
-        "Include regular check-in and review points",
-        "Balance different types of work throughout the day",
+        "Start with an energizing morning routine (natural light, gentle movement, hydration)",
+        "Alternate between 60-minute focused work and short breaks",
+        "Include three daily planning check-ins (morning, midday, afternoon)",
+        "Schedule regular movement breaks every 2-3 hours",
+        "Group similar tasks together to minimize context switching",
+        "Protect your meal times and break periods",
+        "Close your day with a wind-down routine (review, planning, relaxation)",
       ],
       color: "emerald",
+    },
+    {
+      title: "Relaxed Work Day",
+      icon: Coffee,
+      description: "Balance productivity with flexibility and wellbeing",
+      promptPoints: [
+        "Begin with a gentle morning routine (stretching, light exercise, mindful breakfast)",
+        "Work in shorter 45-minute focused sessions",
+        "Allow buffer time between tasks for natural transitions",
+        "Include regular breaks for movement and social connection",
+        "Schedule creative or enjoyable tasks throughout the day",
+        "Build in time for spontaneous activities or rest",
+        "End with a relaxing evening routine (reflection, light activity, unwinding)",
+      ],
+      color: "purple",
     },
   ];
 

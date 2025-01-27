@@ -33,6 +33,7 @@ export interface Event {
 }
 
 export interface Project {
+  order: any;
   completed: boolean;
   _id: string;
   name: string;

@@ -9,6 +9,7 @@ export interface IProject extends Document {
   time: string;
   priority: string;
   completed: boolean; // Added completed field to interface
+  order: number;
 }
 
 // Schema for the Project
@@ -22,6 +23,7 @@ const ProjectSchema: Schema = new Schema(
     priority: { type: String, required: true, enum: ["Low", "Medium", "High"] },
     completed: { type: Boolean, required: true, default: false }, // Added completed field to schema
     tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Task" }],
+    order: { type: Number, default: 9999 },
   },
   { timestamps: true }
 );

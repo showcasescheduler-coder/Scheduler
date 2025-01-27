@@ -422,6 +422,36 @@ export default function ProjectDetails({ params: { id } }: Props) {
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!project) return;
+
+    // Show confirmation alert
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this project? This action cannot be undone and all associated tasks will be deleted."
+    );
+
+    // If user didn't confirm, exit early
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/delete-project`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: project._id }),
+      });
+
+      if (!response.ok) throw new Error("Failed to delete project");
+
+      // Remove the project from local state
+      setProjects((prev) => prev.filter((p) => p._id !== project._id));
+
+      // Navigate back to projects page
+      router.push("/dashboard/projects");
+    } catch (error) {
+      console.error("Error deleting project:", error);
+    }
+  };
+
   const handleTaskCompletion = async (taskId: string, completed: boolean) => {
     if (!project || project.completed) return;
 
@@ -549,8 +579,6 @@ export default function ProjectDetails({ params: { id } }: Props) {
 
   if (!project) return null;
 
-  console.log(project);
-
   return (
     <div className="flex h-screen bg-white">
       <aside className="hidden md:block w-16 border-r border-gray-200">
@@ -657,6 +685,13 @@ export default function ProjectDetails({ params: { id } }: Props) {
                 </Button>
                 <Button
                   size="sm"
+                  variant="destructive"
+                  onClick={handleDeleteProject}
+                >
+                  Delete Project
+                </Button>
+                <Button
+                  size="sm"
                   onClick={handleCompleteProject}
                   disabled={!project.completed && !allTasksCompleted(project)}
                   className="bg-green-600 hover:bg-green-700 text-white"
@@ -732,6 +767,14 @@ export default function ProjectDetails({ params: { id } }: Props) {
                         {project.completed
                           ? "Reactivate Project"
                           : "Complete Project"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleDeleteProject}
+                        className="w-full text-white mt-2"
+                      >
+                        Delete Project
                       </Button>
                     </div>
                   )}
