@@ -12,6 +12,9 @@ export interface ITask {
   project?: mongoose.Types.ObjectId;
   routine?: mongoose.Types.ObjectId;
   block?: mongoose.Types.ObjectId;
+  projectId?: mongoose.Types.ObjectId;
+  routineId?: mongoose.Types.ObjectId;
+  eventId?: mongoose.Types.ObjectId;
   type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
   timeWindow?: {
     start?: string; // Format: "HH:mm"
@@ -37,6 +40,21 @@ const TaskSchema = new mongoose.Schema(
     },
     project: { type: mongoose.Schema.Types.ObjectId, ref: "Project" },
     routine: { type: mongoose.Schema.Types.ObjectId, ref: "Routine" },
+    projectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Project",
+      default: null,
+    },
+    routineId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Routine",
+      default: null,
+    },
+    eventId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Event",
+      default: null,
+    },
     block: { type: mongoose.Schema.Types.ObjectId, ref: "Block" },
     isRoutineTask: { type: Boolean, default: false },
     type: {

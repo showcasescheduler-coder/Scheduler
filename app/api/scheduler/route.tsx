@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
         isEvent: aiBlock.isEvent,
         isRoutine: aiBlock.isRoutine,
         isStandaloneBlock: aiBlock.isStandaloneBlock,
+        routineId: aiBlock.routineId,
         status: "pending",
         blockType: aiBlock.blockType, // The type of work this block represents
         description: aiBlock.description,
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
       for (const aiTask of aiBlock.tasks) {
         let task;
 
-        if (aiBlock.isRoutine) {
+        if (aiBlock.routineId) {
           // For routine tasks, always create new tasks based on the routine template
           task = new Task({
             dayId: day._id,
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest) {
             status: "pending",
             priority: aiTask.priority,
             duration: aiTask.duration,
+            routineId: aiTask.routineId,
             isRoutineTask: true,
             type: aiTask.type, // Add the task type
           });
@@ -111,6 +113,9 @@ export async function POST(request: NextRequest) {
             task.duration = aiTask.duration;
             task.isRoutineTask = false;
             task.type = aiTask.type; // Add the task type to updates
+            task.routineId = aiTask.routineId;
+            task.eventId = aiTask.eventId;
+            task.projectId = aiTask.projectId;
             await task.save({ session });
           } else {
             // Create new task
@@ -124,6 +129,9 @@ export async function POST(request: NextRequest) {
               duration: aiTask.duration,
               isRoutineTask: false,
               type: aiTask.type, // Add the task typ
+              routineId: aiTask.routineId,
+              eventId: aiTask.eventId,
+              projectId: aiTask.projectId,
             });
             await task.save({ session });
           }

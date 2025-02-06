@@ -9,7 +9,8 @@ export async function POST(request: NextRequest) {
   await dbConnect();
 
   try {
-    const { dayId, name, startTime, endTime, userId } = await request.json();
+    const { dayId, name, startTime, endTime, userId, description, blockType } =
+      await request.json();
 
     if (!dayId || !name || !startTime || !endTime || !userId) {
       console.log("missing the required fields");
@@ -28,6 +29,8 @@ export async function POST(request: NextRequest) {
       dayId,
       userId,
       status: "pending",
+      blockType,
+      description,
     });
 
     console.log("this is the new block", newBlock);

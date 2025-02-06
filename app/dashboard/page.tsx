@@ -138,7 +138,14 @@ type EditableBlockFields = {
   startTime: string;
   endTime: string;
   description: string;
-  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  blockType:
+    | "deep-work"
+    | "break"
+    | "meeting"
+    | "health"
+    | "exercise"
+    | "admin"
+    | "personal";
   status: "pending" | "complete" | "incomplete";
   meetingLink?: string;
 };
@@ -151,7 +158,14 @@ interface Block {
   startTime: string;
   endTime: string;
   status: "pending" | "complete" | "incomplete";
-  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  blockType:
+    | "deep-work"
+    | "break"
+    | "meeting"
+    | "health"
+    | "exercise"
+    | "admin"
+    | "personal";
   event: string | null;
   tasks: Task[];
   createdAt: string;
@@ -275,6 +289,7 @@ export default function Component() {
     }
   );
   const [rationaleText, setRationaleText] = useState("");
+  const generationStartedRef = useRef(false);
 
   const lastUpdateRef = useRef<number>(0);
   const THROTTLE_MS = 150; // Minimum time between updates
@@ -390,73 +405,122 @@ export default function Component() {
     }
   }, [day, activeTab]);
 
-  useEffect(() => {
-    // Only run if we have a promptText and haven't processed it yet
-    if (promptText && !hasProcessedPrompt) {
-      // Update your generateSchedule function
-      const generateSchedule = async () => {
-        setGenerationProgress(0);
-        setGenerationStatus("Initializing...");
-        try {
-          // Intent Analysis
-          setGenerationProgress(10);
-          setGenerationStatus("Analyzing your requirements...");
-          const intentResponse = await fetch("/api/home-page-intent-analysis", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userInput: promptText,
-              startTime: "09:00",
-              endTime: "17:00",
-            }),
-          });
+  const generateSchedule = async () => {
+    setGenerationProgress(0);
+    setGenerationStatus("Initializing...");
+    const { startTime, endTime } = getScheduleTimes(selectedDay);
+    try {
+      // Intent Analysis
+      setGenerationProgress(10);
+      setGenerationStatus("Analyzing your requirements...");
 
-          const intentAnalysis = await intentResponse.json();
+      // Schedule Generation
+      setGenerationProgress(30);
+      setGenerationStatus("Generating your schedule...");
 
-          // Schedule Generation
-          setGenerationProgress(30);
-          setGenerationStatus("Generating your schedule...");
-          console.log("Intent analysis", intentAnalysis);
-          const endpoint = intentAnalysis.isSpecificRequest
-            ? "/api/home-page-specific"
-            : "/api/home-page-non-specific";
+      const scheduleResponse = await fetch("/api/home-page-specific", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userInput: promptText,
+          startTime: startTime,
+          endTime: endTime,
+        }),
+      });
 
-          const scheduleResponse = await fetch(endpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userInput: promptText,
-              startTime: "09:00",
-              endTime: "17:00",
-            }),
-          });
-
-          setGenerationProgress(60);
-          setGenerationStatus("Optimizing block placement...");
-
-          const schedule = await scheduleResponse.json();
-          console.log(schedule);
-          setGenerationProgress(80);
-          setGenerationStatus("Finalizing your schedule...");
-
-          if (schedule.blocks) {
-            setGenerationProgress(100);
-            setGenerationStatus("Schedule generated successfully!");
-            setPreviewSchedule(schedule);
-            setIsPreviewMode(true);
-          }
-        } catch (error) {
-          console.error("Failed to generate schedule:", error);
-        } finally {
-          await new Promise((resolve) => setTimeout(resolve, 500)); // Give time to see 100%
-          setIsGeneratingSchedule(false);
-          // IMPORTANT: mark that we've processed
-          setHasProcessedPrompt(true);
-          setGenerationProgress(0);
-          setGenerationStatus("");
-        }
+      setGenerationProgress(80);
+      setGenerationStatus("Finalizing your schedule...");
+      // Initialize a local schedule to accumulate partial data
+      let localSchedule = {
+        currentTime: new Date().toLocaleTimeString(),
+        scheduleRationale: "",
+        userStartTime: startTime,
+        userEndTime: endTime,
+        blocks: [] as any[], // or use your Block[] type
       };
 
+      streamSchedule(scheduleResponse, localSchedule);
+      setGenerationProgress(100);
+      setGenerationStatus("Schedule generated successfully!");
+    } catch (error) {
+      console.error("Failed to generate schedule:", error);
+    } finally {
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Give time to see 100%
+      setIsGeneratingSchedule(false);
+      // IMPORTANT: mark that we've processed
+      setHasProcessedPrompt(true);
+      setGenerationProgress(0);
+      setGenerationStatus("");
+    }
+  };
+
+  // const generateSchedule = async () => {
+  //   setGenerationProgress(0);
+  //   setGenerationStatus("Initializing...");
+  //   try {
+  //     // Intent Analysis
+  //     setGenerationProgress(10);
+  //     setGenerationStatus("Analyzing your requirements...");
+  //     const intentResponse = await fetch("/api/home-page-intent-analysis", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         userInput: promptText,
+  //         startTime: "09:00",
+  //         endTime: "17:00",
+  //       }),
+  //     });
+
+  //     const intentAnalysis = await intentResponse.json();
+
+  //     // Schedule Generation
+  //     setGenerationProgress(30);
+  //     setGenerationStatus("Generating your schedule...");
+  //     console.log("Intent analysis", intentAnalysis);
+  //     const endpoint = intentAnalysis.isSpecificRequest
+  //       ? "/api/home-page-specific"
+  //       : "/api/home-page-non-specific";
+
+  //     const scheduleResponse = await fetch(endpoint, {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         userInput: promptText,
+  //         startTime: "09:00",
+  //         endTime: "17:00",
+  //       }),
+  //     });
+
+  //     setGenerationProgress(60);
+  //     setGenerationStatus("Optimizing block placement...");
+
+  //     const schedule = await scheduleResponse.json();
+  //     console.log(schedule);
+  //     setGenerationProgress(80);
+  //     setGenerationStatus("Finalizing your schedule...");
+
+  //     if (schedule.blocks) {
+  //       setGenerationProgress(100);
+  //       setGenerationStatus("Schedule generated successfully!");
+  //       setPreviewSchedule(schedule);
+  //       setIsPreviewMode(true);
+  //     }
+  //   } catch (error) {
+  //     console.error("Failed to generate schedule:", error);
+  //   } finally {
+  //     await new Promise((resolve) => setTimeout(resolve, 500)); // Give time to see 100%
+  //     setIsGeneratingSchedule(false);
+  //     // IMPORTANT: mark that we've processed
+  //     setHasProcessedPrompt(true);
+  //     setGenerationProgress(0);
+  //     setGenerationStatus("");
+  //   }
+  // };
+
+  useEffect(() => {
+    // Only trigger the generation if promptText exists and we haven't started already
+    if (promptText && !generationStartedRef.current) {
+      generationStartedRef.current = true; // mark as started
       generateSchedule();
     }
   }, [promptText]);
@@ -809,6 +873,8 @@ export default function Component() {
     name: any;
     startTime: any;
     endTime: any;
+    description: any;
+    blockType: any;
   }) => {
     try {
       const response = await fetch("/api/add-block-to-schedule", {
@@ -822,6 +888,8 @@ export default function Component() {
           startTime: newBlock.startTime,
           endTime: newBlock.endTime,
           userId: userId, // Assuming you have access to userId
+          description: newBlock.description,
+          blockType: newBlock.blockType,
         }),
       });
 
@@ -965,6 +1033,124 @@ export default function Component() {
         startTime: "08:00",
         endTime,
       };
+    }
+  };
+
+  const streamSchedule = async (automatedSchedule, localSchedule) => {
+    // Immediately set up preview mode with an empty schedule
+    setStreamingSchedule(localSchedule);
+    setPreviewSchedule(localSchedule);
+    setIsPreviewMode(true);
+    setIsGeneratingSchedule(false);
+    let accumulatedRationale = "";
+
+    // Read the response as a stream
+    const reader = automatedSchedule.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          console.log("Stream complete");
+          break;
+        }
+        const chunk = decoder.decode(value);
+
+        // Each chunk can have multiple lines
+        const lines = chunk.split("\n");
+        for (const line of lines) {
+          // SSE lines typically begin "data: ..."
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6);
+          if (jsonStr === "[DONE]") {
+            // The server signals it's done
+            continue;
+          }
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+
+            // We expect something like { type: "content_block_delta", delta: { type: "text_delta", text: "..." } }
+            if (
+              parsed.type === "content_block_delta" &&
+              parsed.delta?.type === "text_delta"
+            ) {
+              const text = parsed.delta.text;
+
+              // Accumulate rationale text
+              accumulatedRationale += text;
+
+              const rationaleMatch = accumulatedRationale.match(
+                /"scheduleRationale"\s*:\s*"([^"]*)"/
+              );
+
+              if (rationaleMatch) {
+                console.log("rational found. ");
+                const rationale = rationaleMatch[1];
+                // console.log("Extracted schedule rationale:", rationale);
+                localSchedule = {
+                  ...localSchedule,
+                  scheduleRationale: rationale, // Update with extracted rationale
+                };
+              }
+
+              // 2) Check for complete blocks in the raw text
+              //    Using a quick pattern to find { ... "tasks": [...] ... } chunks
+              const blockMatches = accumulatedRationale.match(
+                /\{[^{}]*"tasks"\s*:\s*\[[^\]]*\][^{}]*\}/g
+              );
+              if (blockMatches) {
+                blockMatches.forEach((blockText) => {
+                  try {
+                    const blockJson = JSON.parse(blockText);
+
+                    // A valid block must have name + startTime, etc.
+                    if (blockJson.name && blockJson.startTime) {
+                      // Build a new block object
+                      const newBlock = {
+                        ...blockJson,
+                        // convert any "type" to blockType, if needed
+                        blockType: blockJson.type || "deep-work",
+                        isEvent: blockJson.type === "event",
+                        isRoutine: blockJson.type === "routine",
+                        isStandaloneBlock: true,
+                        energyLevel: "medium",
+                        tasks: (blockJson.tasks || []).map((t: any) => ({
+                          ...t,
+                          priority: t.priority || "Medium",
+                          isRoutineTask: false,
+                        })),
+                      };
+
+                      // Insert the block into localSchedule
+                      localSchedule = {
+                        ...localSchedule,
+                        blocks: [...localSchedule.blocks, newBlock],
+                      };
+                    }
+                  } catch (err) {
+                    console.log("Incomplete or invalid block chunk:", err);
+                  }
+                });
+
+                // Remove the matched block text(s) from rationale to prevent re-parsing
+                blockMatches.forEach((m) => {
+                  accumulatedRationale = accumulatedRationale.replace(m, "");
+                });
+              }
+
+              // 3) Finally update streaming & preview states
+              setStreamingSchedule(localSchedule);
+              setPreviewSchedule(localSchedule);
+            }
+          } catch (parseErr) {
+            // Probably partial data not yet parseable
+            console.log("Partial chunk—continuing to accumulate");
+          }
+        }
+      }
     }
   };
 
@@ -1229,519 +1415,71 @@ export default function Component() {
       // Sort by order field
       .sort((a, b) => a.order - b.order);
 
-    console.log(optimizedProjects);
-    console.log(optimizedEvents);
-    console.log(optimizedRoutines);
-    console.log(optimizedTasks);
-    console.log(userInput);
     let hasError = false;
+
+    let generationType = "";
+    let currentSchedule = null;
+    if (day?.blocks && day.blocks.length > 0) {
+      // There is an existing schedule – update it.
+      generationType = "update";
+      currentSchedule = (isPreviewMode ? previewSchedule : day.blocks).filter(
+        (block: Block) => block.status !== "complete"
+      );
+    } else if (!hasEnoughTime) {
+      // Not enough data to fill a full day – use a default schedule.
+      generationType = "default";
+    } else {
+      // Enough time and no existing schedule – generate the full backlog.
+      generationType = "fullBacklog";
+    }
+
+    // Build a unified payload for the API.
+    const payload = {
+      type: generationType,
+      dayId: day._id,
+      userInput,
+      startTime,
+      endTime,
+      currentSchedule, // May be null if not applicable
+      eventBlocks: optimizedEvents,
+      routineBlocks: optimizedRoutines,
+      tasks: optimizedTasks,
+      projects: optimizedProjects,
+    };
+
     try {
       // Intent Analysis
       setGenerationProgress(10);
       setGenerationStatus("Analyzing your requirements...");
 
-      // Check if there are existing blocks in the day
-      if (day?.blocks && day.blocks.length > 0) {
-        setGenerationProgress(30);
-        setGenerationStatus("Updating existing schedule...");
+      // Keep regeneration logic as is
+      console.log(previewSchedule);
+      setGenerationProgress(30);
+      setGenerationStatus("Regenerating schedule...");
 
-        const currentSchedule = isPreviewMode ? previewSchedule : day.blocks;
+      console.log(payload.type);
+      const automatedSchedule = await fetch("/api/non-specific-full-backlog", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal,
+      });
 
-        console.log("this is the schedule being sent", currentSchedule);
+      // Initialize a local schedule to accumulate partial data
+      let localSchedule = {
+        currentTime: new Date().toLocaleTimeString(),
+        scheduleRationale: "",
+        userStartTime: startTime,
+        userEndTime: endTime,
+        blocks: [] as any[], // or use your Block[] type
+      };
 
-        const incompleteBlocks = (
-          isPreviewMode ? previewSchedule : day.blocks
-        ).filter((block: Block) => block.status !== "complete");
-
-        const response = await fetch("/api/update-schedule", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            currentSchedule: incompleteBlocks,
-            eventBlocks: optimizedEvents,
-            routineBlocks: optimizedRoutines,
-            tasks: optimizedTasks,
-            projects: optimizedProjects,
-            userInput: userInput,
-            startTime: startTime,
-            endTime: endTime,
-            dayId: day._id,
-          }),
-          signal, // Pass the abort controller signal
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to update schedule");
-        }
-
-        const updatedSchedule = await response.json();
-
-        console.log(updatedSchedule);
-
-        setGenerationProgress(100);
-        setGenerationStatus("Schedule updated successfully!");
-
-        if (updatedSchedule.blocks) {
-          setPreviewSchedule(updatedSchedule);
-          setIsPreviewMode(true);
-        }
-
-        return; // Exit the function after successful update
-      }
-
-      if (isPreviewMode) {
-        // Keep regeneration logic as is
-        console.log(previewSchedule);
-        setGenerationProgress(30);
-        setGenerationStatus("Regenerating schedule...");
-        const regeneratedSchedule = await fetch("/api/regenerate-schedule", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            previewSchedule: previewSchedule,
-            projects: optimizedProjects,
-            eventBlocks: events,
-            routineBlocks: routines,
-            tasks: optimizedTasks,
-            userInput: userInput,
-            startTime: startTime,
-            endTime: endTime,
-          }),
-          signal,
-        });
-        setGenerationProgress(60);
-        setGenerationStatus("Optimizing block placement...");
-        const regeneratedScheduleJson = await regeneratedSchedule.json();
-        if (regeneratedScheduleJson.blocks) {
-          setGenerationProgress(100);
-          setGenerationStatus("Schedule generated successfully!");
-          setPreviewSchedule(regeneratedScheduleJson);
-          setIsPreviewMode(true);
-        }
-      } else {
-        // // First API call
-        // setGenerationProgress(30);
-        // setGenerationStatus("Analyzing schedule requirements...");
-        // const baseSchedule = await fetch("/api/intent-analysis", {
-        //   method: "POST",
-        //   headers: {
-        //     "Content-Type": "application/json",
-        //   },
-        //   body: JSON.stringify({
-        //     projects: optimizedProjects,
-        //     eventBlocks: optimizedEvents,
-        //     routineBlocks: optimizedRoutines,
-        //     tasks: optimizedTasks,
-        //     userInput: userInput,
-        //     startTime: startTime,
-        //     endTime: endTime,
-        //   }),
-        //   signal,
-        // });
-
-        // setGenerationProgress(50);
-        // setGenerationStatus("Processing schedule structure...");
-        // const baseSchedulejson = await baseSchedule.json();
-
-        // Simplified conditional logic - just two paths
-        if (!hasEnoughTime) {
-          // Default schedule for minimal data
-          console.log("running the default schedule");
-          const defaultSchedule = await fetch("/api/default-schedule", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              projects: optimizedProjects,
-              eventBlocks: events,
-              routineBlocks: routines,
-              tasks: optimizedTasks,
-              userInput: userInput,
-              startTime: startTime,
-              endTime: endTime,
-            }),
-            signal,
-          });
-
-          const defaultScheduleJson = await defaultSchedule.json();
-          if (defaultScheduleJson.blocks) {
-            setPreviewSchedule(defaultScheduleJson);
-            setIsPreviewMode(true);
-          }
-        } else {
-          // Full backlog schedule - handles both specific and non-specific cases
-          console.log("running the non-specific full backlog schedule");
-          const automatedSchedule = await fetch(
-            "/api/non-specific-full-backlog",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                projects: optimizedProjects,
-                eventBlocks: optimizedEvents,
-                routineBlocks: optimizedRoutines,
-                tasks: optimizedTasks,
-                userInput: userInput,
-                startTime: startTime,
-                endTime: endTime,
-              }),
-              signal,
-            }
-          );
-
-          // Initialize a local schedule to accumulate partial data
-          let localSchedule = {
-            currentTime: new Date().toLocaleTimeString(),
-            scheduleRationale: "",
-            userStartTime: startTime,
-            userEndTime: endTime,
-            blocks: [] as any[], // or use your Block[] type
-          };
-
-          // Immediately set up preview mode with an empty schedule
-          setStreamingSchedule(localSchedule);
-          setPreviewSchedule(localSchedule);
-          setIsPreviewMode(true);
-          setIsGeneratingSchedule(false);
-
-          // Read the response as a stream
-          const reader = automatedSchedule.body?.getReader();
-          const decoder = new TextDecoder();
-
-          if (reader) {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) {
-                console.log("Stream complete");
-                break;
-              }
-              const chunk = decoder.decode(value);
-
-              // Each chunk can have multiple lines
-              const lines = chunk.split("\n");
-              for (const line of lines) {
-                // SSE lines typically begin "data: ..."
-                if (!line.startsWith("data: ")) continue;
-
-                const jsonStr = line.slice(6);
-                if (jsonStr === "[DONE]") {
-                  // The server signals it's done
-                  continue;
-                }
-
-                try {
-                  const parsed = JSON.parse(jsonStr);
-
-                  // We expect something like { type: "content_block_delta", delta: { type: "text_delta", text: "..." } }
-                  if (
-                    parsed.type === "content_block_delta" &&
-                    parsed.delta?.type === "text_delta"
-                  ) {
-                    const text = parsed.delta.text;
-
-                    // Accumulate rationale text
-                    accumulatedRationale += text;
-
-                    const rationaleMatch = accumulatedRationale.match(
-                      /"scheduleRationale"\s*:\s*"([^"]*)"/
-                    );
-
-                    if (rationaleMatch) {
-                      console.log("rational found. ");
-                      const rationale = rationaleMatch[1];
-                      // console.log("Extracted schedule rationale:", rationale);
-                      localSchedule = {
-                        ...localSchedule,
-                        scheduleRationale: rationale, // Update with extracted rationale
-                      };
-                    }
-
-                    // 2) Check for complete blocks in the raw text
-                    //    Using a quick pattern to find { ... "tasks": [...] ... } chunks
-                    const blockMatches = accumulatedRationale.match(
-                      /\{[^{}]*"tasks"\s*:\s*\[[^\]]*\][^{}]*\}/g
-                    );
-                    if (blockMatches) {
-                      blockMatches.forEach((blockText) => {
-                        try {
-                          const blockJson = JSON.parse(blockText);
-
-                          // A valid block must have name + startTime, etc.
-                          if (blockJson.name && blockJson.startTime) {
-                            // Build a new block object
-                            const newBlock = {
-                              ...blockJson,
-                              // convert any "type" to blockType, if needed
-                              blockType: blockJson.type || "deep-work",
-                              isEvent: blockJson.type === "event",
-                              isRoutine: blockJson.type === "routine",
-                              isStandaloneBlock: true,
-                              energyLevel: "medium",
-                              tasks: (blockJson.tasks || []).map((t: any) => ({
-                                ...t,
-                                priority: t.priority || "Medium",
-                                isRoutineTask: false,
-                              })),
-                            };
-
-                            // Insert the block into localSchedule
-                            localSchedule = {
-                              ...localSchedule,
-                              blocks: [...localSchedule.blocks, newBlock],
-                            };
-                          }
-                        } catch (err) {
-                          console.log(
-                            "Incomplete or invalid block chunk:",
-                            err
-                          );
-                        }
-                      });
-
-                      // Remove the matched block text(s) from rationale to prevent re-parsing
-                      blockMatches.forEach((m) => {
-                        accumulatedRationale = accumulatedRationale.replace(
-                          m,
-                          ""
-                        );
-                      });
-                    }
-
-                    // 3) Finally update streaming & preview states
-                    setStreamingSchedule(localSchedule);
-                    setPreviewSchedule(localSchedule);
-                  }
-                } catch (parseErr) {
-                  // Probably partial data not yet parseable
-                  console.log("Partial chunk—continuing to accumulate");
-                }
-              }
-            }
-          }
-
-          // Once streaming is finished, we can finalize
-          setGenerationProgress(100);
-          setGenerationStatus("Schedule generated successfully!");
-          console.log("Final streaming schedule:", localSchedule);
-
-          // // Initialize schedule with start/end times
-          // const initialSchedule = {
-          //   currentTime: new Date().toLocaleTimeString(),
-          //   scheduleRationale: "",
-          //   userStartTime: startTime,
-          //   userEndTime: endTime,
-          //   blocks: [],
-          // };
-
-          // setStreamingSchedule(initialSchedule);
-          // setPreviewSchedule(initialSchedule); // Set initial preview schedule
-          // setIsPreviewMode(true); // Turn on preview mode immediately
-
-          // const reader = automatedSchedule.body?.getReader();
-          // const decoder = new TextDecoder();
-          // let accumulatedData = "";
-
-          // if (reader) {
-          //   while (true) {
-          //     const { done, value } = await reader.read();
-
-          //     if (done) {
-          //       console.log("Stream complete");
-          //       break;
-          //     }
-
-          //     const chunk = decoder.decode(value);
-          //     const lines = chunk.split("\n");
-
-          //     for (const line of lines) {
-          //       if (line.startsWith("data: ")) {
-          //         const data = line.slice(6);
-          //         if (data === "[DONE]") continue;
-
-          //         try {
-          //           const parsed = JSON.parse(data);
-
-          //           if (
-          //             parsed.type === "content_block_delta" &&
-          //             parsed.delta?.type === "text_delta"
-          //           ) {
-          //             const text = parsed.delta.text;
-          //             accumulatedData += text;
-
-          //             // Check for schedule rationale
-          //             const rationaleMatch = accumulatedData.match(
-          //               /"scheduleRationale"\s*:\s*"([^"]+)"/
-          //             );
-          //             if (rationaleMatch) {
-          //               console.log("Rationale found:", rationaleMatch[1]);
-          //               const updatedSchedule = {
-          //                 ...streamingSchedule,
-          //                 scheduleRationale: rationaleMatch[1],
-          //               };
-          //               setStreamingSchedule(updatedSchedule);
-          //               setPreviewSchedule(updatedSchedule);
-          //             }
-
-          //             // Check for complete blocks
-          //             const blockMatch = accumulatedData.match(
-          //               /\{[^{}]*"tasks"\s*:\s*\[[^\]]*\][^{}]*\}/g
-          //             );
-          //             if (blockMatch) {
-          //               blockMatch.forEach((blockText) => {
-          //                 try {
-          //                   const block = JSON.parse(blockText);
-          //                   if (block.name && block.startTime) {
-          //                     console.log("Block found:", block);
-          //                     const updatedSchedule = {
-          //                       ...streamingSchedule,
-          //                       blocks: [
-          //                         ...streamingSchedule.blocks,
-          //                         {
-          //                           ...block,
-          //                           isEvent: block.type === "event",
-          //                           isRoutine: block.type === "routine",
-          //                           isStandaloneBlock: true,
-          //                           blockType: block.type || "deep-work",
-          //                           energyLevel: "medium",
-          //                           tasks: block.tasks.map((task: any) => ({
-          //                             ...task,
-          //                             priority: task.priority || "Medium",
-          //                             isRoutineTask: false,
-          //                           })),
-          //                         },
-          //                       ],
-          //                     };
-          //                     setStreamingSchedule(updatedSchedule);
-          //                     setPreviewSchedule(updatedSchedule);
-          //                   }
-          //                 } catch (e) {
-          //                   console.log("Incomplete block data:", e);
-          //                 }
-          //               });
-
-          //               // Remove processed blocks from accumulated data
-          //               blockMatch.forEach((match) => {
-          //                 accumulatedData = accumulatedData.replace(match, "");
-          //               });
-          //             }
-          //           }
-          //         } catch (e) {
-          //           console.log("Continuing to collect data");
-          //         }
-          //       }
-          //     }
-          //   }
-          // }
-
-          // setIsGeneratingSchedule(false);
-          // console.log("Final streaming schedule:", streamingSchedule);
-
-          // const reader = automatedSchedule.body?.getReader();
-          // const decoder = new TextDecoder();
-
-          // if (reader) {
-          //   while (true) {
-          //     const { done, value } = await reader.read();
-
-          //     if (done) {
-          //       console.log("Stream complete");
-          //       break;
-          //     }
-
-          //     const chunk = decoder.decode(value);
-          //     console.log("Raw chunk received:", chunk);
-
-          //     const lines = chunk.split("\n");
-          //     for (const line of lines) {
-          //       if (line.startsWith("data: ")) {
-          //         const data = line.slice(6); // Remove 'data: ' prefix
-          //         if (data === "[DONE]") {
-          //           console.log("Received [DONE] signal");
-          //           continue;
-          //         }
-
-          //         try {
-          //           // Try to parse the event data
-          //           const parsed = JSON.parse(data);
-          //           console.log("Successfully parsed chunk:", parsed);
-
-          //           if (
-          //             parsed.type === "content_block_delta" &&
-          //             parsed.delta?.type === "text_delta"
-          //           ) {
-          //             const text = parsed.delta.text;
-          //             console.log("Received text delta:", text);
-
-          //             accumulatedData += text;
-
-          //             // Check for schedule rationale completion
-          //             if (accumulatedData.includes('"scheduleRationale"')) {
-          //               const rationaleMatch = accumulatedData.match(
-          //                 /"scheduleRationale"\s*:\s*"([^"]*)"/
-          //               );
-          //               if (rationaleMatch) {
-          //                 console.log(
-          //                   "Schedule Rationale Found:",
-          //                   rationaleMatch[1]
-          //                 );
-          //                 accumulatedData = accumulatedData.slice(
-          //                   rationaleMatch[0].length
-          //                 );
-          //               }
-          //             }
-
-          //             // Check for complete blocks
-          //             if (accumulatedData.includes('"blocks"')) {
-          //               const blockMatch = accumulatedData.match(/\{[^{}]*\}/g);
-          //               if (blockMatch) {
-          //                 blockMatch.forEach((blockText) => {
-          //                   try {
-          //                     // Try to parse each potential block
-          //                     const block = JSON.parse(blockText);
-          //                     if (block.name && block.startTime) {
-          //                       console.log("Complete Block Found:", {
-          //                         name: block.name,
-          //                         startTime: block.startTime,
-          //                         endTime: block.endTime,
-          //                         tasks: block.tasks?.length || 0,
-          //                       });
-          //                       setStreamedBlocks((prev) => [...prev, block]);
-          //                     }
-          //                   } catch (blockError) {
-          //                     console.log(
-          //                       "Incomplete block data, continuing collection"
-          //                     );
-          //                   }
-          //                 });
-          //               }
-          //             }
-          //           }
-          //         } catch (parseError) {
-          //           console.log("Incomplete JSON chunk, continuing collection");
-          //         }
-          //       }
-          //     }
-          //   }
-          // }
-
-          // setStreamingComplete(true);
-          // console.log("Streaming process completed");
-
-          // const automatedScheduleJson = await automatedSchedule.json();
-
-          // if (automatedScheduleJson.blocks) {
-          //   setPreviewSchedule(automatedScheduleJson);
-          //   setIsPreviewMode(true);
-          // }
-        }
-      }
+      streamSchedule(automatedSchedule, localSchedule);
+      setGenerationProgress(100);
+      setGenerationStatus("Schedule generated successfully!");
+      console.log("Final streaming schedule:", localSchedule);
 
       setGenerationProgress(100);
       setGenerationStatus("Schedule generated successfully!");
@@ -2227,8 +1965,6 @@ export default function Component() {
       }));
     }
   };
-
-  console.log(previewSchedule);
 
   return (
     <div className="flex h-screen bg-white font-sans text-gray-900">

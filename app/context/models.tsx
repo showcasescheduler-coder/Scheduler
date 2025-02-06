@@ -69,16 +69,50 @@ export interface UserData {
 
 export interface Block {
   _id: string;
-  date: string;
+  dayId: string;
   name: string;
   description: string;
-  status: "pending" | "complete" | "incomplete";
   startTime: string;
   endTime: string;
+  status: "pending" | "complete" | "incomplete";
+  blockType:
+    | "deep-work"
+    | "break"
+    | "meeting"
+    | "health"
+    | "exercise"
+    | "admin"
+    | "personal";
+  event: string | null;
   tasks: Task[];
-  event?: string; // Change this to a string (event ID) instead of Event[]
-  completed: boolean;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+  isStandaloneBlock?: boolean;
+  meetingLink: string;
+  routineId: string;
 }
+
+// export interface Block {
+//   _id: string;
+//   date: string;
+//   name: string;
+//   description: string;
+//   status: "pending" | "complete" | "incomplete";
+//   startTime: string;
+//   endTime: string;
+//   tasks: Task[];
+//   event?: string; // Change this to a string (event ID) instead of Event[]
+//   completed: boolean;
+//   blockType:
+//     | "deep-work"
+//     | "break"
+//     | "meeting"
+//     | "health"
+//     | "exercise"
+//     | "admin"
+//     | "personal";
+// }
 
 export interface Day {
   _id: string;
@@ -120,7 +154,14 @@ export interface PreviewBlock {
   isEvent: boolean;
   isRoutine: boolean;
   isStandaloneBlock: boolean;
-  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  blockType:
+    | "deep-work"
+    | "break"
+    | "meeting"
+    | "health"
+    | "exercise"
+    | "admin"
+    | "personal";
   energyLevel: "high" | "medium" | "low";
   tasks: PreviewTask[];
 }

@@ -25,7 +25,15 @@ interface BlockData {
   name: string;
   startTime: string;
   endTime: string;
-  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  blockType:
+    | "deep-work"
+    | "break"
+    | "meeting"
+    | "health"
+    | "exercise"
+    | "admin"
+    | "personal";
+
   description?: string;
 }
 
@@ -35,6 +43,7 @@ interface ValidationErrors {
   endTime?: string;
   blockType?: string;
   timeRange?: string;
+  meetingLink?: string;
 }
 
 interface AddBlockDialogProps {
@@ -52,8 +61,8 @@ export function AddBlockDialog({
     name: "",
     startTime: "",
     endTime: "",
-    blockType: "deep-work",
     description: "",
+    blockType: "deep-work",
   });
   const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -118,6 +127,19 @@ export function AddBlockDialog({
     onOpenChange(false);
   };
 
+  const getBlockTypeColor = (type: BlockData["blockType"]) => {
+    const colors = {
+      "deep-work": "text-purple-600",
+      break: "text-green-600",
+      meeting: "text-blue-600",
+      health: "text-pink-600",
+      exercise: "text-orange-600",
+      admin: "text-gray-600",
+      personal: "text-indigo-600",
+    };
+    return colors[type];
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md border rounded-lg shadow-lg">
@@ -169,11 +191,35 @@ export function AddBlockDialog({
                   <SelectValue placeholder="Select block type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="deep-work">Deep Work</SelectItem>
-                  <SelectItem value="planning">Planning</SelectItem>
-                  <SelectItem value="break">Break</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="collaboration">Collaboration</SelectItem>
+                  <SelectItem value="deep-work">
+                    <span className={getBlockTypeColor("deep-work")}>
+                      Deep Work
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="break">
+                    <span className={getBlockTypeColor("break")}>Break</span>
+                  </SelectItem>
+                  <SelectItem value="meeting">
+                    <span className={getBlockTypeColor("meeting")}>
+                      Meeting
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="health">
+                    <span className={getBlockTypeColor("health")}>Health</span>
+                  </SelectItem>
+                  <SelectItem value="exercise">
+                    <span className={getBlockTypeColor("exercise")}>
+                      Exercise
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="admin">
+                    <span className={getBlockTypeColor("admin")}>Admin</span>
+                  </SelectItem>
+                  <SelectItem value="personal">
+                    <span className={getBlockTypeColor("personal")}>
+                      Personal
+                    </span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
               {errors.blockType && (

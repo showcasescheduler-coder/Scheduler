@@ -645,6 +645,213 @@
 
 // export default ScheduleGenerationDialog;
 
+// import React, { useState, useEffect, useRef, useCallback } from "react";
+// import { Button } from "@/components/ui/button";
+// import {
+//   Drawer,
+//   DrawerContent,
+//   DrawerFooter,
+//   DrawerHeader,
+//   DrawerTitle,
+//   DrawerClose,
+//   DrawerDescription,
+// } from "@/components/ui/drawer";
+// import { Sparkles } from "lucide-react";
+
+// interface ScheduleGenerationDrawerProps {
+//   isOpen: boolean;
+//   onClose: (open: boolean) => void;
+//   onGenerateSchedule: (
+//     userInput: string,
+//     startTime: string,
+//     endTime: string
+//   ) => void;
+//   isPreviewMode: boolean;
+//   initialPromptPoints?: string[];
+// }
+
+// export const ScheduleGenerationDialog: React.FC<
+//   ScheduleGenerationDrawerProps
+// > = ({
+//   isOpen,
+//   onClose,
+//   onGenerateSchedule,
+//   isPreviewMode,
+//   initialPromptPoints,
+// }) => {
+//   const [thoughts, setThoughts] = useState([""]);
+//   const [savedThoughts, setSavedThoughts] = useState<string[]>(() => {
+//     const saved = localStorage.getItem("savedThoughts");
+//     return saved ? JSON.parse(saved) : [""];
+//   });
+//   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+//   const isTemplateSelected = useRef(false);
+
+//   const handleComplete = useCallback(() => {
+//     const cleanThoughts = thoughts
+//       .filter((thought) => thought.trim() !== "")
+//       .join("\n");
+//     onGenerateSchedule(cleanThoughts, "", "");
+//     if (isTemplateSelected.current) {
+//       setSavedThoughts([""]);
+//       localStorage.setItem("savedThoughts", JSON.stringify([""]));
+//     }
+//   }, [thoughts, onGenerateSchedule]);
+
+//   useEffect(() => {
+//     const handleKeyPress = (e: KeyboardEvent) => {
+//       if (isOpen && (e.metaKey || e.ctrlKey) && e.key === "Enter") {
+//         e.preventDefault();
+//         handleComplete();
+//       }
+//     };
+
+//     window.addEventListener("keydown", handleKeyPress);
+//     return () => window.removeEventListener("keydown", handleKeyPress);
+//   }, [isOpen, handleComplete]);
+
+//   useEffect(() => {
+//     if (!isTemplateSelected.current) {
+//       localStorage.setItem("savedThoughts", JSON.stringify(savedThoughts));
+//     }
+//   }, [savedThoughts]);
+
+//   useEffect(() => {
+//     if (isOpen) {
+//       if (initialPromptPoints && initialPromptPoints.length > 0) {
+//         setThoughts(initialPromptPoints);
+//         isTemplateSelected.current = true;
+//       } else if (savedThoughts.some((thought) => thought.trim() !== "")) {
+//         setThoughts(savedThoughts);
+//         isTemplateSelected.current = false;
+//       } else {
+//         setThoughts([""]);
+//         isTemplateSelected.current = false;
+//       }
+//     }
+//   }, [isOpen, initialPromptPoints, savedThoughts]);
+
+//   const handleKeyDown = (
+//     e: React.KeyboardEvent<HTMLInputElement>,
+//     index: number
+//   ) => {
+//     if (e.key === "Enter") {
+//       e.preventDefault();
+//       const newThoughts = [...thoughts, ""];
+//       setThoughts(newThoughts);
+//       if (!isTemplateSelected.current) setSavedThoughts(newThoughts);
+//       setTimeout(() => inputRefs.current[index + 1]?.focus(), 0);
+//     } else if (
+//       e.key === "Backspace" &&
+//       thoughts[index] === "" &&
+//       thoughts.length > 1
+//     ) {
+//       e.preventDefault();
+//       const newThoughts = thoughts.filter((_, i) => i !== index);
+//       setThoughts(newThoughts);
+//       if (!isTemplateSelected.current) setSavedThoughts(newThoughts);
+//       setTimeout(() => inputRefs.current[Math.max(0, index - 1)]?.focus(), 0);
+//     }
+//   };
+
+//   const handleChange = (
+//     e: React.ChangeEvent<HTMLInputElement>,
+//     index: number
+//   ) => {
+//     const newThoughts = [...thoughts];
+//     newThoughts[index] = e.target.value;
+//     setThoughts(newThoughts);
+//     if (!isTemplateSelected.current) setSavedThoughts(newThoughts);
+//   };
+
+//   // const handleComplete = () => {
+//   //   const cleanThoughts = thoughts
+//   //     .filter((thought) => thought.trim() !== "")
+//   //     .join("\n");
+//   //   onGenerateSchedule(cleanThoughts, "", "");
+//   //   if (isTemplateSelected.current) {
+//   //     setSavedThoughts([""]);
+//   //     localStorage.setItem("savedThoughts", JSON.stringify([""]));
+//   //   }
+//   // };
+
+//   const handleClose = (open: boolean) => {
+//     if (!open && isTemplateSelected.current) {
+//       setThoughts(savedThoughts);
+//       isTemplateSelected.current = false;
+//     }
+//     onClose(open);
+//   };
+
+//   return (
+//     <Drawer open={isOpen} onOpenChange={handleClose}>
+//       <DrawerContent className="h-[95vh]">
+//         <div className="container max-w-4xl mx-auto h-full flex flex-col">
+//           <div className="px-6">
+//             <DrawerHeader className="px-0 pt-8 pb-6 border-b">
+//               <DrawerTitle className="flex items-center gap-3 text-2xl font-semibold">
+//                 <Sparkles className="h-6 w-6 text-blue-600" />
+//                 Generate Schedule
+//               </DrawerTitle>
+//               <DrawerDescription>
+//                 Let AI help you plan your day. Enter your tasks and requirements
+//                 below.
+//               </DrawerDescription>
+//             </DrawerHeader>
+//           </div>
+
+//           <div className="flex-1 py-8 overflow-y-auto px-6">
+//             <div className="space-y-4">
+//               {thoughts.map((thought, index) => (
+//                 <div key={index} className="flex items-start gap-3">
+//                   <span className="text-blue-600 mt-3 text-xl">•</span>
+//                   <input
+//                     ref={(el) => {
+//                       inputRefs.current[index] = el;
+//                     }}
+//                     type="text"
+//                     value={thought}
+//                     onChange={(e) => handleChange(e, index)}
+//                     onKeyDown={(e) => handleKeyDown(e, index)}
+//                     placeholder={
+//                       index === 0
+//                         ? "Enter your schedule requirements..."
+//                         : "Add another item..."
+//                     }
+//                     className="flex-1 py-2 px-3 bg-zinc-50/50 rounded-md text-base placeholder:text-zinc-400
+//                              focus:outline-none focus:ring-1 focus:ring-blue-100 focus:bg-white
+//                              border border-zinc-200 hover:border-zinc-300 transition-colors"
+//                   />
+//                 </div>
+//               ))}
+//             </div>
+//           </div>
+
+//           <div className="px-6">
+//             <DrawerFooter className="px-0 py-4 border-t">
+//               <div className="flex gap-3 w-full max-w-xs ml-auto">
+//                 <DrawerClose asChild>
+//                   <Button variant="outline" className="flex-1">
+//                     Cancel
+//                   </Button>
+//                 </DrawerClose>
+//                 <Button
+//                   className="flex-1 bg-blue-600 hover:bg-blue-700"
+//                   onClick={handleComplete}
+//                 >
+//                   Generate (⌘/Ctrl+Enter)
+//                 </Button>
+//               </div>
+//             </DrawerFooter>
+//           </div>
+//         </div>
+//       </DrawerContent>
+//     </Drawer>
+//   );
+// };
+
+// export default ScheduleGenerationDialog;
+
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -687,29 +894,18 @@ export const ScheduleGenerationDialog: React.FC<
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const isTemplateSelected = useRef(false);
 
-  const handleComplete = useCallback(() => {
-    const cleanThoughts = thoughts
-      .filter((thought) => thought.trim() !== "")
-      .join("\n");
-    onGenerateSchedule(cleanThoughts, "", "");
-    if (isTemplateSelected.current) {
-      setSavedThoughts([""]);
-      localStorage.setItem("savedThoughts", JSON.stringify([""]));
-    }
-  }, [thoughts, onGenerateSchedule]);
-
+  // Auto-focus the first input when the drawer is opened
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (isOpen && (e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        e.preventDefault();
-        handleComplete();
-      }
-    };
+    if (isOpen) {
+      setTimeout(() => {
+        if (inputRefs.current[0]) {
+          inputRefs.current[0].focus();
+        }
+      }, 50); // a 50ms delay can help ensure the input is rendered
+    }
+  }, [isOpen]);
 
-    window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [isOpen, handleComplete]);
-
+  // Update local storage when savedThoughts change (if not using a template)
   useEffect(() => {
     if (!isTemplateSelected.current) {
       localStorage.setItem("savedThoughts", JSON.stringify(savedThoughts));
@@ -764,16 +960,20 @@ export const ScheduleGenerationDialog: React.FC<
     if (!isTemplateSelected.current) setSavedThoughts(newThoughts);
   };
 
-  // const handleComplete = () => {
-  //   const cleanThoughts = thoughts
-  //     .filter((thought) => thought.trim() !== "")
-  //     .join("\n");
-  //   onGenerateSchedule(cleanThoughts, "", "");
-  //   if (isTemplateSelected.current) {
-  //     setSavedThoughts([""]);
-  //     localStorage.setItem("savedThoughts", JSON.stringify([""]));
-  //   }
-  // };
+  const handleComplete = useCallback(() => {
+    // Join non-empty thoughts together
+    const cleanThoughts = thoughts
+      .filter((thought) => thought.trim() !== "")
+      .join("\n");
+
+    // Call the schedule generation function
+    onGenerateSchedule(cleanThoughts, "", "");
+
+    // Clear the local state and localStorage so the inputs are reset
+    setThoughts([""]);
+    setSavedThoughts([""]);
+    localStorage.setItem("savedThoughts", JSON.stringify([""]));
+  }, [thoughts, onGenerateSchedule]);
 
   const handleClose = (open: boolean) => {
     if (!open && isTemplateSelected.current) {
@@ -782,6 +982,18 @@ export const ScheduleGenerationDialog: React.FC<
     }
     onClose(open);
   };
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (isOpen && (e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        handleComplete();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, [isOpen, handleComplete]);
 
   return (
     <Drawer open={isOpen} onOpenChange={handleClose}>

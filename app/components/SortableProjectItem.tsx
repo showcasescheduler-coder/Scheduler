@@ -105,7 +105,7 @@ export default function SortableProjectItem({
           >
             <GripVertical className="h-5 w-5" />
           </span>
-          <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+          <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-r from-purple-50 to-emerald-50 text-sm font-medium text-purple-600 transition-colors group-hover:from-purple-100 group-hover:to-emerald-100 group-hover:text-emerald-600">
             #{index + 1}
           </span>
         </div>
@@ -172,7 +172,7 @@ export default function SortableProjectItem({
 
           {/* Right: Priority badge and actions */}
           <div className="flex items-center gap-2">
-            <div
+            {/* <div
               className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", {
                 "bg-red-100 text-red-800": project.priority === "High",
                 "bg-yellow-100 text-yellow-800": project.priority === "Medium",
@@ -180,7 +180,7 @@ export default function SortableProjectItem({
               })}
             >
               {project.priority}
-            </div>
+            </div> */}
 
             <TooltipProvider>
               <Tooltip>

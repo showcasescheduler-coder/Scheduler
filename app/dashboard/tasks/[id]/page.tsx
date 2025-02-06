@@ -60,6 +60,7 @@ interface Task {
     start?: string;
     end?: string;
   };
+  isCustomDuration?: boolean;
 }
 
 export default function TaskDetails({ params: { id } }: Props) {
@@ -348,17 +349,91 @@ export default function TaskDetails({ params: { id } }: Props) {
                       <div>
                         <label className="text-sm font-medium flex items-center gap-2">
                           <Clock className="h-4 w-4 text-blue-500" />
-                          Duration (minutes)
+                          Duration
                         </label>
-                        <div className="relative mt-2">
-                          <Input
-                            type="number"
-                            name="duration"
-                            value={task?.duration}
-                            onChange={handleInputChange}
-                            className="pl-10"
-                          />
-                          <Clock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                        <div className="mt-2 space-y-2">
+                          <Select
+                            value={
+                              task?.isCustomDuration
+                                ? "custom"
+                                : task?.duration?.toString() || "0"
+                            }
+                            onValueChange={(value) => {
+                              if (value === "custom") {
+                                setTask((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        duration: 0,
+                                        isCustomDuration: true,
+                                      }
+                                    : null
+                                );
+                              } else {
+                                setTask((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        duration: parseInt(value),
+                                        isCustomDuration: false,
+                                      }
+                                    : null
+                                );
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select duration" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0">
+                                Can be done in parallel
+                              </SelectItem>
+                              <SelectItem value="5">5 minutes</SelectItem>
+                              <SelectItem value="10">10 minutes</SelectItem>
+                              <SelectItem value="15">15 minutes</SelectItem>
+                              <SelectItem value="30">30 minutes</SelectItem>
+                              <SelectItem value="45">45 minutes</SelectItem>
+                              <SelectItem value="60">1 hour</SelectItem>
+                              <SelectItem value="120">2 hours</SelectItem>
+                              <SelectItem value="custom">
+                                Custom duration...
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+
+                          {task?.isCustomDuration && (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min="1"
+                                max="480"
+                                value={task.duration || ""}
+                                onChange={(e) => {
+                                  const value = parseInt(e.target.value);
+                                  if (
+                                    !isNaN(value) &&
+                                    value >= 0 &&
+                                    value <= 480
+                                  ) {
+                                    setTask((prev) =>
+                                      prev
+                                        ? {
+                                            ...prev,
+                                            duration: value,
+                                          }
+                                        : null
+                                    );
+                                  }
+                                }}
+                                className="flex-1"
+                                placeholder="Enter duration in minutes"
+                              />
+                              <span className="text-sm text-gray-500 w-16">
+                                minutes
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -401,7 +476,7 @@ export default function TaskDetails({ params: { id } }: Props) {
                         </p>
                       </div>
 
-                      <div>
+                      {/* <div>
                         <label className="text-sm font-medium flex items-center gap-2">
                           <BarChart2 className="h-4 w-4 text-blue-500" />
                           Status
@@ -436,9 +511,9 @@ export default function TaskDetails({ params: { id } }: Props) {
                             </SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
+                      </div> */}
 
-                      <div>
+                      {/* <div>
                         <label className="text-sm font-medium flex items-center gap-2">
                           <FolderKanban className="h-4 w-4 text-blue-500" />
                           Priority
@@ -473,9 +548,9 @@ export default function TaskDetails({ params: { id } }: Props) {
                             </SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
+                      </div> */}
 
-                      <div>
+                      {/* <div>
                         <label className="text-sm font-medium flex items-center gap-2">
                           <Repeat className="h-4 w-4 text-blue-500" />
                           Task Type
@@ -537,7 +612,7 @@ export default function TaskDetails({ params: { id } }: Props) {
                             </SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
                 </div>

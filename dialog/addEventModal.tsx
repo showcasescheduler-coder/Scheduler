@@ -54,7 +54,6 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   const [newEvent, setNewEvent] = useState({
     name: "",
     description: "",
-    priority: "",
     startTime: "",
     endTime: "",
     meetingLink: "", // New field for meeting link
@@ -137,7 +136,6 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
         description: "",
         startTime: "",
         endTime: "",
-        priority: "",
         meetingLink: "", // New field for meeting link
       });
 
@@ -280,7 +278,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                 />
               </div>
             </div>
-            <Select
+            {/* <Select
               value={newEvent.priority}
               onValueChange={handleSelectChange("priority")}
             >
@@ -292,7 +290,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                 <SelectItem value="Medium">Medium</SelectItem>
                 <SelectItem value="High">High</SelectItem>
               </SelectContent>
-            </Select>
+            </Select> */}
 
             <div className="flex justify-end gap-2 pt-4 mt-4 border-t">
               <Button variant="outline" onClick={onClose} className="h-9">

@@ -143,7 +143,6 @@ export default function ProjectDetails({ params: { id } }: Props) {
   // KEEP - Task states
   const [newTask, setNewTask] = useState<Partial<Task>>({
     duration: 5,
-    type: "deep-work",
   });
 
   // KEEP - Edit dialog states
@@ -1320,129 +1319,111 @@ export default function ProjectDetails({ params: { id } }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Add Task Dialog */}
       <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
             <DialogTitle>Add New Task</DialogTitle>
             <DialogDescription>
               Enter the details for the new task.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+
+          <div className="grid gap-6 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="task-name" className="text-right">
                 Name
               </Label>
               <Input
                 id="task-name"
-                value={newTask.name || ""}
+                value={newTask.name}
                 onChange={(e) =>
                   setNewTask({ ...newTask, name: e.target.value })
                 }
                 className="col-span-3"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="task-description" className="text-right">
+
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="task-description" className="text-right pt-2">
                 Description
               </Label>
               <Textarea
-                id="description"
-                name="description"
+                id="task-description"
                 value={newTask.description}
                 onChange={(e) =>
-                  setNewTask((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
+                  setNewTask({ ...newTask, description: e.target.value })
                 }
                 className="col-span-3 min-h-[100px]"
                 placeholder="Enter task description..."
               />
             </div>
-            {/* <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="deadline" className="text-right">
-                Deadline
+
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="task-duration" className="text-right pt-2">
+                Duration
               </Label>
-              <Input
-                id="deadline"
-                name="deadline"
-                type="date"
-                value={newTask.deadline || ""}
-                onChange={(e) =>
-                  setNewTask({ ...newTask, deadline: e.target.value })
-                }
-                className="col-span-3"
-              />
-            </div> */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="task-duration" className="text-right">
-                Duration (minutes)
-              </Label>
-              <Input
-                id="task-duration"
-                type="number"
-                min="5"
-                max="240"
-                value={newTask.duration || ""}
-                onChange={(e) =>
-                  setNewTask({
-                    ...newTask,
-                    duration: Number(e.target.value),
-                  })
-                }
-                className="col-span-3"
-              />
-            </div>
-            {/* <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="task-priority" className="text-right">
-                Priority
-              </Label>
-              <Select
-                value={newTask.priority}
-                onValueChange={(value) =>
-                  setNewTask({ ...newTask, priority: value })
-                }
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Low">Low</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div> */}
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="task-type" className="text-right">
-                Type
-              </Label>
-              <Select
-                value={newTask.type}
-                onValueChange={(
-                  value:
-                    | "deep-work"
-                    | "planning"
-                    | "break"
-                    | "admin"
-                    | "collaboration"
-                ) => setNewTask({ ...newTask, type: value })}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="deep-work">Deep Work</SelectItem>
-                  <SelectItem value="planning">Planning</SelectItem>
-                  <SelectItem value="break">Break</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="collaboration">Collaboration</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="col-span-3 space-y-2">
+                <Select
+                  value={
+                    newTask.isCustomDuration
+                      ? "custom"
+                      : newTask.duration?.toString() || "0"
+                  }
+                  onValueChange={(value) => {
+                    if (value === "custom") {
+                      setNewTask({
+                        ...newTask,
+                        duration: 0, // Reset duration to 0 when switching to custom
+                        isCustomDuration: true,
+                      });
+                    } else {
+                      setNewTask({
+                        ...newTask,
+                        duration: parseInt(value),
+                        isCustomDuration: false,
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger id="task-duration" className="w-full">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Can be done in parallel</SelectItem>
+                    <SelectItem value="5">5 minutes</SelectItem>
+                    <SelectItem value="10">10 minutes</SelectItem>
+                    <SelectItem value="15">15 minutes</SelectItem>
+                    <SelectItem value="30">30 minutes</SelectItem>
+                    <SelectItem value="45">45 minutes</SelectItem>
+                    <SelectItem value="60">1 hour</SelectItem>
+                    <SelectItem value="120">2 hours</SelectItem>
+                    <SelectItem value="custom">Custom duration...</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {newTask.isCustomDuration && (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="480"
+                      value={newTask.duration || ""}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        if (!isNaN(value) && value >= 0 && value <= 480) {
+                          setNewTask({ ...newTask, duration: value });
+                        }
+                      }}
+                      className="flex-1"
+                      placeholder="Enter duration in minutes"
+                    />
+                    <span className="text-sm text-gray-500 w-16">minutes</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
           <DialogFooter>
             <Button
               className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -1489,81 +1470,99 @@ export default function ProjectDetails({ params: { id } }: Props) {
                   className="col-span-3"
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-description" className="text-right">
+
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="edit-description" className="text-right pt-2">
                   Description
                 </Label>
                 <Textarea
-                  id="description"
-                  name="description"
-                  value={newTask.description}
+                  id="edit-description"
+                  value={editingTask.description || ""}
                   onChange={(e) =>
-                    setNewTask((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
+                    setEditingTask((prev) =>
+                      prev ? { ...prev, description: e.target.value } : null
+                    )
                   }
                   className="col-span-3 min-h-[100px]"
                   placeholder="Enter task description..."
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-deadline" className="text-right">
-                  Deadline
+
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="edit-duration" className="text-right pt-2">
+                  Duration
                 </Label>
-                <Input
-                  id="edit-deadline"
-                  type="date"
-                  value={editingTask.deadline || ""}
-                  onChange={(e) =>
-                    setEditingTask((prev) =>
-                      prev ? { ...prev, deadline: e.target.value } : null
-                    )
-                  }
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-duration" className="text-right">
-                  Duration (min)
-                </Label>
-                <Input
-                  id="edit-duration"
-                  type="number"
-                  min="5"
-                  max="240"
-                  value={editingTask.duration || ""}
-                  onChange={(e) =>
-                    setEditingTask((prev) =>
-                      prev
-                        ? { ...prev, duration: Number(e.target.value) }
-                        : null
-                    )
-                  }
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-priority" className="text-right">
-                  Priority
-                </Label>
-                <Select
-                  value={editingTask.priority || "Medium"}
-                  onValueChange={(value) =>
-                    setEditingTask((prev) =>
-                      prev ? { ...prev, priority: value } : null
-                    )
-                  }
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Low">Low</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="High">High</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="col-span-3 space-y-2">
+                  <Select
+                    value={
+                      editingTask.isCustomDuration
+                        ? "custom"
+                        : editingTask.duration?.toString() || "0"
+                    }
+                    onValueChange={(value) => {
+                      if (value === "custom") {
+                        setEditingTask((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                duration: 0,
+                                isCustomDuration: true,
+                              }
+                            : null
+                        );
+                      } else {
+                        setEditingTask((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                duration: parseInt(value),
+                                isCustomDuration: false,
+                              }
+                            : null
+                        );
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="edit-task-duration" className="w-full">
+                      <SelectValue placeholder="Select duration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Can be done in parallel</SelectItem>
+                      <SelectItem value="5">5 minutes</SelectItem>
+                      <SelectItem value="10">10 minutes</SelectItem>
+                      <SelectItem value="15">15 minutes</SelectItem>
+                      <SelectItem value="30">30 minutes</SelectItem>
+                      <SelectItem value="45">45 minutes</SelectItem>
+                      <SelectItem value="60">1 hour</SelectItem>
+                      <SelectItem value="120">2 hours</SelectItem>
+                      <SelectItem value="custom">Custom duration...</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {editingTask.isCustomDuration && (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="480"
+                        value={editingTask.duration || ""}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (!isNaN(value) && value >= 0 && value <= 480) {
+                            setEditingTask((prev) =>
+                              prev ? { ...prev, duration: value } : null
+                            );
+                          }
+                        }}
+                        className="flex-1"
+                        placeholder="Enter duration in minutes"
+                      />
+                      <span className="text-sm text-gray-500 w-16">
+                        minutes
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             <DialogFooter>

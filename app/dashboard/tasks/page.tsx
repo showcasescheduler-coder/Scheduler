@@ -70,16 +70,15 @@ interface Task {
   _id: string;
   name: string;
   description?: string;
-  priority: string;
   duration: number;
   deadline: string;
   completed: boolean;
   status?: string;
-  type?: "deep-work" | "planning" | "break" | "admin" | "collaboration";
   timeWindow?: {
     start?: string;
     end?: string;
   };
+  isCustomDuration: boolean;
 }
 
 export default function StandaloneTasks() {
@@ -92,15 +91,14 @@ export default function StandaloneTasks() {
     _id: "",
     name: "",
     description: "",
-    priority: "Medium",
     duration: 5,
     deadline: "",
     completed: false,
-    type: "deep-work",
     timeWindow: {
       start: "",
       end: "",
     },
+    isCustomDuration: false,
   });
   const [activeTab, setActiveTab] = useState("active");
 
@@ -152,11 +150,10 @@ export default function StandaloneTasks() {
         _id: "",
         name: "",
         description: "",
-        priority: "Medium",
         duration: 5,
         deadline: "",
         completed: false,
-        type: "deep-work", // Reset to default type
+        isCustomDuration: false,
       });
       toast.success("Task created successfully!");
     } catch (error) {
@@ -316,8 +313,9 @@ export default function StandaloneTasks() {
                       className="col-span-3"
                     />
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="description" className="text-right">
+
+                  <div className="grid grid-cols-4 items-start gap-4">
+                    <Label htmlFor="description" className="text-right pt-2">
                       Description
                     </Label>
                     <Textarea
@@ -334,6 +332,78 @@ export default function StandaloneTasks() {
                       placeholder="Enter task description..."
                     />
                   </div>
+
+                  <div className="grid grid-cols-4 items-start gap-4">
+                    <Label htmlFor="task-duration" className="text-right pt-2">
+                      Duration
+                    </Label>
+                    <div className="col-span-3 space-y-2">
+                      <Select
+                        value={
+                          newTask.isCustomDuration
+                            ? "custom"
+                            : newTask.duration?.toString() || "0"
+                        }
+                        onValueChange={(value) => {
+                          if (value === "custom") {
+                            setNewTask({
+                              ...newTask,
+                              duration: 0,
+                              isCustomDuration: true,
+                            });
+                          } else {
+                            setNewTask({
+                              ...newTask,
+                              duration: parseInt(value),
+                              isCustomDuration: false,
+                            });
+                          }
+                        }}
+                      >
+                        <SelectTrigger id="task-duration" className="w-full">
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">
+                            Can be done in parallel
+                          </SelectItem>
+                          <SelectItem value="5">5 minutes</SelectItem>
+                          <SelectItem value="10">10 minutes</SelectItem>
+                          <SelectItem value="15">15 minutes</SelectItem>
+                          <SelectItem value="30">30 minutes</SelectItem>
+                          <SelectItem value="45">45 minutes</SelectItem>
+                          <SelectItem value="60">1 hour</SelectItem>
+                          <SelectItem value="120">2 hours</SelectItem>
+                          <SelectItem value="custom">
+                            Custom duration...
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {newTask.isCustomDuration && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min="1"
+                            max="480"
+                            value={newTask.duration || ""}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value);
+                              if (!isNaN(value) && value >= 0 && value <= 480) {
+                                setNewTask({ ...newTask, duration: value });
+                              }
+                            }}
+                            className="flex-1"
+                            placeholder="Enter duration in minutes"
+                          />
+                          <span className="text-sm text-gray-500 w-16">
+                            minutes
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="timeWindow.start" className="text-right">
                       Time Window Start
@@ -355,6 +425,7 @@ export default function StandaloneTasks() {
                       className="col-span-3"
                     />
                   </div>
+
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="timeWindow.end" className="text-right">
                       Time Window End
@@ -376,6 +447,7 @@ export default function StandaloneTasks() {
                       className="col-span-3"
                     />
                   </div>
+
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="deadline" className="text-right">
                       Deadline
@@ -388,61 +460,6 @@ export default function StandaloneTasks() {
                       onChange={handleInputChange}
                       className="col-span-3"
                     />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="priority" className="text-right">
-                      Priority
-                    </Label>
-                    <Select
-                      value={newTask.priority}
-                      onValueChange={handlePriorityChange}
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select priority" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Low">Low</SelectItem>
-                        <SelectItem value="Medium">Medium</SelectItem>
-                        <SelectItem value="High">High</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="duration" className="text-right">
-                      Duration (minutes)
-                    </Label>
-                    <Input
-                      id="duration"
-                      name="duration"
-                      type="number"
-                      min="5"
-                      max="240"
-                      value={newTask.duration}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="type" className="text-right">
-                      Task Type
-                    </Label>
-                    <Select
-                      value={newTask.type || "deep-work"} // Provide a default value
-                      onValueChange={handleTypeChange}
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select task type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="deep-work">Deep Work</SelectItem>
-                        <SelectItem value="planning">Planning</SelectItem>
-                        <SelectItem value="break">Break</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="collaboration">
-                          Collaboration
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
 
@@ -507,9 +524,7 @@ export default function StandaloneTasks() {
                     <TableHead className="w-[250px]">Task</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Due</TableHead>
-                    <TableHead className="w-[100px]">Priority</TableHead>
                     <TableHead className="w-[100px]">Duration</TableHead>
-                    <TableHead className="w-[120px]">Type</TableHead>
                     <TableHead className="w-[70px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -531,7 +546,7 @@ export default function StandaloneTasks() {
                         {task.deadline &&
                           format(parseISO(task.deadline), "MMM dd, yyyy")}
                       </TableCell>
-                      <TableCell>
+                      {/* <TableCell>
                         <span
                           className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
                             task.priority
@@ -539,11 +554,11 @@ export default function StandaloneTasks() {
                         >
                           {task.priority}
                         </span>
-                      </TableCell>
+                      </TableCell> */}
                       <TableCell className="text-gray-500">
                         {task.duration}m
                       </TableCell>
-                      <TableCell>
+                      {/* <TableCell>
                         <span
                           className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(
                             task.type
@@ -556,7 +571,7 @@ export default function StandaloneTasks() {
                                 .toUpperCase() + task.type.slice(1)
                             : "-"}
                         </span>
-                      </TableCell>
+                      </TableCell> */}
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -578,9 +593,6 @@ export default function StandaloneTasks() {
                               className="text-red-600"
                             >
                               Delete
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              Mark as Complete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

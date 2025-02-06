@@ -9,6 +9,7 @@ export interface IProject extends Document {
   time: string;
   priority: string;
   completed: boolean; // Added completed field to interface
+  completedAt?: Date; // New optional field for completion date
   order: number;
 }
 
@@ -19,9 +20,8 @@ const ProjectSchema: Schema = new Schema(
     name: { type: String, required: true },
     description: { type: String, required: true },
     deadline: { type: Date, required: true },
-    time: { type: String, required: true },
-    priority: { type: String, required: true, enum: ["Low", "Medium", "High"] },
     completed: { type: Boolean, required: true, default: false }, // Added completed field to schema
+    completedAt: { type: Date, default: null }, // New field for tracking completion date
     tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Task" }],
     order: { type: Number, default: 9999 },
   },

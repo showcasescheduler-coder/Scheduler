@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { SignUpButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { Brain, Sparkles, Check, CreditCard, Calendar } from "lucide-react";
+import { Brain, Sparkles, Check, Clock, Wand2 } from "lucide-react";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -18,81 +18,68 @@ interface AuthModalProps {
 const AuthModal = ({ isOpen, onClose, actionType }: AuthModalProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl flex items-center gap-2">
-            <Brain className="h-6 w-6 text-blue-600" />
-            Start Your 14-Day Free Trial
+          <DialogTitle className="text-2xl font-bold flex items-center gap-2 justify-center">
+            <Brain className="h-8 w-8 text-purple-600" />
+            Unlock ScheduleSmart
           </DialogTitle>
-          <DialogDescription className="text-base">
-            Try ScheduleSmart Pro free for 14 days. No credit card required
-            during trial.
+          <DialogDescription className="text-center text-base">
+            {actionType === "accept"
+              ? "Ready to save your perfect schedule? Sign up to continue!"
+              : "Want to try a different schedule? Sign up to explore more options!"}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4">
-          <div className="space-y-4">
-            {/* Feature List */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-green-500" />
+        <div className="py-6">
+          <div className="space-y-6">
+            {/* Value Propositions */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 bg-purple-50 p-3 rounded-lg">
+                <Wand2 className="h-5 w-5 text-purple-600 flex-shrink-0" />
                 <span className="text-sm">
-                  Unlimited AI schedule generations
+                  Create unlimited AI-powered schedules tailored to your needs
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-green-500" />
-                <span className="text-sm">Custom schedule templates</span>
+              <div className="flex items-center gap-3 bg-blue-50 p-3 rounded-lg">
+                <Clock className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                <span className="text-sm">
+                  Save hours of manual planning with smart scheduling
+                </span>
               </div>
-              <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-green-500" />
-                <span className="text-sm">Priority-based task management</span>
-              </div>
-            </div>
-
-            {/* Pricing Info */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium">14-day free trial</span>
-                </div>
-                <span className="text-green-600 font-medium">$0</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium">Then</span>
-                </div>
-                <div className="text-right">
-                  <span className="font-medium">$9.99/month</span>
-                  <p className="text-xs text-gray-500">Cancel anytime</p>
-                </div>
+              <div className="flex items-center gap-3 bg-green-50 p-3 rounded-lg">
+                <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                <span className="text-sm">
+                  Access all core features completely free
+                </span>
               </div>
             </div>
 
             {/* Sign Up Button */}
-            <SignUpButton mode="modal">
-              <Button
-                className="w-full bg-blue-600 hover:bg-blue-700 h-11"
-                onClick={() => {
-                  // Close the AuthModal before Clerk's modal opens
-                  onClose();
-                }}
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Start Free Trial
-              </Button>
-            </SignUpButton>
+            <div className="space-y-4">
+              <SignUpButton mode="modal">
+                <Button
+                  className="w-full bg-purple-600 hover:bg-purple-700 h-12 text-base"
+                  onClick={onClose}
+                >
+                  <Sparkles className="h-5 w-5 mr-2" />
+                  Sign Up For Free
+                </Button>
+              </SignUpButton>
+
+              <p className="text-center text-sm text-gray-600">
+                No credit card required
+              </p>
+            </div>
 
             {/* Terms and Privacy */}
             <p className="text-xs text-center text-gray-500">
-              By starting your trial, you agree to our{" "}
-              <a href="/terms" className="text-blue-600 hover:underline">
+              By signing up, you agree to our{" "}
+              <a href="/terms" className="text-purple-600 hover:underline">
                 Terms
               </a>{" "}
               and{" "}
-              <a href="/privacy" className="text-blue-600 hover:underline">
+              <a href="/privacy" className="text-purple-600 hover:underline">
                 Privacy Policy
               </a>
             </p>

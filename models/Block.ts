@@ -9,7 +9,15 @@ export interface IBlock extends Document {
   endTime: string;
   tasks: mongoose.Types.ObjectId[];
   event?: mongoose.Types.ObjectId;
-  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  routineId?: mongoose.Types.ObjectId; // Added routineId field
+  blockType:
+    | "deep-work"
+    | "break"
+    | "meeting"
+    | "health"
+    | "exercise"
+    | "admin"
+    | "personal";
   meetingLink?: string; // Add optional meeting link field
 }
 
@@ -51,9 +59,24 @@ const BlockSchema: Schema = new Schema(
       ref: "Event",
       default: null,
     },
+    routineId: {
+      // Added routineId field
+      type: Schema.Types.ObjectId,
+      ref: "Routine",
+      default: null,
+      required: false,
+    },
     blockType: {
       type: String,
-      enum: ["deep-work", "planning", "break", "admin", "collaboration"],
+      enum: [
+        "deep-work",
+        "break",
+        "meeting",
+        "health",
+        "exercise",
+        "admin",
+        "personal",
+      ],
       required: false,
     },
     meetingLink: {

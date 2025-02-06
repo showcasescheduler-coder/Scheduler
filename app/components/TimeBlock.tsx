@@ -18,6 +18,7 @@ import {
   MoreVertical,
   Trash2,
   Sparkles,
+  Calendar,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,6 +35,7 @@ import {
 import BlockProgress from "./BlockProgress";
 import BlockTypeBadge from "./BlockTypeBadge";
 import SourceBadge from "./SourceBadge";
+import { Block } from "@/app/context/models";
 
 interface Task {
   _id: string;
@@ -52,23 +54,48 @@ interface Task {
   __v: number;
 }
 
-interface Block {
-  _id: string;
-  dayId: string;
-  name: string;
-  description: string;
-  startTime: string;
-  endTime: string;
-  status: "pending" | "complete" | "incomplete";
-  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-  event: string | null;
-  tasks: Task[];
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-  isStandaloneBlock?: boolean;
-  meetingLink: string;
-}
+// interface Task {
+//   _id: string;
+//   block: string;
+//   dayId: string;
+//   name: string;
+//   description: string;
+//   duration: string;
+//   priority: "High" | "Medium" | "Low";
+//   status: "pending" | "in_progress" | "completed";
+//   type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+//   isRoutineTask: boolean;
+//   completed: boolean;
+//   createdAt: string;
+//   updatedAt: string;
+//   __v: number;
+// }
+
+// interface Block {
+//   _id: string;
+//   dayId: string;
+//   name: string;
+//   description: string;
+//   startTime: string;
+//   endTime: string;
+//   status: "pending" | "complete" | "incomplete";
+//   blockType:
+//     | "deep-work"
+//     | "break"
+//     | "meeting"
+//     | "health"
+//     | "exercise"
+//     | "admin"
+//     | "personal";
+//   event: string | null;
+//   tasks: Task[];
+//   createdAt: string;
+//   updatedAt: string;
+//   __v: number;
+//   isStandaloneBlock?: boolean;
+//   meetingLink: string;
+//   routineId: string;
+// }
 
 interface TimeBlockProps {
   block: Block;
@@ -123,6 +150,8 @@ export function TimeBlock({
     return block.tasks.map((task) => task._id);
   }, [block.tasks]);
 
+  console.log(block);
+
   return (
     <Card ref={setNodeRef} className="border-gray-200 shadow-sm">
       {/* Mobile time strip */}
@@ -139,18 +168,20 @@ export function TimeBlock({
           <div className="flex items-center gap-2">
             {block.name}
             {block.blockType && <BlockTypeBadge type={block.blockType} />}
+            {block.routineId && <SourceBadge type={block.routineId} />}
+
             {/* <SourceBadge
               isEvent={block.isEvent}
               isRoutine={block.isRoutine}
               eventId={block.eventId}
               routineId={block.routineId}
             /> */}
-            {block.isStandaloneBlock && (
+            {/* {block.isStandaloneBlock && (
               <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
                 <Sparkles className="mr-1 h-3 w-3" />
                 <span className="hidden sm:inline">AI Optimized</span>
               </span>
-            )}
+            )} */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>

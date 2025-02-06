@@ -1238,7 +1238,6 @@ export default function ProjectsPage() {
     description: "",
     deadline: "",
     time: "",
-    priority: "Medium",
   });
   const [activeTab, setActiveTab] = useState("active");
 
@@ -1294,7 +1293,6 @@ export default function ProjectsPage() {
         description: "",
         deadline: "",
         time: "",
-        priority: "Medium",
       });
       setIsDialogOpen(false);
     } catch (error) {
@@ -1382,8 +1380,6 @@ export default function ProjectsPage() {
     </div>
   );
 
-  console.log("Projects", projects);
-
   return (
     <div className="flex h-screen bg-white">
       <aside className="hidden md:block w-16 border-r border-gray-200">
@@ -1458,27 +1454,37 @@ export default function ProjectsPage() {
                         className="col-span-3 border-gray-200 focus:ring-blue-600 focus:border-blue-600"
                       />
                     </div>
-                    {/* ... Additional form fields ... */}
+                    <div className="grid grid-cols-4 items-start gap-4">
+                      <Label
+                        htmlFor="description"
+                        className="text-right text-gray-600 pt-2"
+                      >
+                        Description
+                      </Label>
+                      <Textarea
+                        id="description"
+                        name="description"
+                        value={newProject.description}
+                        onChange={handleInputChange}
+                        className="col-span-3 border-gray-200 focus:ring-blue-600 focus:border-blue-600 min-h-[100px]"
+                        placeholder="Enter project description..."
+                      />
+                    </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label
-                        htmlFor="priority"
+                        htmlFor="deadline"
                         className="text-right text-gray-600"
                       >
-                        Priority
+                        Deadline
                       </Label>
-                      <Select
-                        onValueChange={handlePriorityChange}
-                        defaultValue={newProject.priority}
-                      >
-                        <SelectTrigger className="col-span-3 border-gray-200 focus:ring-blue-600 focus:border-blue-600">
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Low">Low</SelectItem>
-                          <SelectItem value="Medium">Medium</SelectItem>
-                          <SelectItem value="High">High</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        id="deadline"
+                        name="deadline"
+                        type="date"
+                        value={newProject.deadline}
+                        onChange={handleInputChange}
+                        className="col-span-3 border-gray-200 focus:ring-blue-600 focus:border-blue-600"
+                      />
                     </div>
                   </div>
                   <DialogFooter>
@@ -1580,9 +1586,9 @@ export default function ProjectsPage() {
                     >
                       <div className="flex items-center gap-4 p-6">
                         {/* (No drag handle in completed) */}
-                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800 mr-4">
-                          #{index + 1}
-                        </span>
+                        {/* <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800 mr-4">
+                            #{index + 1}
+                          </span> */}
 
                         <div className="flex items-center gap-4 w-full">
                           <div className="min-w-0">
@@ -1651,7 +1657,7 @@ export default function ProjectsPage() {
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <div
+                            {/* <div
                               className={cn(
                                 "rounded-full px-2.5 py-0.5 text-xs font-medium",
                                 {
@@ -1665,7 +1671,7 @@ export default function ProjectsPage() {
                               )}
                             >
                               {project.priority}
-                            </div>
+                            </div> */}
 
                             <TooltipProvider>
                               <Tooltip>

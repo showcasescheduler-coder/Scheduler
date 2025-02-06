@@ -35,6 +35,7 @@ interface AddTaskModalProps {
   blockId: string | null;
   updateDay: () => void; // New prop to update the day state
   day: Day; // This prop was missing
+  isCustomDuration: false;
 }
 
 const projectsData = [
@@ -126,9 +127,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [newTask, setNewTask] = useState({
     name: "",
     description: "",
-    priority: "",
     duration: 5,
-    type: "", // Add this new field
   });
 
   const [todaySchedule, setTodaySchedule] = useState<Day | null>(null);
@@ -493,25 +492,66 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="task-duration">Duration (minutes)</Label>
-                <Input
-                  id="task-duration"
-                  type="number"
-                  min="5"
-                  max="240"
-                  value={newTask.duration}
-                  onChange={(e) =>
-                    setNewTask({
-                      ...newTask,
-                      duration: Math.max(
-                        5,
-                        Math.min(240, Number(e.target.value))
-                      ),
-                    })
+                <Label htmlFor="task-duration">Duration</Label>
+                <Select
+                  value={
+                    newTask.isCustomDuration
+                      ? "custom"
+                      : newTask.duration?.toString() || "0"
                   }
-                />
+                  onValueChange={(value) => {
+                    if (value === "custom") {
+                      setNewTask({
+                        ...newTask,
+                        duration: 0,
+                        isCustomDuration: true,
+                      });
+                    } else {
+                      setNewTask({
+                        ...newTask,
+                        duration: parseInt(value),
+                        isCustomDuration: false,
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Can be done in parallel</SelectItem>
+                    <SelectItem value="5">5 minutes</SelectItem>
+                    <SelectItem value="10">10 minutes</SelectItem>
+                    <SelectItem value="15">15 minutes</SelectItem>
+                    <SelectItem value="30">30 minutes</SelectItem>
+                    <SelectItem value="45">45 minutes</SelectItem>
+                    <SelectItem value="60">1 hour</SelectItem>
+                    <SelectItem value="120">2 hours</SelectItem>
+                    <SelectItem value="custom">Custom duration...</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {newTask.isCustomDuration && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="480"
+                      value={newTask.duration || ""}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        if (!isNaN(value) && value >= 0 && value <= 480) {
+                          setNewTask({ ...newTask, duration: value });
+                        }
+                      }}
+                      className="flex-1"
+                      placeholder="Enter duration in minutes"
+                    />
+                    <span className="text-sm text-gray-500 w-16">minutes</span>
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Select
                   value={newTask.priority}
                   onValueChange={(value) =>
@@ -527,8 +567,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                     <SelectItem value="High">High</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
+              </div> */}
+              {/* <div className="space-y-2">
                 <Select
                   value={newTask.type}
                   onValueChange={(value) =>
@@ -546,7 +586,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                     <SelectItem value="collaboration">Collaboration</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </div> */}
             </div>
           </TabsContent>
 

@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Brain,
   LayoutDashboard,
@@ -18,7 +18,6 @@ import {
   ChevronRight,
   ListChecks,
   Activity,
-  Link,
   FolderCheck,
   CheckSquare,
 } from "lucide-react";
@@ -49,24 +48,42 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useAuth } from "@clerk/nextjs";
+import { SidebarContent } from "@/app/components/SideBar";
+import Link from "next/link"; // Add this import
 
-function SidebarContent() {
-  return (
-    <div className="flex flex-col items-center py-6 space-y-8">
-      <div className="flex flex-col items-center gap-2">
-        <Brain className="h-8 w-8 text-blue-600" />
-      </div>
-      <nav className="space-y-8">
-        <LayoutDashboard className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <FolderKanban className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <ListTodo className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <Calendar className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <Repeat className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
-        <BarChart2 className="h-5 w-5 text-blue-600" />
-      </nav>
-    </div>
-  );
+interface AnalyticsData {
+  averageTasksPerDay: string;
+  completionRate: string;
+  totalTasksCompleted: number;
+  totalTasks: number;
+  completedProjects: number; // Add completed projects to the interface
+  recentDays: {
+    date: string;
+    tasksCompleted: number;
+    totalTasks: number;
+    blocksCompleted: number;
+    totalBlocks: number;
+  }[];
 }
+
+// function SidebarContent() {
+//   return (
+//     <div className="flex flex-col items-center py-6 space-y-8">
+//       <div className="flex flex-col items-center gap-2">
+//         <Brain className="h-8 w-8 text-blue-600" />
+//       </div>
+//       <nav className="space-y-8">
+//         <LayoutDashboard className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+//         <FolderKanban className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+//         <ListTodo className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+//         <Calendar className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+//         <Repeat className="h-5 w-5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer" />
+//         <BarChart2 className="h-5 w-5 text-blue-600" />
+//       </nav>
+//     </div>
+//   );
+// }
 
 const performanceData = [
   { date: "Mon", score: 7.2 },
@@ -101,6 +118,50 @@ const recentDays = [
 ];
 
 export default function AnalyticsPage() {
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(
+    null
+  );
+  const [loading, setLoading] = useState(true);
+  const [selectedRange, setSelectedRange] = useState("week");
+  const { userId } = useAuth();
+
+  // Add this effect to fetch data
+  // Effect to fetch analytics data when range changes
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      setLoading(true);
+      try {
+        // Send POST request with userId in the body
+        const response = await fetch("/api/analytics", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId,
+            range: selectedRange,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch analytics data");
+        }
+
+        const data = await response.json();
+
+        console.log(data);
+        setAnalyticsData(data);
+      } catch (error) {
+        console.error("Error fetching analytics:", error);
+        // You might want to set an error state here to show in the UI
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Call the fetch function
+    fetchAnalytics();
+  }, [selectedRange, userId]); // Include userId in dependencies
   return (
     <div className="flex h-screen bg-white">
       <aside className="hidden md:block w-16 border-r border-gray-200">
@@ -118,7 +179,11 @@ export default function AnalyticsPage() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Select defaultValue="week">
+                <Select
+                  defaultValue="week"
+                  onValueChange={(value) => setSelectedRange(value)}
+                  value={selectedRange}
+                >
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Select time range" />
                   </SelectTrigger>
@@ -142,7 +207,9 @@ export default function AnalyticsPage() {
                 <BarChart2 className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">6.8</div>
+                <div className="text-2xl font-bold">
+                  {analyticsData?.averageTasksPerDay}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Average daily completion
                 </p>
@@ -157,9 +224,12 @@ export default function AnalyticsPage() {
                 <ListChecks className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">87%</div>
+                <div className="text-2xl font-bold">
+                  {analyticsData?.completionRate}%
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  142/163 tasks completed
+                  {analyticsData?.totalTasksCompleted}/
+                  {analyticsData?.totalTasks} tasks completed
                 </p>
               </CardContent>
             </Card>
@@ -172,7 +242,9 @@ export default function AnalyticsPage() {
                 <CheckSquare className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">142</div>
+                <div className="text-2xl font-bold">
+                  {analyticsData?.totalTasksCompleted}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   In selected period
                 </p>
@@ -187,7 +259,9 @@ export default function AnalyticsPage() {
                 <FolderCheck className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">5</div>
+                <div className="text-2xl font-bold">
+                  {analyticsData?.completedProjects}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   In selected period
                 </p>
@@ -203,36 +277,46 @@ export default function AnalyticsPage() {
                 <CardDescription>Your latest daily summaries</CardDescription>
               </div>
               <Button variant="outline" size="sm" asChild>
-                <Link href="/analytics/history">View Full History</Link>
+                <Link href="/dashboard/analytics/history">
+                  View Full History
+                </Link>
               </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentDays.map((day) => (
-                  <Card key={day.date} className="bg-muted/50">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <CalendarDays className="h-4 w-4" />
-                          <span className="font-medium">{day.date}</span>
+                {analyticsData?.recentDays.map((day) => (
+                  <Link
+                    href={`/dashboard/analytics/day/${day.date}`}
+                    key={day.date}
+                    className="block transition-colors hover:bg-muted/60"
+                  >
+                    <Card key={day.date} className="bg-muted/50">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <CalendarDays className="h-4 w-4" />
+                            <span className="font-medium">{day.date}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Tasks</span>
-                          <span className="font-medium">
-                            {day.tasksCompleted}/{day.totalTasks} completed
-                          </span>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Tasks</span>
+                            <span className="font-medium">
+                              {day.tasksCompleted}/{day.totalTasks} completed
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              Blocks
+                            </span>
+                            <span className="font-medium">
+                              {day.blocksCompleted}/{day.totalBlocks} completed
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Blocks</span>
-                          <span className="font-medium">
-                            {day.blocksCompleted}/{day.totalBlocks} completed
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             </CardContent>
