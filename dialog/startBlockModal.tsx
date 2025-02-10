@@ -13,41 +13,42 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Task, Block } from "@/app/context/models";
 
-interface Task {
-  _id: string;
-  block: string;
-  dayId: string;
-  name: string;
-  description: string;
-  duration: string;
-  priority: "High" | "Medium" | "Low";
-  status: "pending" | "in_progress" | "completed";
-  type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-  isRoutineTask: boolean;
-  completed: boolean;
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-}
+// interface Task {
+//   _id: string;
+//   block: string;
+//   dayId: string;
+//   name: string;
+//   description: string;
+//   duration: string;
+//   priority: "High" | "Medium" | "Low";
+//   status: "pending" | "in_progress" | "completed";
+//   type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+//   isRoutineTask: boolean;
+//   completed: boolean;
+//   createdAt: string;
+//   updatedAt: string;
+//   __v: number;
+// }
 
-interface Block {
-  _id: string;
-  dayId: string;
-  name: string;
-  description: string;
-  startTime: string;
-  endTime: string;
-  status: "pending" | "complete" | "incomplete";
-  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-  event: string | null;
-  tasks: Task[];
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-  isStandaloneBlock?: boolean;
-  meetingLink?: string;
-}
+// interface Block {
+//   _id: string;
+//   dayId: string;
+//   name: string;
+//   description: string;
+//   startTime: string;
+//   endTime: string;
+//   status: "pending" | "complete" | "incomplete";
+//   blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+//   event: string | null;
+//   tasks: Task[];
+//   createdAt: string;
+//   updatedAt: string;
+//   __v: number;
+//   isStandaloneBlock?: boolean;
+//   meetingLink?: string;
+// }
 
 interface FocusSessionProps {
   block: Block;

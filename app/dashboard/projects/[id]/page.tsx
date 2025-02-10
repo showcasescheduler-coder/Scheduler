@@ -102,22 +102,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import SortableTaskRow from "@/app/components/SortableTaskRow";
 import MobileSortableTaskRow from "@/app/components/MobileSortableTaskRow";
+import { Task } from "@/app/context/models";
 
 interface Props {
   params: { id: string };
-}
-
-interface Task {
-  _id: string;
-  name: string;
-  description?: string;
-  priority: string;
-  duration: number;
-  deadline: string;
-  completed: boolean;
-  projectId: string;
-  status?: string; // Make status optional
-  type?: "deep-work" | "planning" | "break" | "admin" | "collaboration"; // Make
 }
 
 export default function ProjectDetails({ params: { id } }: Props) {

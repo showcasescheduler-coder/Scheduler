@@ -35,67 +35,7 @@ import {
 import BlockProgress from "./BlockProgress";
 import BlockTypeBadge from "./BlockTypeBadge";
 import SourceBadge from "./SourceBadge";
-import { Block } from "@/app/context/models";
-
-interface Task {
-  _id: string;
-  block: string;
-  dayId: string;
-  name: string;
-  description: string;
-  duration: string;
-  priority: "High" | "Medium" | "Low";
-  status: "pending" | "in_progress" | "completed";
-  type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-  isRoutineTask: boolean;
-  completed: boolean;
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-}
-
-// interface Task {
-//   _id: string;
-//   block: string;
-//   dayId: string;
-//   name: string;
-//   description: string;
-//   duration: string;
-//   priority: "High" | "Medium" | "Low";
-//   status: "pending" | "in_progress" | "completed";
-//   type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-//   isRoutineTask: boolean;
-//   completed: boolean;
-//   createdAt: string;
-//   updatedAt: string;
-//   __v: number;
-// }
-
-// interface Block {
-//   _id: string;
-//   dayId: string;
-//   name: string;
-//   description: string;
-//   startTime: string;
-//   endTime: string;
-//   status: "pending" | "complete" | "incomplete";
-//   blockType:
-//     | "deep-work"
-//     | "break"
-//     | "meeting"
-//     | "health"
-//     | "exercise"
-//     | "admin"
-//     | "personal";
-//   event: string | null;
-//   tasks: Task[];
-//   createdAt: string;
-//   updatedAt: string;
-//   __v: number;
-//   isStandaloneBlock?: boolean;
-//   meetingLink: string;
-//   routineId: string;
-// }
+import { Block, Task } from "@/app/context/models";
 
 interface TimeBlockProps {
   block: Block;
@@ -149,8 +89,6 @@ export function TimeBlock({
   const taskIds = useMemo(() => {
     return block.tasks.map((task) => task._id);
   }, [block.tasks]);
-
-  console.log(block);
 
   return (
     <Card ref={setNodeRef} className="border-gray-200 shadow-sm">

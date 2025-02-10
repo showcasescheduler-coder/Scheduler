@@ -23,49 +23,7 @@ import {
   Trash2,
   Info,
 } from "lucide-react";
-
-interface Task {
-  _id: string;
-  block: string;
-  dayId: string;
-  name: string;
-  description: string;
-  duration: string;
-  priority: "High" | "Medium" | "Low";
-  status: "pending" | "in_progress" | "completed";
-  projectId?: string;
-  routineId?: string;
-  eventId?: string;
-  completed: boolean;
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-}
-
-interface Block {
-  _id: string;
-  dayId: string;
-  name: string;
-  description: string;
-  startTime: string;
-  endTime: string;
-  status: "pending" | "complete" | "incomplete";
-  blockType:
-    | "deep-work"
-    | "break"
-    | "meeting"
-    | "health"
-    | "exercise"
-    | "admin"
-    | "personal";
-  event: string | null;
-  tasks: Task[];
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-  isStandaloneBlock?: boolean;
-  meetingLink: string;
-}
+import { Block, Task } from "@/app/context/models";
 
 interface TaskCardProps {
   task: Task;
@@ -155,7 +113,7 @@ export function TaskCard({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      <Card className="mb-3 border-gray-200 bg-gradient-to-br from-white to-slate-50 relative overflow-hidden shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] hover:shadow-[0_4px_12px_-4px_rgba(0,0,0,0.12)] transition-shadow duration-200">
+      <Card className="mb-3 border-gray-200 bg-gradient-to-br from-white to-slate-50 relative overflow-hidden shadow-[0_2px_8px_-2px_rgba(0,0,0,0.1)] hover:shadow-[0_4px_12px_-4px_rgba(0,0,0,0.12)] transition-shadow duration-200 ">
         <CardContent className="p-4">
           <div className="flex items-center space-x-4">
             <div {...listeners}>

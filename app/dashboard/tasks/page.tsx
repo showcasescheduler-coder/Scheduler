@@ -167,7 +167,6 @@ export default function StandaloneTasks() {
     setNewTask((prev) => {
       const updatedTask = {
         ...prev,
-        type: value as Task["type"],
       };
       console.log("Updated task:", updatedTask); // Add this for debugging
       return updatedTask;
@@ -216,16 +215,16 @@ export default function StandaloneTasks() {
     return colors[priority] || colors.Medium; // Provide a default value
   };
 
-  const getTypeColor = (type: Task["type"]): string => {
-    const colors: Record<string, string> = {
-      "deep-work": "text-purple-800 bg-purple-100",
-      planning: "text-blue-800 bg-blue-100",
-      break: "text-green-800 bg-green-100",
-      admin: "text-gray-800 bg-gray-100",
-      collaboration: "text-orange-800 bg-orange-100",
-    };
-    return type ? colors[type] : colors["admin"];
-  };
+  // const getTypeColor = (type: Task["type"]): string => {
+  //   const colors: Record<string, string> = {
+  //     "deep-work": "text-purple-800 bg-purple-100",
+  //     planning: "text-blue-800 bg-blue-100",
+  //     break: "text-green-800 bg-green-100",
+  //     admin: "text-gray-800 bg-gray-100",
+  //     collaboration: "text-orange-800 bg-orange-100",
+  //   };
+  //   return type ? colors[type] : colors["admin"];
+  // };
 
   if (isLoading) {
     return (

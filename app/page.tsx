@@ -1,6 +1,16 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
-import { Brain, Calendar, Send, AlertCircle, Menu } from "lucide-react";
+import {
+  Brain,
+  Calendar,
+  Send,
+  AlertCircle,
+  Menu,
+  BookOpen,
+  Heart,
+  Coffee,
+} from "lucide-react";
+
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -26,7 +36,13 @@ export default function Component() {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const { setPromptText, setIsGeneratingSchedule } = useAppContext();
+  const {
+    setPromptText,
+    setIsGeneratingSchedule,
+    setSelectedDay,
+    setPreviewSchedule,
+  } = useAppContext();
+
   const router = useRouter();
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -85,8 +101,11 @@ export default function Component() {
     const cleanThoughts = thoughts
       .filter((thought) => thought.trim() !== "")
       .join("\n");
+    // Clear any previously generated schedule from the context.
+    setPreviewSchedule(null);
+    // Set the new prompt text (this indicates a new schedule should be generated).
     setPromptText(cleanThoughts);
-    setIsGeneratingSchedule(true);
+    // (Optional) If you use a flag like generationStartedRef in a shared context, you might also reset it here.
     router.push("/dashboard");
   };
 
@@ -105,7 +124,63 @@ export default function Component() {
     setIsSheetOpen(false);
   };
 
-  const navItems = ["Features", "How It Works", "Research", "Pricing"];
+  const scheduleTemplates = {
+    students: [
+      {
+        label: "Exam Prep Day",
+        icon: "BookOpen", // Using Lucide icons
+        description: "Intensive study blocks with strategic breaks",
+        thoughts: [
+          "Need focused morning review session 8:00-10:00am",
+          "Need practice problems block 10:30am-12:00pm",
+          "Need lunch and rest break 12:00-1:00pm",
+          "Need mock exam session 1:00-3:00pm",
+          "Need review and summary 3:30-5:00pm",
+        ],
+      },
+      {
+        label: "Assignment Crunch",
+        icon: "FileText",
+        description: "Focused blocks for research and writing",
+        thoughts: [
+          "Need research and material gathering 8:00-10:00am",
+          "Need writing focus block 10:30am-12:30pm",
+          "Need lunch break 12:30-1:30pm",
+          "Need editing and refinement 1:30-3:30pm",
+          "Need final review and submission prep 4:00-5:00pm",
+        ],
+      },
+    ],
+    professionals: [
+      {
+        label: "Deep Work Day",
+        icon: "Brain",
+        description: "Uninterrupted focus blocks for complex tasks",
+        thoughts: [
+          "Need planning and email block 8:00-9:00am",
+          "Need first deep work session 9:00-11:30am",
+          "Need movement break 11:30-12:00pm",
+          "Need second deep work session 1:00-3:30pm",
+          "Need daily review 4:00-5:00pm",
+        ],
+      },
+      {
+        label: "Meeting-Heavy Day",
+        icon: "Users",
+        description: "Optimized schedule for multiple meetings",
+        thoughts: [
+          "Need morning prep and email 8:00-9:00am",
+          "Need team standup 9:00-9:30am",
+          "Need client meetings 10:00am-12:00pm",
+          "Need lunch break 12:00-1:00pm",
+          "Need team reviews 1:00-3:00pm",
+          "Need wrap-up and planning 4:00-5:00pm",
+        ],
+      },
+    ],
+  };
+
+  // const navItems = ["Features", "How It Works", "Research", "Pricing"];
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f8fafc]">
@@ -120,7 +195,7 @@ export default function Component() {
 
           {/* Desktop Navigation */}
           <nav className="ml-auto hidden md:flex items-center gap-6">
-            {navItems.map((item) => (
+            {/* {navItems.map((item) => (
               <Link
                 key={item}
                 className="text-sm font-medium text-[#64748b] transition-colors hover:text-blue-600"
@@ -128,7 +203,7 @@ export default function Component() {
               >
                 {item}
               </Link>
-            ))}
+            ))} */}
             <div className="flex items-center gap-2">
               <SignUpButton mode="modal">
                 <Button
@@ -159,7 +234,7 @@ export default function Component() {
               </SheetTrigger>
               <SheetContent side="right" className="w-64">
                 <nav className="flex flex-col gap-4">
-                  {navItems.map((item) => (
+                  {/* {navItems.map((item) => (
                     <Link
                       key={item}
                       className="text-sm font-medium text-[#64748b] transition-colors hover:text-blue-600"
@@ -167,7 +242,7 @@ export default function Component() {
                     >
                       {item}
                     </Link>
-                  ))}
+                  ))} */}
                   <div className="flex flex-col gap-2 mt-4">
                     <SignUpButton mode="modal">
                       <Button
@@ -213,9 +288,10 @@ export default function Component() {
               <Tabs
                 defaultValue="today"
                 className="w-full"
-                onValueChange={(value) =>
-                  setSelectedDate(value === "today" ? today : tomorrow)
-                }
+                onValueChange={(value) => {
+                  setSelectedDate(value === "today" ? today : tomorrow);
+                  setSelectedDay(value as "today" | "tomorrow");
+                }}
               >
                 <TabsList className="mb-4 grid w-full grid-cols-2 bg-[#f1f5f9]">
                   <TabsTrigger
@@ -254,7 +330,9 @@ export default function Component() {
                               onKeyDown={(e) => handleKeyDown(e, index)}
                               placeholder={
                                 index === 0
-                                  ? "What do you want to accomplish today (meetings, study goals, preferences...)..."
+                                  ? `What do you want to accomplish ${
+                                      tab === "today" ? "today" : "tomorrow"
+                                    } (meetings, study goals, preferences...)...`
                                   : "Add another thought..."
                               }
                               className="flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-blue-100 rounded-md w-full text-xs md:text-lg placeholder:text-gray-400 placeholder:text-xs md:placeholder:text-lg bg-transparent"
@@ -282,6 +360,10 @@ export default function Component() {
                 {[
                   {
                     label: "Pomodoro Study Day",
+                    icon: BookOpen,
+                    description:
+                      "Optimize your learning with timed study sessions",
+                    color: "blue",
                     thoughts: [
                       "Need to start with light exercise and breakfast at 8:30am",
                       "Need first Pomodoro study block 9:00-10:30am (3x 25min sessions with 5min breaks)",
@@ -295,6 +377,9 @@ export default function Component() {
                   },
                   {
                     label: "Deep Work Day",
+                    icon: Brain,
+                    description: "Maximize focus with structured work blocks",
+                    color: "purple",
                     thoughts: [
                       "Need to do morning prep routine 7:30-8:00am (no digital devices)",
                       "Need planning and email block 8:00-9:00am",
@@ -308,7 +393,28 @@ export default function Component() {
                     ],
                   },
                   {
+                    label: "Wellness Day",
+                    icon: Heart,
+                    description:
+                      "Balance productivity with self-care and wellbeing",
+                    color: "emerald",
+                    thoughts: [
+                      "Need morning meditation and stretching 7:00-7:30am",
+                      "Need nourishing breakfast and planning 7:30-8:30am",
+                      "Need focused work block 9:00-10:30am",
+                      "Need outdoor walk or exercise 10:30-11:30am",
+                      "Need second work block 11:30-1:00pm",
+                      "Need mindful lunch break 1:00-2:00pm",
+                      "Need light tasks and creative work 2:00-4:00pm",
+                      "Need afternoon wellness activity 4:00-5:00pm",
+                      "Need evening reflection and planning 5:00-5:30pm",
+                    ],
+                  },
+                  {
                     label: "Energy Management Day",
+                    icon: Coffee,
+                    description: "Balance energy levels throughout your day",
+                    color: "indigo",
                     thoughts: [
                       "Need morning energy routine (light exercise, meditation) 7:00-8:00am",
                       "Need high-focus work during peak hours 8:30-11:00am",
@@ -321,25 +427,24 @@ export default function Component() {
                     ],
                     mobileHidden: true,
                   },
-                ].map(({ label, thoughts, mobileHidden }) => (
-                  <Button
-                    key={label}
-                    variant="outline"
-                    size="sm"
-                    className={`border-[#e2e8f0] text-xs md:text-sm text-[#64748b] hover:bg-[#f1f5f9] hover:text-blue-600 ${
-                      mobileHidden ? "hidden md:inline-flex" : ""
-                    }`}
-                    onClick={() => {
-                      // Clear any initial empty thought before adding template
-                      if (thoughts.length === 1 && thoughts[0] === "") {
-                        setThoughts([]);
-                      }
-                      thoughts.forEach((thought) => addSuggestion(thought));
-                    }}
-                  >
-                    {label}
-                  </Button>
-                ))}
+                ].map(
+                  ({ label, thoughts, icon: Icon, color, mobileHidden }) => (
+                    <Button
+                      key={label}
+                      variant="outline"
+                      size="sm"
+                      className={`border-2 text-xs md:text-sm hover:border-${color}-200 group transition-all duration-300 flex items-center gap-2 ${
+                        mobileHidden ? "hidden md:inline-flex" : ""
+                      }`}
+                      onClick={() => {
+                        setThoughts([...thoughts]);
+                      }}
+                    >
+                      {Icon && <Icon className={`h-4 w-4 text-${color}-500`} />}
+                      <span className="text-gray-600">{label}</span>
+                    </Button>
+                  )
+                )}
               </div>
             </CardContent>
           </Card>

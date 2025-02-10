@@ -11,28 +11,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Task } from "@/app/context/models";
 
 interface EditTaskDialogProps {
   task: Task;
   onClose: () => void;
   onSave: (updatedTask: Task) => void;
-}
-
-interface Task {
-  _id: string;
-  block: string;
-  dayId: string;
-  name: string;
-  description: string;
-  duration: string;
-  priority: "High" | "Medium" | "Low";
-  status: "pending" | "in_progress" | "completed";
-  type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-  isRoutineTask: boolean;
-  completed: boolean;
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
 }
 
 export function EditTaskDialog({ task, onClose, onSave }: EditTaskDialogProps) {

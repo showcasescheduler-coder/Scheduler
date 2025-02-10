@@ -60,6 +60,7 @@ import {
 import { UserButton } from "@clerk/nextjs";
 import MobileNav from "@/app/components/MobileNav";
 import { format } from "date-fns";
+import { Task } from "@/app/context/models";
 
 interface Props {
   params: { id: string };
@@ -70,30 +71,30 @@ interface Routine {
   name: string;
   description: string;
   days: string[];
-  tasks: RoutineTask[];
+  tasks: Task[];
   startTime: string;
   endTime: string;
 }
 
-interface RoutineTask {
-  _id: string;
-  name: string;
-  description: string;
-  priority: string;
-  duration: number;
-  routineId: string;
-  type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-}
+// interface RoutineTask {
+//   _id: string;
+//   name: string;
+//   description: string;
+//   priority: string;
+//   duration: number;
+//   routineId: string;
+//   type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+// }
 
 export default function RoutineDetailsPage({ params: { id } }: Props) {
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<RoutineTask | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
   const router = useRouter();
 
-  const [newTask, setNewTask] = useState<Partial<RoutineTask>>({
+  const [newTask, setNewTask] = useState<Partial<Task>>({
     duration: 5,
   });
 

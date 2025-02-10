@@ -33,6 +33,13 @@ import { useAppContext } from "@/app/context/AppContext";
 import { useAuth } from "@clerk/nextjs";
 import { Day, Block } from "@/app/context/models";
 import { useRouter } from "next/navigation";
+import {
+  timeToMinutes,
+  isTimeWithinRange,
+  doTimesOverlap,
+  validateTimeRange,
+} from "@/helpers/timeValidation";
+import toast from "react-hot-toast";
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -59,6 +66,9 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
     meetingLink: "", // New field for meeting link
   });
   const { userId } = useAuth();
+
+  const allowedStart = "08:00";
+  const allowedEnd = "22:00";
 
   const fetchEvents = async () => {
     try {
@@ -99,22 +109,28 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
       return;
     }
 
+    const errorMessage = validateTimeRange(
+      newEvent,
+      day.blocks,
+      allowedStart,
+      allowedEnd
+    );
+    if (errorMessage) {
+      toast.error(errorMessage);
+      return;
+    }
+
     const newEventObj = {
       ...newEvent,
       date: day.date,
-      userId, // Include the userId in the request
+      userId,
     };
 
     try {
       const response = await fetch("/api/events/with-block", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...newEventObj,
-          dayId: day._id,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...newEventObj, dayId: day._id }),
       });
 
       if (!response.ok) {
@@ -124,29 +140,30 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
       const data = await response.json();
       console.log("New event and block created:", data);
 
-      // Update the day data in the context
+      // Update the global day state (for blocks)
       setDay((prevDay) => ({
         ...prevDay,
         blocks: [...prevDay.blocks, data.block],
       }));
 
-      // Clear the form
+      // Update the events state locally if needed.
+      setEvents((prevEvents) => [...prevEvents, data.event]);
+
+      // Immediately revalidate both day data and events list:
+      updateDay(); // This calls mutate() to re-fetch day data.
+      fetchEvents(); // Re-fetch events list for the Event Bank.
+
+      // Clear form and close the modal.
       setNewEvent({
         name: "",
         description: "",
         startTime: "",
         endTime: "",
-        meetingLink: "", // New field for meeting link
+        meetingLink: "",
       });
-
-      // Close the modal
       onClose();
-
-      // Update the day view
-      updateDay();
     } catch (error) {
       console.error("Error creating new event and block:", error);
-      // Handle error (e.g., show an error message to the user)
     }
   };
 
@@ -155,8 +172,24 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
       console.error("Day ID is not available");
       return;
     }
+    // Look up the event from your events array
+    const eventToAdd = events.find((e) => e._id === eventId);
+    if (!eventToAdd) {
+      toast.error("Event not found");
+      return;
+    }
 
-    console.log("Creating block for event:", eventId);
+    // allowedStart and allowedEnd are defined as "08:00" and "22:00"
+    const errorMessage = validateTimeRange(
+      { startTime: eventToAdd.startTime, endTime: eventToAdd.endTime },
+      day.blocks,
+      allowedStart,
+      allowedEnd
+    );
+    if (errorMessage) {
+      toast.error(errorMessage);
+      return;
+    }
 
     try {
       const res = await fetch(`/api/add-event-to-block`, {
@@ -306,7 +339,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
           </TabsContent>
 
           <TabsContent value="existingEvent">
-            <ScrollArea className="h-72">
+            <ScrollArea className="h-[400px] border-t border-b">
               <div className="px-6 py-4 space-y-3">
                 {events.length > 0 ? (
                   events.map((event) => (

@@ -26,6 +26,13 @@ import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import {
+  timeToMinutes,
+  isTimeWithinRange,
+  doTimesOverlap,
+  validateTimeRange,
+} from "@/helpers/timeValidation";
+import toast from "react-hot-toast";
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -70,8 +77,25 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
     setEndTime("");
   };
 
+  // …inside your component:
+  const allowedStart = "08:00";
+  const allowedEnd = "22:00";
+
   const handleAddRoutineToSchedule = async () => {
     if (!selectedRoutine || !startTime || !endTime) return;
+
+    // Validate the routine’s start and end times.
+    const routineTime = { startTime, endTime };
+    const errorMessage = validateTimeRange(
+      routineTime,
+      day.blocks,
+      allowedStart,
+      allowedEnd
+    );
+    if (errorMessage) {
+      toast.error(errorMessage);
+      return;
+    }
 
     try {
       const response = await fetch("/api/routines/add-to-schedule", {

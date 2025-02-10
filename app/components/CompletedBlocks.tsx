@@ -8,27 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-interface Task {
-  _id: string;
-  name: string;
-  description: string;
-  duration: string;
-  priority: "High" | "Medium" | "Low";
-  type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-  completed: boolean;
-}
-
-interface Block {
-  _id: string;
-  name: string;
-  description: string;
-  startTime: string;
-  endTime: string;
-  status: "pending" | "complete" | "incomplete";
-  isStandaloneBlock?: boolean;
-  tasks: Task[];
-}
+import { Task, Block } from "@/app/context/models";
 
 interface CompletedBlockProps {
   block: Block;

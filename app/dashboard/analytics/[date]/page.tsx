@@ -171,7 +171,7 @@ export default function DayAnalyticsPage({
                       {new Date(dayData.date).toLocaleDateString()}
                     </h1>
                     <p className="text-sm text-gray-500">
-                      Detailed view of your day's performance and tasks
+                      {"Detailed view of your day's performance and tasks"}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

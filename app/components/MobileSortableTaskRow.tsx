@@ -13,19 +13,7 @@ import {
 import { GripVertical, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-
-interface Task {
-  _id: string;
-  name: string;
-  description?: string;
-  priority: string;
-  duration: number;
-  deadline: string;
-  completed: boolean;
-  projectId: string;
-  status?: string;
-  type?: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-}
+import { Task } from "@/app/context/models";
 
 export interface Project {
   completed: boolean;

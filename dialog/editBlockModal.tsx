@@ -3,29 +3,36 @@ import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-// import { Block } from "@/app/context/models";
+import { Block } from "@/app/context/models";
 
 // Define a type for the editable fields
-type EditableBlockFields = {
+interface EditableBlockFields {
   _id: string;
   name: string;
   startTime: string;
   endTime: string;
   description: string;
-  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+  blockType:
+    | "deep-work"
+    | "break"
+    | "meeting"
+    | "health"
+    | "exercise"
+    | "admin"
+    | "personal";
   status: "pending" | "complete" | "incomplete";
   meetingLink?: string;
-};
+}
 
 // Create a form data type that includes only the fields we want to edit
-interface BlockFormData extends EditableBlockFields {
+interface BlockFormData extends Block {
   _id: string;
 }
 
 interface EditBlockDialogProps {
-  block: EditableBlockFields;
+  block: Block;
   onClose: () => void;
-  onSave: (updatedBlock: EditableBlockFields) => void;
+  onSave: (updatedBlock: Block) => void;
 }
 
 export function EditBlockDialog({
@@ -34,7 +41,7 @@ export function EditBlockDialog({
   onSave,
 }: EditBlockDialogProps) {
   // Initialize form data with only the fields we want to edit
-  const [formData, setFormData] = React.useState<BlockFormData>({
+  const [formData, setFormData] = React.useState<EditableBlockFields>({
     _id: block._id,
     name: block.name,
     startTime: block.startTime,
@@ -55,7 +62,7 @@ export function EditBlockDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Merge the form data with the original block to preserve other fields
-    const updatedBlock: EditableBlockFields = {
+    const updatedBlock: Block = {
       ...block,
       ...formData,
     };

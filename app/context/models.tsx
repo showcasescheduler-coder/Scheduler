@@ -12,6 +12,9 @@ export interface Task {
   routine: string | null; // Allow routine to be
   projectId: string | null;
   type: "deep-work" | "planning" | "break" | "admin" | "collaboration"; //
+  isCustomDuration: boolean;
+  routineId: string;
+  eventId: string;
 }
 
 export interface ProjectTask extends Task {
@@ -93,27 +96,6 @@ export interface Block {
   routineId: string;
 }
 
-// export interface Block {
-//   _id: string;
-//   date: string;
-//   name: string;
-//   description: string;
-//   status: "pending" | "complete" | "incomplete";
-//   startTime: string;
-//   endTime: string;
-//   tasks: Task[];
-//   event?: string; // Change this to a string (event ID) instead of Event[]
-//   completed: boolean;
-//   blockType:
-//     | "deep-work"
-//     | "break"
-//     | "meeting"
-//     | "health"
-//     | "exercise"
-//     | "admin"
-//     | "personal";
-// }
-
 export interface Day {
   _id: string;
   date: string;
@@ -129,21 +111,77 @@ export interface User {
   days: Day[];
 }
 
+// export interface Schedule {
+//   currentTime: string;
+//   scheduleRationale: string;
+//   userStartTime: string;
+//   userEndTime: string;
+//   blocks: Block[];
+// }
+
 export interface Schedule {
   currentTime: string;
   scheduleRationale: string;
   userStartTime: string;
   userEndTime: string;
-  blocks: Block[];
+  blocks: {
+    _id: string;
+    name: string;
+    startTime: string;
+    endTime: string;
+    description: string;
+    type:
+      | "deep-work"
+      | "break"
+      | "meeting"
+      | "health"
+      | "exercise"
+      | "admin"
+      | "personal";
+    routineId: string | null;
+    tasks: {
+      id: string | null;
+      name: string;
+      duration: number;
+      projectId: string | null;
+      routineId: string | null;
+      eventId: string | null;
+    }[];
+  }[];
 }
 
 export interface PreviewTask {
+  id: string | null;
   name: string;
-  description: string;
   duration: number;
-  priority: "High" | "Medium" | "Low";
-  isRoutineTask: boolean;
+  projectId: string | null;
+  routineId: string | null;
+  eventId: string | null;
+  description?: string;
+  priority?: "High" | "Medium" | "Low";
+  isRoutineTask?: boolean;
 }
+
+// export interface PreviewBlock {
+//   _id: string;
+//   name: string;
+//   startTime: string;
+//   endTime: string;
+//   description: string;
+//   isEvent: boolean;
+//   isRoutine: boolean;
+//   isStandaloneBlock: boolean;
+//   blockType:
+//     | "deep-work"
+//     | "break"
+//     | "meeting"
+//     | "health"
+//     | "exercise"
+//     | "admin"
+//     | "personal";
+//   energyLevel: "high" | "medium" | "low";
+//   tasks: PreviewTask[];
+// }
 
 export interface PreviewBlock {
   _id: string;
@@ -163,6 +201,15 @@ export interface PreviewBlock {
     | "admin"
     | "personal";
   energyLevel: "high" | "medium" | "low";
+  type:
+    | "deep-work"
+    | "break"
+    | "meeting"
+    | "health"
+    | "exercise"
+    | "admin"
+    | "personal";
+  routineId: string | null;
   tasks: PreviewTask[];
 }
 

@@ -109,28 +109,34 @@ import {
   DragOverEvent,
   Active,
 } from "@dnd-kit/core";
+import {
+  PreviewSchedule,
+  PreviewBlock,
+  Block,
+  Task,
+} from "@/app/context/models"; // adjust the import path if needed
 
-interface Task {
-  _id: string;
-  block: string;
-  blockId?: string;
-  dayId: string;
-  name: string;
-  description: string;
-  duration: string;
-  priority: "High" | "Medium" | "Low";
-  status: "pending" | "in_progress" | "completed";
-  type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-  isRoutineTask: boolean;
-  completed: boolean;
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-  deadline?: string;
-  project?: string;
-  routine?: string;
-  projectId?: string;
-}
+// interface Task {
+//   _id: string;
+//   block: string;
+//   blockId?: string;
+//   dayId: string;
+//   name: string;
+//   description: string;
+//   duration: string;
+//   priority: "High" | "Medium" | "Low";
+//   status: "pending" | "in_progress" | "completed";
+//   type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+//   isRoutineTask: boolean;
+//   completed: boolean;
+//   createdAt: string;
+//   updatedAt: string;
+//   __v: number;
+//   deadline?: string;
+//   project?: string;
+//   routine?: string;
+//   projectId?: string;
+// }
 
 type EditableBlockFields = {
   _id: string;
@@ -150,30 +156,30 @@ type EditableBlockFields = {
   meetingLink?: string;
 };
 
-interface Block {
-  _id: string;
-  dayId: string;
-  name: string;
-  description: string;
-  startTime: string;
-  endTime: string;
-  status: "pending" | "complete" | "incomplete";
-  blockType:
-    | "deep-work"
-    | "break"
-    | "meeting"
-    | "health"
-    | "exercise"
-    | "admin"
-    | "personal";
-  event: string | null;
-  tasks: Task[];
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-  isStandaloneBlock?: boolean;
-  meetingLink: string;
-}
+// interface Block {
+//   _id: string;
+//   dayId: string;
+//   name: string;
+//   description: string;
+//   startTime: string;
+//   endTime: string;
+//   status: "pending" | "complete" | "incomplete";
+//   blockType:
+//     | "deep-work"
+//     | "break"
+//     | "meeting"
+//     | "health"
+//     | "exercise"
+//     | "admin"
+//     | "personal";
+//   event: string | null;
+//   tasks: Task[];
+//   createdAt: string;
+//   updatedAt: string;
+//   __v: number;
+//   isStandaloneBlock?: boolean;
+//   meetingLink: string;
+// }
 
 interface DragData {
   type: "Task" | "Block";
@@ -192,6 +198,7 @@ interface ScheduleTemplate {
 
 // Define interface for streaming schedule block
 interface StreamingBlock {
+  _id?: string; // now optional
   name: string;
   startTime: string;
   endTime: string;
@@ -338,6 +345,45 @@ export default function Component() {
     });
   };
 
+  const transformToPreviewSchedule = (
+    streaming: StreamingSchedule
+  ): PreviewSchedule => {
+    return {
+      currentTime: streaming.currentTime,
+      scheduleRationale: streaming.scheduleRationale,
+      userStartTime: streaming.userStartTime,
+      userEndTime: streaming.userEndTime,
+      blocks: streaming.blocks.map(
+        (block, index): PreviewBlock => ({
+          // Ensure _id is defined. If it’s missing in the streaming block, create a temporary one.
+          _id: block._id ?? `temp-${index}`,
+          name: block.name,
+          startTime: block.startTime,
+          endTime: block.endTime,
+          description: block.description || "",
+          isEvent: block.isEvent ?? false,
+          isRoutine: block.isRoutine ?? false,
+          isStandaloneBlock: block.isStandaloneBlock ?? false,
+          // Cast or map blockType and energyLevel as needed
+          blockType: block.blockType as
+            | "deep-work"
+            | "break"
+            | "meeting"
+            | "health"
+            | "exercise"
+            | "admin"
+            | "personal",
+          energyLevel:
+            (block.energyLevel as "high" | "medium" | "low") ?? "medium",
+          // If you need to transform tasks, do so here.
+          tasks: block.tasks,
+          type: "deep-work",
+          routineId: null,
+        })
+      ),
+    };
+  };
+
   const formatShortDate = (date: Date) => {
     return date.toLocaleDateString("en-US", {
       month: "short",
@@ -405,10 +451,22 @@ export default function Component() {
     }
   }, [day, activeTab]);
 
+  const scheduleDate =
+    selectedDay === "today"
+      ? new Date()
+      : (() => {
+          const d = new Date();
+          d.setDate(d.getDate() + 1);
+          return d;
+        })();
+
   const generateSchedule = async () => {
     setGenerationProgress(0);
     setGenerationStatus("Initializing...");
     const { startTime, endTime } = getScheduleTimes(selectedDay);
+    console.log("this is the start time", startTime);
+    console.log("this is the end time", endTime);
+    console.log(selectedDay);
     try {
       // Intent Analysis
       setGenerationProgress(10);
@@ -417,7 +475,7 @@ export default function Component() {
       // Schedule Generation
       setGenerationProgress(30);
       setGenerationStatus("Generating your schedule...");
-
+      console.log("running the homepage specific");
       const scheduleResponse = await fetch("/api/home-page-specific", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -437,6 +495,7 @@ export default function Component() {
         userStartTime: startTime,
         userEndTime: endTime,
         blocks: [] as any[], // or use your Block[] type
+        date: scheduleDate.toISOString().split("T")[0], // e.g., "2025-02-07"
       };
 
       streamSchedule(scheduleResponse, localSchedule);
@@ -451,6 +510,7 @@ export default function Component() {
       setHasProcessedPrompt(true);
       setGenerationProgress(0);
       setGenerationStatus("");
+      setPromptText("");
     }
   };
 
@@ -518,12 +578,13 @@ export default function Component() {
   // };
 
   useEffect(() => {
-    // Only trigger the generation if promptText exists and we haven't started already
-    if (promptText && !generationStartedRef.current) {
-      generationStartedRef.current = true; // mark as started
+    // Only generate if promptText exists, no schedule has been generated yet,
+    // and generation has not already started.
+    if (promptText && !previewSchedule && !generationStartedRef.current) {
+      generationStartedRef.current = true;
       generateSchedule();
     }
-  }, [promptText]);
+  }, [promptText, previewSchedule]);
 
   useEffect(() => {
     // Only run the check after Clerk has loaded
@@ -869,13 +930,100 @@ export default function Component() {
     setIsEditTaskDialogOpen(true);
   };
 
-  const handleAddBlock = async (newBlock: {
-    name: any;
-    startTime: any;
-    endTime: any;
-    description: any;
-    blockType: any;
-  }) => {
+  // Convert a time string "HH:mm" to minutes since midnight.
+  const timeToMinutes = (timeStr: string): number => {
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
+
+  // Check if a given time is within a start and end boundary.
+  const isTimeWithinRange = (
+    timeStr: string,
+    rangeStart: string,
+    rangeEnd: string
+  ): boolean => {
+    const time = timeToMinutes(timeStr);
+    const start = timeToMinutes(rangeStart);
+    const end = timeToMinutes(rangeEnd);
+    return time >= start && time <= end;
+  };
+
+  // Check if two time ranges overlap.
+  // Returns true if range A (startA, endA) overlaps with range B (startB, endB).
+  const doTimesOverlap = (
+    startA: string,
+    endA: string,
+    startB: string,
+    endB: string
+  ): boolean => {
+    return (
+      timeToMinutes(startA) < timeToMinutes(endB) &&
+      timeToMinutes(endA) > timeToMinutes(startB)
+    );
+  };
+
+  const validateBlockTime = (
+    newBlock: Partial<Block>,
+    existingBlocks: any[],
+    dayStartTime: string,
+    dayEndTime: string,
+    currentBlockId: string | null = null
+  ): string | null => {
+    // Early return if required fields are missing
+    if (!newBlock.startTime || !newBlock.endTime) {
+      return "Start time and end time are required.";
+    }
+
+    // Ensure the block's start time comes before its end time.
+    if (timeToMinutes(newBlock.startTime) >= timeToMinutes(newBlock.endTime)) {
+      return "Block start time must be before end time.";
+    }
+
+    // Ensure both times are within the allowed day range.
+    if (
+      !isTimeWithinRange(newBlock.startTime, dayStartTime, dayEndTime) ||
+      !isTimeWithinRange(newBlock.endTime, dayStartTime, dayEndTime)
+    ) {
+      return "Block times must be within the allowed day schedule.";
+    }
+
+    // Check against each existing block.
+    for (const block of existingBlocks) {
+      // If editing an existing block, skip comparing with itself.
+      if (currentBlockId && block._id === currentBlockId) continue;
+
+      // If there is an overlap, return an error message.
+      if (
+        doTimesOverlap(
+          newBlock.startTime,
+          newBlock.endTime,
+          block.startTime,
+          block.endTime
+        )
+      ) {
+        return `Block time overlaps with block "${block.name}" (${block.startTime} - ${block.endTime}).`;
+      }
+    }
+    return null;
+  };
+  const handleAddBlock = async (newBlock: Partial<Block>) => {
+    // Get the allowed start and end times for the day.
+    const { startTime: dayStartTime, endTime: dayEndTime } =
+      getScheduleTimes(selectedDay);
+
+    // Validate the new block times.
+    // Validate the new block times.
+    const errorMessage = validateBlockTime(
+      newBlock,
+      day.blocks,
+      dayStartTime,
+      dayEndTime
+    );
+    if (errorMessage) {
+      toast.error(errorMessage);
+      return;
+    }
+
     try {
       const response = await fetch("/api/add-block-to-schedule", {
         method: "POST",
@@ -1036,10 +1184,13 @@ export default function Component() {
     }
   };
 
-  const streamSchedule = async (automatedSchedule, localSchedule) => {
+  const streamSchedule = async (
+    automatedSchedule: Response,
+    localSchedule: StreamingSchedule
+  ): Promise<void> => {
     // Immediately set up preview mode with an empty schedule
     setStreamingSchedule(localSchedule);
-    setPreviewSchedule(localSchedule);
+    // setPreviewSchedule(localSchedule);
     setIsPreviewMode(true);
     setIsGeneratingSchedule(false);
     let accumulatedRationale = "";
@@ -1141,9 +1292,10 @@ export default function Component() {
                 });
               }
 
-              // 3) Finally update streaming & preview states
+              // **Transform and update the preview schedule**
+              const preview = transformToPreviewSchedule(localSchedule);
               setStreamingSchedule(localSchedule);
-              setPreviewSchedule(localSchedule);
+              setPreviewSchedule(preview);
             }
           } catch (parseErr) {
             // Probably partial data not yet parseable
@@ -1624,6 +1776,24 @@ export default function Component() {
 
   const handleSaveBlock = async (updatedBlock: EditableBlockFields) => {
     console.log("Saving block:", updatedBlock);
+
+    // Get allowed times for the day.
+    const { startTime: dayStartTime, endTime: dayEndTime } =
+      getScheduleTimes(selectedDay);
+
+    // Validate the new times.
+    const errorMessage = validateBlockTime(
+      updatedBlock,
+      day.blocks,
+      dayStartTime,
+      dayEndTime,
+      updatedBlock._id
+    );
+    if (errorMessage) {
+      toast.error(errorMessage);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/blocks/${updatedBlock._id}`, {
         method: "PUT",
@@ -2408,13 +2578,13 @@ export default function Component() {
         isOpen={isAddEventModalOpen}
         onClose={() => setIsAddEventModalOpen(false)}
         blockId={"selectedBlockId && selectedBlockId"}
-        updateDay={() => {}}
+        updateDay={updateDay}
       />
       <AddRoutineModal
         isOpen={isAddRoutineModalOpen}
         onClose={() => setIsAddRoutineModalOpen(false)}
         blockId={"selectedBlockId && selectedBlockId"}
-        updateDay={() => {}}
+        updateDay={updateDay}
       />
       <AddBlockDialog
         isOpen={isAddBlockDialogOpen}
@@ -2429,6 +2599,7 @@ export default function Component() {
           blockId={selectedBlockId && selectedBlockId}
           updateDay={updateDay}
           day={day}
+          isCustomDuration={false}
         />
       )}
       {/* Then, add this Dialog component outside of the task card, at the same level as other dialogs */}

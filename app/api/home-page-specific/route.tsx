@@ -5,6 +5,8 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   const { userInput, startTime, endTime } = await request.json();
 
+  console.log("is the home-page-non-specific running");
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return new Response(
@@ -39,10 +41,10 @@ SCHEDULE CREATION PRIORITIES:
 
 3. Fallback Template Usage:
    - If the user does not provide any specifics, generate a balanced schedule using one of the above templates that best suits a generic day.
-
+ 
 Return ONLY a JSON object with this structure:
 {
-  "scheduleRationale": "Response to user explaining how their request was handled, any conflicts, suggestions, and clarifications.",
+  "scheduleRationale": "Response speaking directly to the user explaining how their request was handled, any conflicts, suggestions, and clarifications.",
   "blocks": [
     {
       "name": "Clear context-appropriate name",

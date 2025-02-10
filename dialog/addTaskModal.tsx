@@ -124,10 +124,17 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [activeTab, setActiveTab] = useState<string>("newTask");
   const { tasks, projects, setProjects, setTasks, setBlocks } = useAppContext();
   const { userId } = useAuth();
-  const [newTask, setNewTask] = useState({
+  const [newTask, setNewTask] = useState<Partial<Task> & { duration: number }>({
     name: "",
     description: "",
     duration: 5,
+    isCustomDuration: false,
+    completed: false,
+    block: null,
+    project: null,
+    type: "deep-work",
+    priority: "Medium",
+    isRoutineTask: false,
   });
 
   const [todaySchedule, setTodaySchedule] = useState<Day | null>(null);
@@ -405,8 +412,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       setNewTask({
         name: "",
         description: "",
-        priority: "",
-        type: "",
+
         duration: 5,
       });
 

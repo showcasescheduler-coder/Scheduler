@@ -1,21 +1,22 @@
 import React from "react";
+import { Task } from "@/app/context/models";
 
-interface Task {
-  _id: string;
-  block: string;
-  dayId: string;
-  name: string;
-  description: string;
-  duration: string;
-  priority: "High" | "Medium" | "Low";
-  status: "pending" | "in_progress" | "completed";
-  type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-  isRoutineTask: boolean;
-  completed: boolean;
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-}
+// interface Task {
+//   _id: string;
+//   block: string;
+//   dayId: string;
+//   name: string;
+//   description: string;
+//   duration: string;
+//   priority: "High" | "Medium" | "Low";
+//   status: "pending" | "in_progress" | "completed";
+//   type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
+//   isRoutineTask: boolean;
+//   completed: boolean;
+//   createdAt: string;
+//   updatedAt: string;
+//   __v: number;
+// }
 
 interface BlockProgressProps {
   tasks: Task[];

@@ -20,22 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Clock } from "lucide-react";
 import { useState } from "react";
-
-interface BlockData {
-  name: string;
-  startTime: string;
-  endTime: string;
-  blockType:
-    | "deep-work"
-    | "break"
-    | "meeting"
-    | "health"
-    | "exercise"
-    | "admin"
-    | "personal";
-
-  description?: string;
-}
+import { Block } from "@/app/context/models";
 
 interface ValidationErrors {
   name?: string;
@@ -49,34 +34,39 @@ interface ValidationErrors {
 interface AddBlockDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddBlock: (blockData: BlockData) => void;
+  onAddBlock: (blockData: Partial<Block>) => void; // Changed from Block to Partial<Block>
 }
+
+const initialBlockState: Partial<Block> = {
+  name: "",
+  startTime: "",
+  endTime: "",
+  description: "",
+  blockType: "deep-work",
+  status: "pending",
+  event: null,
+  tasks: [],
+  meetingLink: "",
+};
 
 export function AddBlockDialog({
   isOpen,
   onOpenChange,
   onAddBlock,
 }: AddBlockDialogProps) {
-  const [newBlock, setNewBlock] = useState<BlockData>({
-    name: "",
-    startTime: "",
-    endTime: "",
-    description: "",
-    blockType: "deep-work",
-  });
+  const [newBlock, setNewBlock] = useState<Partial<Block>>(initialBlockState);
   const [errors, setErrors] = useState<ValidationErrors>({});
 
   const validateForm = (): boolean => {
     const newErrors: ValidationErrors = {};
     let isValid = true;
 
-    // Name validation
-    if (!newBlock.name.trim()) {
+    if (!newBlock.name?.trim()) {
+      // Added optional chaining
       newErrors.name = "Block name is required";
       isValid = false;
     }
 
-    // Time validation
     if (!newBlock.startTime) {
       newErrors.startTime = "Start time is required";
       isValid = false;
@@ -116,18 +106,12 @@ export function AddBlockDialog({
   };
 
   const handleClose = () => {
-    setNewBlock({
-      name: "",
-      startTime: "",
-      endTime: "",
-      blockType: "deep-work",
-      description: "",
-    });
+    setNewBlock(initialBlockState); // Use the constant we defined
     setErrors({});
     onOpenChange(false);
   };
 
-  const getBlockTypeColor = (type: BlockData["blockType"]) => {
+  const getBlockTypeColor = (type: Block["blockType"]) => {
     const colors = {
       "deep-work": "text-purple-600",
       break: "text-green-600",
@@ -181,7 +165,7 @@ export function AddBlockDialog({
               </Label>
               <Select
                 value={newBlock.blockType}
-                onValueChange={(value: BlockData["blockType"]) =>
+                onValueChange={(value: Block["blockType"]) =>
                   setNewBlock({ ...newBlock, blockType: value })
                 }
               >
