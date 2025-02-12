@@ -167,7 +167,7 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
       setRoutine(updatedRoutine);
       setNewTask({ duration: 5 });
       setIsTaskDialogOpen(false);
-      toast.success("Task added successfully");
+      toast.success("Task was added successfully");
     } catch (error) {
       console.error("Error adding task:", error);
       toast.error("Failed to add task");
