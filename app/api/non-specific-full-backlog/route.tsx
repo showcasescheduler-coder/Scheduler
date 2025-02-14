@@ -202,7 +202,13 @@ ${outputJsonFormat}`;
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // Read and log the error details.
+      const errorBody = await response.text();
+      console.error(
+        `Anthropic API error! Status: ${response.status}`,
+        errorBody
+      );
+      throw new Error(`HTTP error! status: ${response.status} - ${errorBody}`);
     }
 
     // Create a TransformStream to process and forward the streaming response as SSE.

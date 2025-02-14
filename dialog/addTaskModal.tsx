@@ -332,16 +332,20 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     }
   };
 
-  // Then update the isTaskAssigned function
   const isTaskAssigned = (task: Task) => {
-    // console.log(task);
-    // If task has no block, it's not assigned
     if (!task.block) return false;
 
-    // Get block IDs from the current day
-    const currentDayBlockIds = day.blocks.map((block: any) => block._id);
+    // Look for the block in the current day
+    const currentDayBlock = day.blocks.find(
+      (block: any) => block._id === task.block
+    );
 
-    // If we're looking at tomorrow's schedule, check today's blocks
+    // If we're in today’s view, only consider the task assigned if the block is not complete
+    if (!isTomorrow) {
+      return currentDayBlock ? currentDayBlock.status !== "complete" : false;
+    }
+
+    // For tomorrow's view, check today's schedule for an incomplete block assignment
     if (isTomorrow && todaySchedule?.blocks) {
       const incompleteTaskBlock = todaySchedule.blocks.find(
         (block: any) => block._id === task.block && block.status !== "complete"
@@ -351,21 +355,44 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       }
     }
 
-    // If we're looking at today's schedule, check tomorrow
-    if (!isTomorrow && tomorrowSchedule?.blocks) {
-      const tomorrowBlockIds = tomorrowSchedule.blocks.map(
-        (block: any) => block._id
-      );
-      if (tomorrowBlockIds.includes(task.block)) {
-        return true;
-      }
-    }
-
-    console.log("Current block ids", currentDayBlockIds);
-    console.log("these are the tasks", task);
-    // Check if it's assigned in the current day's schedule
-    return currentDayBlockIds.includes(task.block);
+    // Fallback: if the block exists in the current day, mark it as assigned
+    return !!currentDayBlock;
   };
+
+  // // Then update the isTaskAssigned function
+  // const isTaskAssigned = (task: Task) => {
+  //   // console.log(task);
+  //   // If task has no block, it's not assigned
+  //   if (!task.block) return false;
+
+  //   // Get block IDs from the current day
+  //   const currentDayBlockIds = day.blocks.map((block: any) => block._id);
+
+  //   // If we're looking at tomorrow's schedule, check today's blocks
+  //   if (isTomorrow && todaySchedule?.blocks) {
+  //     const incompleteTaskBlock = todaySchedule.blocks.find(
+  //       (block: any) => block._id === task.block && block.status !== "complete"
+  //     );
+  //     if (incompleteTaskBlock) {
+  //       return true;
+  //     }
+  //   }
+
+  //   // If we're looking at today's schedule, check tomorrow
+  //   if (!isTomorrow && tomorrowSchedule?.blocks) {
+  //     const tomorrowBlockIds = tomorrowSchedule.blocks.map(
+  //       (block: any) => block._id
+  //     );
+  //     if (tomorrowBlockIds.includes(task.block)) {
+  //       return true;
+  //     }
+  //   }
+
+  //   console.log("Current block ids", currentDayBlockIds);
+  //   console.log("these are the tasks", task);
+  //   // Check if it's assigned in the current day's schedule
+  //   return currentDayBlockIds.includes(task.block);
+  // };
   // const isTaskAssigned = (task: Task) => {
   //   // If task has no block, it's not assigned
   //   if (!task.block) return false;
