@@ -534,7 +534,7 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                                   </div>
                                 </TableCell>
                                 <TableCell className="hidden md:table-cell">
-                                  <span
+                                  {/* <span
                                     className={`inline-block px-2 py-1 rounded-full text-xs ${
                                       task.type === "deep-work"
                                         ? "bg-purple-100 text-purple-800"
@@ -555,7 +555,7 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                                           word.slice(1)
                                       )
                                       .join(" ")}
-                                  </span>
+                                  </span> */}
                                 </TableCell>
                                 <TableCell className="hidden md:table-cell">
                                   {task.duration} min

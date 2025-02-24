@@ -7,6 +7,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TaskCard } from "./TaskCard";
+import { PreviewTaskCard } from "./PreviewTaskCard";
 import { Progress } from "@/components/ui/progress";
 import {
   Clock,
@@ -52,7 +53,7 @@ interface TimeBlockProps {
   onStartFocusSession?: (block: Block) => void;
 }
 
-export function TimeBlock({
+export function PreviewTimeBlock({
   block,
   onDeleteBlock,
   onEditBlock,
@@ -89,8 +90,6 @@ export function TimeBlock({
   const taskIds = useMemo(() => {
     return block.tasks.map((task) => task._id);
   }, [block.tasks]);
-
-  console.log(block);
 
   return (
     <Card ref={setNodeRef} className="border-gray-200 shadow-sm">
@@ -132,7 +131,7 @@ export function TimeBlock({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <BlockProgress tasks={block.tasks} />
+            {/* <BlockProgress tasks={block.tasks} /> */}
           </div>
         </CardTitle>
 
@@ -170,7 +169,7 @@ export function TimeBlock({
       <CardContent>
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           {block.tasks.map((task) => (
-            <TaskCard
+            <PreviewTaskCard
               key={task._id}
               task={task}
               block={block}
@@ -194,45 +193,6 @@ export function TimeBlock({
             <Plus className="h-4 w-4 mr-1" />
             Add Task
           </Button>
-          <div className="space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-sm text-green-600 hover:bg-green-50 hover:text-green-700"
-              onClick={() => onCompleteBlock(block._id)}
-            >
-              <Check className="h-4 w-4 md:mr-1" />
-              <span className="hidden md:inline">Complete</span>
-            </Button>
-            {block.meetingLink ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                asChild
-              >
-                <a
-                  href={block.meetingLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center"
-                >
-                  <LinkIcon className="h-4 w-4 md:mr-1" />
-                  <span className="hidden md:inline">Join Meeting</span>
-                </a>
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                onClick={() => onStartFocusSession?.(block)}
-              >
-                <Clock className="h-4 w-4 md:mr-1" />
-                <span className="hidden md:inline">Start</span>
-              </Button>
-            )}
-          </div>
         </div>
       </CardContent>
     </Card>

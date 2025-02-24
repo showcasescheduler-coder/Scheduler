@@ -53,6 +53,8 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
   const [endTime, setEndTime] = useState("");
   const { isLoaded, userId } = useAuth();
   const router = useRouter();
+  const { isPreviewMode, setPreviewSchedule, previewSchedule } =
+    useAppContext();
 
   useEffect(() => {
     fetchRoutines();
@@ -84,11 +86,11 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
   const handleAddRoutineToSchedule = async () => {
     if (!selectedRoutine || !startTime || !endTime) return;
 
-    // Validate the routine’s start and end times.
+    // Validate the routine's start and end times
     const routineTime = { startTime, endTime };
     const errorMessage = validateTimeRange(
       routineTime,
-      day.blocks,
+      isPreviewMode ? previewSchedule?.blocks || [] : day.blocks,
       allowedStart,
       allowedEnd
     );
@@ -97,29 +99,107 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
       return;
     }
 
-    try {
-      const response = await fetch("/api/routines/add-to-schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dayId: day._id,
+    // const errorMessage = validateTimeRange(
+    //   routineTime,
+    //   isPreviewMode ? previewSchedule?.blocks || [] : day.blocks,
+    //   allowedStart,
+    //   allowedEnd,
+    //   isPreviewMode
+    // );
+    // if (errorMessage) {
+    //   toast.error(errorMessage);
+    //   return;
+    // }
+
+    if (isPreviewMode) {
+      try {
+        // Get current preview schedule
+        const previewSchedule = JSON.parse(
+          localStorage.getItem("schedule") ||
+            JSON.stringify({
+              currentTime: new Date().toLocaleTimeString(),
+              scheduleRationale: "",
+              userStartTime: "",
+              userEndTime: "",
+              blocks: [],
+            })
+        );
+
+        // Create temporary block ID
+        const tempBlockId = `temp-block-${previewSchedule.blocks.length}`;
+
+        // Create temporary task IDs and tasks
+        const tempTasks = selectedRoutine.tasks.map((task, index) => ({
+          _id: `temp-task-${tempBlockId}-${index}`,
+          name: task.name,
+          priority: task.priority,
+          duration: task.duration,
+          block: tempBlockId,
+          blockId: tempBlockId,
           routineId: selectedRoutine._id,
+          isRoutineTask: true,
+          completed: false,
+          description: task.description || "",
+          status: "pending",
+          type: task.type || "deep-work",
+        }));
+
+        // Create the block for the routine
+        const newBlock = {
+          _id: tempBlockId,
           name: selectedRoutine.name,
           startTime,
           endTime,
-          tasks: selectedRoutine.tasks,
-        }),
-      });
+          status: "pending",
+          blockType: "deep-work",
+          description: selectedRoutine.description || "",
+          routineId: selectedRoutine._id,
+          tasks: tempTasks,
+          isRoutine: true,
+        };
 
-      if (!response.ok) throw new Error("Failed to add routine to schedule");
+        // Add block to schedule
+        const updatedBlocks = [...previewSchedule.blocks, newBlock];
+        const updatedSchedule = {
+          ...previewSchedule,
+          blocks: updatedBlocks,
+        };
 
-      const data = await response.json();
-      console.log("Routine added to schedule:", data);
+        // Save to localStorage
+        localStorage.setItem("schedule", JSON.stringify(updatedSchedule));
 
-      updateDay();
-      onClose();
-    } catch (error) {
-      console.error("Error adding routine to schedule:", error);
+        // Update UI state
+        setPreviewSchedule(updatedSchedule);
+        toast.success("Routine added to preview schedule");
+        onClose();
+      } catch (error) {
+        console.error("Error adding routine in preview mode:", error);
+        toast.error("Failed to add routine to preview");
+      }
+    } else {
+      try {
+        const response = await fetch("/api/routines/add-to-schedule", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dayId: day._id,
+            routineId: selectedRoutine._id,
+            name: selectedRoutine.name,
+            startTime,
+            endTime,
+            tasks: selectedRoutine.tasks,
+          }),
+        });
+
+        if (!response.ok) throw new Error("Failed to add routine to schedule");
+
+        const data = await response.json();
+        updateDay();
+        onClose();
+      } catch (error) {
+        console.error("Error adding routine to schedule:", error);
+        toast.error("Failed to add routine to schedule");
+      }
     }
   };
 

@@ -3,7 +3,8 @@ import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Block } from "@/app/context/models";
+import { Block, PreviewSchedule } from "@/app/context/models";
+import { useAppContext } from "@/app/context/AppContext";
 
 // Define a type for the editable fields
 interface EditableBlockFields {
@@ -33,13 +34,16 @@ interface EditBlockDialogProps {
   block: Block;
   onClose: () => void;
   onSave: (updatedBlock: Block) => void;
+  isPreviewMode: boolean;
 }
 
 export function EditBlockDialog({
   block,
   onClose,
   onSave,
+  isPreviewMode,
 }: EditBlockDialogProps) {
+  const { setPreviewSchedule } = useAppContext();
   // Initialize form data with only the fields we want to edit
   const [formData, setFormData] = React.useState<EditableBlockFields>({
     _id: block._id,
@@ -52,6 +56,10 @@ export function EditBlockDialog({
     meetingLink: block.meetingLink,
   });
 
+  const updatePreviewStorage = (updatedSchedule: PreviewSchedule) => {
+    localStorage.setItem("schedule", JSON.stringify(updatedSchedule));
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -59,14 +67,57 @@ export function EditBlockDialog({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Merge the form data with the original block to preserve other fields
-    const updatedBlock: Block = {
-      ...block,
-      ...formData,
-    };
-    onSave(updatedBlock);
+
+    if (isPreviewMode) {
+      try {
+        // Get current preview schedule
+        const previewSchedule = JSON.parse(
+          localStorage.getItem("schedule") ||
+            JSON.stringify({
+              currentTime: new Date().toLocaleTimeString(),
+              scheduleRationale: "",
+              userStartTime: "",
+              userEndTime: "",
+              blocks: [],
+            })
+        );
+
+        // Update the block in the schedule
+        const updatedBlocks = previewSchedule.blocks.map((b: Block) => {
+          if (b._id === block._id) {
+            return {
+              ...b,
+              ...formData,
+            };
+          }
+          return b;
+        });
+
+        // Create updated schedule
+        const updatedSchedule = {
+          ...previewSchedule,
+          blocks: updatedBlocks,
+        };
+
+        // Save to localStorage
+        updatePreviewStorage(updatedSchedule);
+
+        // Update UI state
+        setPreviewSchedule(updatedSchedule);
+      } catch (error) {
+        console.error("Error updating block in preview mode:", error);
+      }
+    } else {
+      // Existing database logic
+      const updatedBlock: Block = {
+        ...block,
+        ...formData,
+      };
+      onSave(updatedBlock);
+    }
+
     onClose();
   };
 

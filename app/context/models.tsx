@@ -21,6 +21,10 @@ export interface ProjectTask extends Task {
   projectId: string;
 }
 
+export interface EventTask extends Task {
+  eventId: string;
+}
+
 export interface Event {
   _id: string;
   name: string;
@@ -33,6 +37,7 @@ export interface Event {
   isRecurring: boolean;
   days: string[];
   meetingLink: string | null;
+  tasks: EventTask[];
 }
 
 export interface Project {
@@ -111,14 +116,6 @@ export interface User {
   days: Day[];
 }
 
-// export interface Schedule {
-//   currentTime: string;
-//   scheduleRationale: string;
-//   userStartTime: string;
-//   userEndTime: string;
-//   blocks: Block[];
-// }
-
 export interface Schedule {
   currentTime: string;
   scheduleRationale: string;
@@ -161,27 +158,6 @@ export interface PreviewTask {
   priority?: "High" | "Medium" | "Low";
   isRoutineTask?: boolean;
 }
-
-// export interface PreviewBlock {
-//   _id: string;
-//   name: string;
-//   startTime: string;
-//   endTime: string;
-//   description: string;
-//   isEvent: boolean;
-//   isRoutine: boolean;
-//   isStandaloneBlock: boolean;
-//   blockType:
-//     | "deep-work"
-//     | "break"
-//     | "meeting"
-//     | "health"
-//     | "exercise"
-//     | "admin"
-//     | "personal";
-//   energyLevel: "high" | "medium" | "low";
-//   tasks: PreviewTask[];
-// }
 
 export interface PreviewBlock {
   _id: string;

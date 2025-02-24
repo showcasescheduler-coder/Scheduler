@@ -12,6 +12,8 @@ export interface IEvent extends Document {
   isRecurring?: boolean;
   days?: string[];
   meetingLink?: string;
+  completed: boolean;
+  tasks: mongoose.Types.ObjectId[];
 }
 
 const EventSchema: Schema = new Schema(
@@ -31,6 +33,13 @@ const EventSchema: Schema = new Schema(
     isRecurring: { type: Boolean, default: false },
     days: [String],
     meetingLink: { type: String, required: false },
+    completed: { type: Boolean, default: false },
+    tasks: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Task",
+      },
+    ],
   },
   { timestamps: true }
 );

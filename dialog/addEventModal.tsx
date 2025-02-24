@@ -26,8 +26,9 @@ import {
   Clock,
   LinkIcon,
   Calendar,
+  Circle,
 } from "lucide-react";
-import { Event } from "@/app/context/models";
+import { Event, EventTask } from "@/app/context/models";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
 import { useAuth } from "@clerk/nextjs";
@@ -40,6 +41,7 @@ import {
   validateTimeRange,
 } from "@/helpers/timeValidation";
 import toast from "react-hot-toast";
+// ... at the top of your component:
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -66,6 +68,8 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
     meetingLink: "", // New field for meeting link
   });
   const { userId } = useAuth();
+  const { isPreviewMode, setPreviewSchedule, previewSchedule } =
+    useAppContext();
 
   const allowedStart = "08:00";
   const allowedEnd = "22:00";
@@ -111,7 +115,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
 
     const errorMessage = validateTimeRange(
       newEvent,
-      day.blocks,
+      isPreviewMode ? previewSchedule?.blocks || [] : day.blocks,
       allowedStart,
       allowedEnd
     );
@@ -120,69 +124,138 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
       return;
     }
 
-    const newEventObj = {
-      ...newEvent,
-      date: day.date,
-      userId,
-    };
+    // const errorMessage = validateTimeRange(
+    //   newEvent,
+    //   isPreviewMode ? previewSchedule?.blocks || [] : day.blocks,
+    //   allowedStart,
+    //   allowedEnd
+    // );
+    // if (errorMessage) {
+    //   toast.error(errorMessage);
+    //   return;
+    // }
 
-    try {
-      const response = await fetch("/api/events/with-block", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...newEventObj, dayId: day._id }),
-      });
+    if (isPreviewMode) {
+      try {
+        // Get current preview schedule
+        const previewSchedule = JSON.parse(
+          localStorage.getItem("schedule") ||
+            JSON.stringify({
+              currentTime: new Date().toLocaleTimeString(),
+              scheduleRationale: "",
+              userStartTime: "",
+              userEndTime: "",
+              blocks: [],
+            })
+        );
 
-      if (!response.ok) {
-        throw new Error("Failed to create event with block");
+        // Create temporary IDs for new block and event
+        const tempBlockId = `temp-block-${previewSchedule.blocks.length}`;
+        const tempEventId = `temp-event-${Date.now()}`;
+
+        // Create the block for the event
+        const newBlock = {
+          _id: tempBlockId,
+          name: newEvent.name,
+          startTime: newEvent.startTime,
+          endTime: newEvent.endTime,
+          status: "pending",
+          blockType: "meeting",
+          meetingLink: newEvent.meetingLink,
+          description: newEvent.description,
+          event: tempEventId,
+          tasks: [],
+          isEvent: true,
+        };
+
+        // Create the event
+        const newEventObj = {
+          _id: tempEventId,
+          ...newEvent,
+          block: tempBlockId,
+          date: day.date,
+        };
+
+        // Add block to schedule
+        const updatedBlocks = [...previewSchedule.blocks, newBlock];
+        const updatedSchedule = {
+          ...previewSchedule,
+          blocks: updatedBlocks,
+        };
+
+        // Save to localStorage
+        localStorage.setItem("schedule", JSON.stringify(updatedSchedule));
+
+        // Update UI state
+        setPreviewSchedule(updatedSchedule);
+        setEvents((prevEvents) => [...prevEvents, newEventObj as Event]);
+        toast.success("Event added to preview schedule");
+
+        // Clear form and close modal
+        setNewEvent({
+          name: "",
+          description: "",
+          startTime: "",
+          endTime: "",
+          meetingLink: "",
+        });
+        onClose();
+      } catch (error) {
+        console.error("Error adding event in preview mode:", error);
+        toast.error("Failed to add event to preview");
       }
+    } else {
+      try {
+        const response = await fetch("/api/events/with-block", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...newEvent,
+            dayId: day._id,
+            date: day.date,
+            userId,
+          }),
+        });
 
-      const data = await response.json();
-      console.log("New event and block created:", data);
+        if (!response.ok) {
+          throw new Error("Failed to create event with block");
+        }
 
-      // Update the global day state (for blocks)
-      setDay((prevDay) => ({
-        ...prevDay,
-        blocks: [...prevDay.blocks, data.block],
-      }));
+        const data = await response.json();
+        setDay((prevDay) => ({
+          ...prevDay,
+          blocks: [...prevDay.blocks, data.block],
+        }));
 
-      // Update the events state locally if needed.
-      setEvents((prevEvents) => [...prevEvents, data.event]);
+        setEvents((prevEvents) => [...prevEvents, data.event]);
+        updateDay();
+        fetchEvents();
 
-      // Immediately revalidate both day data and events list:
-      updateDay(); // This calls mutate() to re-fetch day data.
-      fetchEvents(); // Re-fetch events list for the Event Bank.
-
-      // Clear form and close the modal.
-      setNewEvent({
-        name: "",
-        description: "",
-        startTime: "",
-        endTime: "",
-        meetingLink: "",
-      });
-      onClose();
-    } catch (error) {
-      console.error("Error creating new event and block:", error);
+        setNewEvent({
+          name: "",
+          description: "",
+          startTime: "",
+          endTime: "",
+          meetingLink: "",
+        });
+        onClose();
+      } catch (error) {
+        console.error("Error creating event with block:", error);
+        toast.error("Failed to create event");
+      }
     }
   };
 
   const addEventToBlock = async (eventId: string) => {
-    if (!day._id) {
-      console.error("Day ID is not available");
-      return;
-    }
-    // Look up the event from your events array
     const eventToAdd = events.find((e) => e._id === eventId);
     if (!eventToAdd) {
       toast.error("Event not found");
       return;
     }
 
-    // allowedStart and allowedEnd are defined as "08:00" and "22:00"
     const errorMessage = validateTimeRange(
       { startTime: eventToAdd.startTime, endTime: eventToAdd.endTime },
-      day.blocks,
+      isPreviewMode ? previewSchedule?.blocks || [] : day.blocks,
       allowedStart,
       allowedEnd
     );
@@ -191,41 +264,106 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
       return;
     }
 
-    try {
-      const res = await fetch(`/api/add-event-to-block`, {
-        method: "POST",
-        body: JSON.stringify({
-          eventId: eventId,
-          dayId: day._id,
-          date: day.date,
-        }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to create block for event");
+    // const errorMessage = validateTimeRange(
+    //   { startTime: eventToAdd.startTime, endTime: eventToAdd.endTime },
+    //   isPreviewMode ? previewSchedule?.blocks || [] : day.blocks,
+    //   allowedStart,
+    //   allowedEnd
+    // );
+    // if (errorMessage) {
+    //   toast.error(errorMessage);
+    //   return;
+    // }
+
+    if (isPreviewMode) {
+      try {
+        // Get current preview schedule
+        const previewSchedule = JSON.parse(
+          localStorage.getItem("schedule") ||
+            JSON.stringify({
+              currentTime: new Date().toLocaleTimeString(),
+              scheduleRationale: "",
+              userStartTime: "",
+              userEndTime: "",
+              blocks: [],
+            })
+        );
+
+        // Create temporary block ID
+        const tempBlockId = `temp-block-${previewSchedule.blocks.length}`;
+
+        // Create the block for the existing event
+        const newBlock = {
+          _id: tempBlockId,
+          name: eventToAdd.name,
+          startTime: eventToAdd.startTime,
+          endTime: eventToAdd.endTime,
+          status: "pending",
+          blockType: "meeting",
+          meetingLink: eventToAdd.meetingLink,
+          description: eventToAdd.description,
+          event: eventId,
+          tasks: [],
+          isEvent: true,
+        };
+
+        // Add block to schedule
+        const updatedBlocks = [...previewSchedule.blocks, newBlock];
+        const updatedSchedule = {
+          ...previewSchedule,
+          blocks: updatedBlocks,
+        };
+
+        // Save to localStorage
+        localStorage.setItem("schedule", JSON.stringify(updatedSchedule));
+
+        // Update UI state
+        setPreviewSchedule(updatedSchedule);
+        setEvents((prevEvents) =>
+          prevEvents.map((event) =>
+            event._id === eventId ? { ...event, block: tempBlockId } : event
+          )
+        );
+        toast.success("Event added to preview schedule");
+        onClose();
+      } catch (error) {
+        console.error("Error adding event in preview mode:", error);
+        toast.error("Failed to add event to preview");
       }
-      const data = await res.json();
-      console.log("Block created for event:", data);
+    } else {
+      try {
+        const res = await fetch(`/api/add-event-to-block`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventId: eventId,
+            dayId: day._id,
+            date: day.date,
+          }),
+        });
 
-      // Update the events state
-      setEvents((prevEvents: Event[]) =>
-        prevEvents.map((event) =>
-          event._id === eventId ? { ...event, block: data.block._id } : event
-        )
-      );
+        if (!res.ok) {
+          throw new Error("Failed to create block for event");
+        }
 
-      // Update the day data in the context
-      setDay((prevDay: Day) => ({
-        ...prevDay,
-        blocks: [...prevDay.blocks, data.block],
-      }));
+        const data = await res.json();
+        setEvents((prevEvents) =>
+          prevEvents.map((event) =>
+            event._id === eventId ? { ...event, block: data.block._id } : event
+          )
+        );
 
-      updateDay();
-      onClose(); // Close the modal after adding the event
-    } catch (error) {
-      console.error("Error creating block for event:", error);
+        setDay((prevDay) => ({
+          ...prevDay,
+          blocks: [...prevDay.blocks, data.block],
+        }));
+
+        updateDay();
+        onClose();
+      } catch (error) {
+        console.error("Error creating block for event:", error);
+        toast.error("Failed to add event");
+      }
     }
   };
 
@@ -347,7 +485,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                       key={event._id}
                       className={`border ${event.block ? "opacity-50" : ""}`}
                     >
-                      <CardContent className="p-3 flex items-center justify-between">
+                      <CardContent className="p-3">
                         <div className="space-y-1.5">
                           <h4 className="text-sm font-medium">{event.name}</h4>
                           <p className="text-xs text-gray-500">
@@ -367,17 +505,32 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                               Join Meeting
                             </a>
                           )}
+                          {event.tasks && event.tasks.length > 0 && (
+                            <ul className="mt-2 space-y-1.5">
+                              {event.tasks.map((task: EventTask) => (
+                                <li
+                                  key={task._id}
+                                  className="flex items-center text-xs text-gray-600"
+                                >
+                                  <Circle className="h-2 w-2 mr-2 text-gray-400" />
+                                  <span>{task.name}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-9 shrink-0"
-                          onClick={() => addEventToBlock(event._id)}
-                          disabled={!!event.block}
-                        >
-                          <PlusCircle className="h-4 w-4 mr-1" />
-                          {event.block ? "Assigned" : "Add"}
-                        </Button>
+                        <div className="mt-3 flex justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-9 shrink-0"
+                            onClick={() => addEventToBlock(event._id)}
+                            disabled={!!event.block}
+                          >
+                            <PlusCircle className="h-4 w-4 mr-1" />
+                            {event.block ? "Assigned" : "Add"}
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   ))

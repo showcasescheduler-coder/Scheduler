@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const events = await Event.find({ userId, date });
+    // Populate the tasks field for each event
+    const events = await Event.find({ userId, date }).populate("tasks");
 
     return NextResponse.json(events, { status: 200 });
   } catch (error) {

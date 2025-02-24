@@ -9,7 +9,8 @@ export async function GET(
   await dbConnect();
 
   try {
-    const event = await Event.findById(params.id);
+    // Populate the "tasks" field with the full Task documents
+    const event = await Event.findById(params.id).populate("tasks");
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }

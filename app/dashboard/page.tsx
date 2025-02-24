@@ -101,6 +101,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { TaskCard } from "@/app/components/TaskCard";
 import { TimeBlock } from "../components/TimeBlock";
+import { PreviewTimeBlock } from "../components/PreviewTimeBlock";
 import { arrayMove } from "@dnd-kit/sortable";
 import { createPortal } from "react-dom";
 import {
@@ -115,28 +116,6 @@ import {
   Block,
   Task,
 } from "@/app/context/models"; // adjust the import path if needed
-
-// interface Task {
-//   _id: string;
-//   block: string;
-//   blockId?: string;
-//   dayId: string;
-//   name: string;
-//   description: string;
-//   duration: string;
-//   priority: "High" | "Medium" | "Low";
-//   status: "pending" | "in_progress" | "completed";
-//   type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-//   isRoutineTask: boolean;
-//   completed: boolean;
-//   createdAt: string;
-//   updatedAt: string;
-//   __v: number;
-//   deadline?: string;
-//   project?: string;
-//   routine?: string;
-//   projectId?: string;
-// }
 
 type EditableBlockFields = {
   _id: string;
@@ -155,31 +134,6 @@ type EditableBlockFields = {
   status: "pending" | "complete" | "incomplete";
   meetingLink?: string;
 };
-
-// interface Block {
-//   _id: string;
-//   dayId: string;
-//   name: string;
-//   description: string;
-//   startTime: string;
-//   endTime: string;
-//   status: "pending" | "complete" | "incomplete";
-//   blockType:
-//     | "deep-work"
-//     | "break"
-//     | "meeting"
-//     | "health"
-//     | "exercise"
-//     | "admin"
-//     | "personal";
-//   event: string | null;
-//   tasks: Task[];
-//   createdAt: string;
-//   updatedAt: string;
-//   __v: number;
-//   isStandaloneBlock?: boolean;
-//   meetingLink: string;
-// }
 
 interface DragData {
   type: "Task" | "Block";
@@ -296,6 +250,8 @@ export default function Component() {
     }
   );
   const [rationaleText, setRationaleText] = useState("");
+  const [sortedPreviewBlocks, setSortedPreviewBlocks] = useState<Block[]>([]);
+
   const generationStartedRef = useRef(false);
 
   const lastUpdateRef = useRef<number>(0);
@@ -353,10 +309,10 @@ export default function Component() {
       scheduleRationale: streaming.scheduleRationale,
       userStartTime: streaming.userStartTime,
       userEndTime: streaming.userEndTime,
-      blocks: streaming.blocks.map(
-        (block, index): PreviewBlock => ({
-          // Ensure _id is defined. If it’s missing in the streaming block, create a temporary one.
-          _id: block._id ?? `temp-${index}`,
+      blocks: streaming.blocks.map((block, index): PreviewBlock => {
+        const blockId = block._id ?? `temp-${index}`;
+        return {
+          _id: blockId,
           name: block.name,
           startTime: block.startTime,
           endTime: block.endTime,
@@ -364,7 +320,6 @@ export default function Component() {
           isEvent: block.isEvent ?? false,
           isRoutine: block.isRoutine ?? false,
           isStandaloneBlock: block.isStandaloneBlock ?? false,
-          // Cast or map blockType and energyLevel as needed
           blockType: block.blockType as
             | "deep-work"
             | "break"
@@ -375,12 +330,16 @@ export default function Component() {
             | "personal",
           energyLevel:
             (block.energyLevel as "high" | "medium" | "low") ?? "medium",
-          // If you need to transform tasks, do so here.
-          tasks: block.tasks,
+          tasks: block.tasks.map((task, taskIndex) => ({
+            ...task,
+            _id: task._id ?? `temp-task-${index}-${taskIndex}`,
+            block: blockId, // use computed blockId here
+            blockId: blockId, // use computed blockId here
+          })),
           type: "deep-work",
           routineId: null,
-        })
-      ),
+        };
+      }),
     };
   };
 
@@ -399,6 +358,13 @@ export default function Component() {
   // Then modify how you handle day selection in both mobile and desktop views:
   const handleDayChange = (value: "today" | "tomorrow") => {
     setContextSelectedDay(value); // This triggers the useUserAndDay hook to fetch/create the day
+  };
+
+  const handleDiscardClick = () => {
+    localStorage.removeItem("schedule");
+    localStorage.setItem("isPreviewMode", "false");
+    setIsPreviewMode(false);
+    setPreviewSchedule(null);
   };
 
   const currentDate = selectedDay === "today" ? today : tomorrow;
@@ -514,69 +480,6 @@ export default function Component() {
     }
   };
 
-  // const generateSchedule = async () => {
-  //   setGenerationProgress(0);
-  //   setGenerationStatus("Initializing...");
-  //   try {
-  //     // Intent Analysis
-  //     setGenerationProgress(10);
-  //     setGenerationStatus("Analyzing your requirements...");
-  //     const intentResponse = await fetch("/api/home-page-intent-analysis", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({
-  //         userInput: promptText,
-  //         startTime: "09:00",
-  //         endTime: "17:00",
-  //       }),
-  //     });
-
-  //     const intentAnalysis = await intentResponse.json();
-
-  //     // Schedule Generation
-  //     setGenerationProgress(30);
-  //     setGenerationStatus("Generating your schedule...");
-  //     console.log("Intent analysis", intentAnalysis);
-  //     const endpoint = intentAnalysis.isSpecificRequest
-  //       ? "/api/home-page-specific"
-  //       : "/api/home-page-non-specific";
-
-  //     const scheduleResponse = await fetch(endpoint, {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({
-  //         userInput: promptText,
-  //         startTime: "09:00",
-  //         endTime: "17:00",
-  //       }),
-  //     });
-
-  //     setGenerationProgress(60);
-  //     setGenerationStatus("Optimizing block placement...");
-
-  //     const schedule = await scheduleResponse.json();
-  //     console.log(schedule);
-  //     setGenerationProgress(80);
-  //     setGenerationStatus("Finalizing your schedule...");
-
-  //     if (schedule.blocks) {
-  //       setGenerationProgress(100);
-  //       setGenerationStatus("Schedule generated successfully!");
-  //       setPreviewSchedule(schedule);
-  //       setIsPreviewMode(true);
-  //     }
-  //   } catch (error) {
-  //     console.error("Failed to generate schedule:", error);
-  //   } finally {
-  //     await new Promise((resolve) => setTimeout(resolve, 500)); // Give time to see 100%
-  //     setIsGeneratingSchedule(false);
-  //     // IMPORTANT: mark that we've processed
-  //     setHasProcessedPrompt(true);
-  //     setGenerationProgress(0);
-  //     setGenerationStatus("");
-  //   }
-  // };
-
   useEffect(() => {
     // Only generate if promptText exists, no schedule has been generated yet,
     // and generation has not already started.
@@ -675,6 +578,24 @@ export default function Component() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (isPreviewMode && previewSchedule && previewSchedule.blocks) {
+      // Cast previewSchedule.blocks to Block[] temporarily
+      const sorted = ([...previewSchedule.blocks] as unknown as Block[]).sort(
+        (a, b) => {
+          const timeA = a.startTime
+            ? new Date(`1970-01-01T${a.startTime}:00`)
+            : new Date(0);
+          const timeB = b.startTime
+            ? new Date(`1970-01-01T${b.startTime}:00`)
+            : new Date(0);
+          return timeA.getTime() - timeB.getTime();
+        }
+      );
+      setSortedPreviewBlocks(sorted);
+    }
+  }, [previewSchedule, isPreviewMode]);
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -788,10 +709,55 @@ export default function Component() {
 
   const handleRemoveTaskFromBlock = async (task: Task, block: Block) => {
     if (
-      window.confirm(
+      !window.confirm(
         "Are you sure you want to remove this task from the block? It will still be available in your task list."
       )
     ) {
+      return;
+    }
+
+    if (isPreviewMode) {
+      try {
+        // Get current preview schedule from localStorage
+        const previewSchedule = JSON.parse(
+          localStorage.getItem("schedule") ||
+            JSON.stringify({
+              currentTime: new Date().toLocaleTimeString(),
+              scheduleRationale: "",
+              userStartTime: "",
+              userEndTime: "",
+              blocks: [],
+            })
+        );
+
+        // Find the block and remove the task
+        const updatedBlocks = previewSchedule.blocks.map((b: Block) => {
+          if (b._id === block._id) {
+            return {
+              ...b,
+              tasks: b.tasks.filter((t) => t._id !== task._id),
+            };
+          }
+          return b;
+        });
+
+        // Create updated schedule
+        const updatedSchedule = {
+          ...previewSchedule,
+          blocks: updatedBlocks,
+        };
+
+        // Save to localStorage
+        localStorage.setItem("schedule", JSON.stringify(updatedSchedule));
+
+        // Update UI state
+        setPreviewSchedule(updatedSchedule);
+        toast.success("Task removed from block and moved to your task list");
+      } catch (error) {
+        console.error("Error removing task in preview mode:", error);
+        toast.error("Failed to remove task from block");
+      }
+    } else {
       try {
         const response = await fetch(`/api/blocks/${block._id}`, {
           method: "PATCH",
@@ -808,18 +774,13 @@ export default function Component() {
           throw new Error("Failed to remove task from block");
         }
 
-        // Instead of relying on the response data, we'll update the state directly
+        // Update the local state
         mutate(
           (currentDay: Day) => ({
             ...currentDay,
             blocks: currentDay.blocks.map((b) => {
-              // If it's a string, return as is
               if (typeof b === "string") return b;
-
-              // If this is not the block we're modifying, return as is
               if (b._id !== block._id) return b;
-
-              // If this is the block we're modifying, filter out the task
               return {
                 ...b,
                 tasks: b.tasks.filter((t) => t._id !== task._id),
@@ -1006,65 +967,108 @@ export default function Component() {
     }
     return null;
   };
+
   const handleAddBlock = async (newBlock: Partial<Block>) => {
     // Get the allowed start and end times for the day.
     const { startTime: dayStartTime, endTime: dayEndTime } =
       getScheduleTimes(selectedDay);
 
     // Validate the new block times.
-    // Validate the new block times.
     const errorMessage = validateBlockTime(
       newBlock,
-      day.blocks,
+      isPreviewMode ? previewSchedule?.blocks || [] : day.blocks,
       dayStartTime,
       dayEndTime
     );
+
     if (errorMessage) {
       toast.error(errorMessage);
       return;
     }
 
-    try {
-      const response = await fetch("/api/add-block-to-schedule", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          dayId: day._id,
-          name: newBlock.name,
-          startTime: newBlock.startTime,
-          endTime: newBlock.endTime,
-          userId: userId, // Assuming you have access to userId
-          description: newBlock.description,
-          blockType: newBlock.blockType,
-        }),
-      });
+    if (isPreviewMode) {
+      try {
+        // Get current preview schedule from localStorage
+        const previewSchedule = JSON.parse(
+          localStorage.getItem("schedule") ||
+            JSON.stringify({
+              currentTime: new Date().toLocaleTimeString(),
+              scheduleRationale: "",
+              userStartTime: "",
+              userEndTime: "",
+              blocks: [],
+            })
+        );
 
-      if (!response.ok) {
-        throw new Error("Failed to add block");
+        // Create new block with a temporary ID
+        const newPreviewBlock = {
+          ...newBlock,
+          _id: `temp-${previewSchedule.blocks.length}`,
+          tasks: [],
+          status: "pending",
+          event: null,
+        };
+
+        // Add the new block to the schedule
+        const updatedBlocks = [...previewSchedule.blocks, newPreviewBlock];
+
+        // Create updated schedule
+        const updatedSchedule = {
+          ...previewSchedule,
+          blocks: updatedBlocks,
+        };
+
+        // Save to localStorage
+        localStorage.setItem("schedule", JSON.stringify(updatedSchedule));
+
+        // Update UI state
+        setPreviewSchedule(updatedSchedule);
+        toast.success("Block added to preview schedule");
+      } catch (error) {
+        console.error("Error adding block in preview mode:", error);
+        toast.error("Failed to add block to preview");
       }
+    } else {
+      try {
+        const response = await fetch("/api/add-block-to-schedule", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            dayId: day._id,
+            name: newBlock.name,
+            startTime: newBlock.startTime,
+            endTime: newBlock.endTime,
+            userId: userId,
+            description: newBlock.description,
+            blockType: newBlock.blockType,
+          }),
+        });
 
-      const data = await response.json();
-      console.log("New block created:", data);
+        if (!response.ok) {
+          throw new Error("Failed to add block");
+        }
 
-      // Update the day data in the context
-      setDay((prevDay) => ({
-        ...prevDay,
-        blocks: [...prevDay.blocks, data.block],
-      }));
+        const data = await response.json();
 
-      // Close the dialog and reset the form
-      setIsDialogOpen(false);
+        // Update the day data in the context
+        setDay((prevDay) => ({
+          ...prevDay,
+          blocks: [...prevDay.blocks, data.block],
+        }));
 
-      // Update the day view
-      updateDay();
-      toast.success("New block added successfully");
-    } catch (error) {
-      console.error("Error adding block:", error);
-      toast.error("Failed to add new block. Please try again.");
-      // Handle error (e.g., show an error message to the user)
+        // Update the day view
+        updateDay();
+        toast.success("New block added successfully");
+      } catch (error) {
+        console.error("Error adding block:", error);
+        toast.error("Failed to add new block. Please try again.");
+      }
     }
+
+    // Close the dialog
+    setIsAddBlockDialogOpen(false);
   };
 
   function canDeleteBlock(block: Block): boolean {
@@ -1108,10 +1112,57 @@ export default function Component() {
       return;
     }
 
-    try {
-      const result = await deleteBlock(block);
+    if (isPreviewMode) {
+      try {
+        // Get current preview schedule from localStorage
+        const previewSchedule = JSON.parse(
+          localStorage.getItem("schedule") ||
+            JSON.stringify({
+              currentTime: new Date().toLocaleTimeString(),
+              scheduleRationale: "",
+              userStartTime: "",
+              userEndTime: "",
+              blocks: [],
+            })
+        );
 
-      if (result.success) {
+        // Filter out the block to be deleted
+        const updatedBlocks = previewSchedule.blocks.filter(
+          (b: Block) => b._id !== block._id
+        );
+
+        // Create updated schedule
+        const updatedSchedule = {
+          ...previewSchedule,
+          blocks: updatedBlocks,
+        };
+
+        // Save to localStorage
+        localStorage.setItem("schedule", JSON.stringify(updatedSchedule));
+
+        // Update UI state
+        setPreviewSchedule(updatedSchedule);
+        toast.success("Block deleted from preview");
+      } catch (error) {
+        console.error("Error deleting block in preview mode:", error);
+        toast.error("Failed to delete block from preview");
+      }
+    } else {
+      try {
+        if (!canDeleteBlock(block)) {
+          throw new Error(
+            "Cannot delete block with tasks. Remove all tasks first."
+          );
+        }
+
+        const response = await fetch(`/api/blocks/${block._id}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to delete block");
+        }
+
         // Update the local state
         mutate(
           (currentDay: Day) => ({
@@ -1123,20 +1174,19 @@ export default function Component() {
           }),
           false
         );
+
         toast.success("Block deleted successfully");
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (error: unknown) {
-      console.error("Error deleting block:", error);
-      if (error instanceof Error) {
-        toast.error(
-          "Failed to delete block. Please try again. All tasks must be removed or deleted before you can delete this block"
-        );
-      } else {
-        toast.error(
-          "Failed to delete block. Please try again. All tasks must be removed or deleted before you can delete this block"
-        );
+      } catch (error: unknown) {
+        console.error("Error deleting block:", error);
+        if (error instanceof Error) {
+          toast.error(
+            "Failed to delete block. Please try again. All tasks must be removed or deleted before you can delete this block"
+          );
+        } else {
+          toast.error(
+            "Failed to delete block. Please try again. All tasks must be removed or deleted before you can delete this block"
+          );
+        }
       }
     }
   };
@@ -1973,12 +2023,10 @@ export default function Component() {
     }
   };
 
-  // Add this inside your Component, before the return statement
-
   const onDragOver = (event: DragOverEvent) => {
     console.log("DragOver Event started:", event);
     const { active, over } = event;
-    if (!over || !day?.blocks) {
+    if (!over) {
       console.log("No over element found");
       return;
     }
@@ -1998,68 +2046,255 @@ export default function Component() {
     const activeTask = activeData?.task;
     if (!activeTask) return;
 
-    // Get the block ID from either block or blockId field
     const getBlockId = (task: any) => task.block || task.blockId;
     const activeBlockId = getBlockId(activeTask);
 
-    if (isActiveTask && isOverTask) {
-      console.log("is active and over tasks");
-      const overTask = overData?.task;
-      if (!overTask) return;
-
-      const overBlockId = getBlockId(overTask);
-
-      const activeBlock = day.blocks.find(
-        (block: { _id: any }) => block._id === activeBlockId
-      );
-      console.log("Active Block ID:", activeBlockId);
-      console.log("Active Block:", activeBlock);
-
-      const overBlock = day.blocks.find(
-        (block: { _id: any }) => block._id === overBlockId
-      );
-      console.log("Over Block ID:", overBlockId);
-      console.log("Over Block:", overBlock);
-
-      if (!activeBlock || !overBlock) return;
-
-      if (activeBlock._id === overBlock._id) {
-        const oldIndex = activeBlock.tasks.findIndex(
-          (task: { _id: string }) => task._id === activeTask._id
-        );
-        const newIndex = activeBlock.tasks.findIndex(
-          (task: { _id: string }) => task._id === overTask._id
+    if (isPreviewMode) {
+      try {
+        // Get current preview schedule
+        const previewSchedule = JSON.parse(
+          localStorage.getItem("schedule") ||
+            JSON.stringify({
+              currentTime: new Date().toLocaleTimeString(),
+              scheduleRationale: "",
+              userStartTime: "",
+              userEndTime: "",
+              blocks: [],
+            })
         );
 
-        if (oldIndex === -1 || newIndex === -1) return;
-        console.log("going to update task now.");
+        if (isActiveTask && isOverTask) {
+          const overTask = overData?.task;
+          if (!overTask) return;
 
-        processUpdate((currentDay: Day) => ({
-          ...currentDay,
-          blocks: currentDay.blocks.map((block) => {
-            if (typeof block === "string" || block._id !== activeBlock._id)
+          const overBlockId = getBlockId(overTask);
+
+          // Find the relevant blocks
+          const activeBlock = previewSchedule.blocks.find(
+            (b: Block) => b._id === activeBlockId
+          );
+          const overBlock = previewSchedule.blocks.find(
+            (b: Block) => b._id === overBlockId
+          );
+
+          if (!activeBlock || !overBlock) return;
+
+          let updatedBlocks;
+          if (activeBlock._id === overBlock._id) {
+            // Same block - reorder tasks
+            const oldIndex = activeBlock.tasks.findIndex(
+              (t: Task) => t._id === activeTask._id
+            );
+            const newIndex = activeBlock.tasks.findIndex(
+              (t: Task) => t._id === overTask._id
+            );
+
+            if (oldIndex === -1 || newIndex === -1) return;
+
+            updatedBlocks = previewSchedule.blocks.map((block: Block) => {
+              if (block._id !== activeBlock._id) return block;
+
+              const newTasks = [...block.tasks];
+              const [movedTask] = newTasks.splice(oldIndex, 1);
+              const updatedMovedTask = {
+                ...movedTask,
+                block: block._id,
+                blockId: block._id,
+              };
+              newTasks.splice(newIndex, 0, updatedMovedTask);
+
+              return {
+                ...block,
+                tasks: newTasks,
+              };
+            });
+          } else {
+            // Different blocks - move task between blocks
+            const updatedTask = {
+              ...activeTask,
+              block: overBlock._id,
+              blockId: overBlock._id,
+            };
+
+            updatedBlocks = previewSchedule.blocks.map((block: Block) => {
+              if (block._id === activeBlock._id) {
+                return {
+                  ...block,
+                  tasks: block.tasks.filter(
+                    (t: Task) => t._id !== activeTask._id
+                  ),
+                };
+              }
+              if (block._id === overBlock._id) {
+                const insertIndex = block.tasks.findIndex(
+                  (t: Task) => t._id === overTask._id
+                );
+                const newTasks = [...block.tasks];
+                newTasks.splice(insertIndex, 0, updatedTask);
+                return { ...block, tasks: newTasks };
+              }
               return block;
+            });
+          }
 
-            const newTasks = [...block.tasks];
-            const [movedTask] = newTasks.splice(oldIndex, 1);
-            // Ensure the task has both block and blockId set correctly
-            const updatedMovedTask = {
-              ...movedTask,
-              block: block._id,
-              blockId: block._id,
-            };
-            newTasks.splice(newIndex, 0, updatedMovedTask);
+          // Save updated schedule
+          const updatedSchedule = {
+            ...previewSchedule,
+            blocks: updatedBlocks,
+          };
+          localStorage.setItem("schedule", JSON.stringify(updatedSchedule));
+          setPreviewSchedule(updatedSchedule);
+        }
 
-            return {
-              ...block,
-              tasks: newTasks,
-            };
-          }),
-        }));
-      } else {
-        const updatedTask = activeTask as any; // Most aggressive bypass
-        updatedTask.block = overBlock._id;
-        updatedTask.blockId = overBlock._id;
+        if (isActiveTask && isOverBlock) {
+          const overBlock = overData?.block;
+          if (!overBlock || overBlock._id === activeBlockId) return;
+
+          const activeBlock = previewSchedule.blocks.find(
+            (b: Block) => b._id === activeBlockId
+          );
+          if (!activeBlock) return;
+
+          const updatedTask = {
+            ...activeTask,
+            block: overBlock._id,
+            blockId: overBlock._id,
+          };
+
+          const updatedBlocks = previewSchedule.blocks.map((block: Block) => {
+            if (block._id === activeBlock._id) {
+              return {
+                ...block,
+                tasks: block.tasks.filter(
+                  (t: Task) => t._id !== activeTask._id
+                ),
+              };
+            }
+            if (block._id === overBlock._id) {
+              return {
+                ...block,
+                tasks: [...block.tasks, updatedTask],
+              };
+            }
+            return block;
+          });
+
+          // Save updated schedule
+          const updatedSchedule = {
+            ...previewSchedule,
+            blocks: updatedBlocks,
+          };
+          localStorage.setItem("schedule", JSON.stringify(updatedSchedule));
+          setPreviewSchedule(updatedSchedule);
+        }
+      } catch (error) {
+        console.error("Error updating task positions in preview mode:", error);
+        toast.error("Failed to update task position");
+      }
+    } else {
+      // Original normal mode logic
+      if (isActiveTask && isOverTask) {
+        const overTask = overData?.task;
+        if (!overTask) return;
+
+        const overBlockId = getBlockId(overTask);
+        const activeBlock = day.blocks.find(
+          (block: Block) => block._id === activeBlockId
+        );
+        const overBlock = day.blocks.find(
+          (block: Block) => block._id === overBlockId
+        );
+
+        if (!activeBlock || !overBlock) return;
+
+        if (activeBlock._id === overBlock._id) {
+          // Same block logic...
+          const oldIndex = activeBlock.tasks.findIndex(
+            (task: Task) => task._id === activeTask._id
+          );
+          const newIndex = activeBlock.tasks.findIndex(
+            (task: Task) => task._id === overTask._id
+          );
+
+          if (oldIndex === -1 || newIndex === -1) return;
+
+          processUpdate((currentDay: Day) => ({
+            ...currentDay,
+            blocks: currentDay.blocks.map((block) => {
+              if (typeof block === "string" || block._id !== activeBlock._id)
+                return block;
+
+              const newTasks = [...block.tasks];
+              const [movedTask] = newTasks.splice(oldIndex, 1);
+              const updatedMovedTask = {
+                ...movedTask,
+                block: block._id,
+                blockId: block._id,
+              };
+              newTasks.splice(newIndex, 0, updatedMovedTask);
+
+              return {
+                ...block,
+                tasks: newTasks,
+              };
+            }),
+          }));
+        } else {
+          // Different blocks logic...
+          const updatedTask = {
+            ...activeTask,
+            block: overBlock._id,
+            blockId: overBlock._id,
+          };
+
+          processUpdate((currentDay: Day) => ({
+            ...currentDay,
+            blocks: currentDay.blocks.map((block) => {
+              if (typeof block === "string") return block;
+
+              if (block._id === activeBlock._id) {
+                return {
+                  ...block,
+                  tasks: block.tasks.filter(
+                    (task) => task._id !== activeTask._id
+                  ),
+                };
+              }
+
+              if (block._id === overBlock._id) {
+                const newTasks = [...block.tasks];
+                const insertIndex = newTasks.findIndex(
+                  (task) => task._id === overTask._id
+                );
+                newTasks.splice(insertIndex, 0, updatedTask);
+
+                return {
+                  ...block,
+                  tasks: newTasks,
+                };
+              }
+
+              return block;
+            }),
+          }));
+        }
+      }
+
+      if (isActiveTask && isOverBlock) {
+        // Drop on block logic...
+        const overBlock = overData?.block;
+        if (!overBlock) return;
+
+        const activeBlock = day.blocks.find(
+          (block: Block) => block._id === activeBlockId
+        );
+        if (!activeBlock || activeBlock._id === overBlock._id) return;
+
+        const updatedTask = {
+          ...activeTask,
+          block: overBlock._id,
+          blockId: overBlock._id,
+        };
 
         processUpdate((currentDay: Day) => ({
           ...currentDay,
@@ -2076,15 +2311,9 @@ export default function Component() {
             }
 
             if (block._id === overBlock._id) {
-              const newTasks = [...block.tasks];
-              const insertIndex = newTasks.findIndex(
-                (task) => task._id === overTask._id
-              );
-              newTasks.splice(insertIndex, 0, updatedTask);
-
               return {
                 ...block,
-                tasks: newTasks,
+                tasks: [...block.tasks, updatedTask],
               };
             }
 
@@ -2093,48 +2322,60 @@ export default function Component() {
         }));
       }
     }
+  };
 
-    if (isActiveTask && isOverBlock) {
-      const overBlock = overData?.block;
-      if (!overBlock) return;
+  const handleSaveGeneratedSchedule = async () => {
+    // if (!isSignedIn) {
+    //   setAuthAction("accept");
+    //   setShowAuthModal(true);
+    //   return;
+    // }
 
-      const activeBlock = day.blocks.find(
-        (block: { _id: any }) => block._id === activeBlockId
-      );
-      if (!activeBlock || activeBlock._id === overBlock._id) return;
+    if (!day?._id || !userId) {
+      toast.error("Missing required information. Please try again.");
+      return;
+    }
 
-      const updatedTask = {
-        ...activeTask,
-        block: overBlock._id,
-        blockId: overBlock._id, // Set both to ensure consistency
-      };
+    try {
+      setIsLoading(true);
 
-      console.log("going to update task now");
-
-      processUpdate((currentDay: Day) => ({
-        ...currentDay,
-        blocks: currentDay.blocks.map((block) => {
-          if (typeof block === "string") return block;
-
-          if (block._id === activeBlock._id) {
-            return {
-              ...block,
-              tasks: block.tasks.filter((task) => task._id !== activeTask._id),
-            };
-          }
-
-          if (block._id === overBlock._id) {
-            return {
-              ...block,
-              tasks: [...block.tasks, updatedTask],
-            };
-          }
-
-          return block;
+      const schedulerResponse = await fetch("/api/scheduler", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dayId: day._id,
+          schedule: previewSchedule,
+          userId: user._id,
         }),
-      }));
+      });
+
+      if (!schedulerResponse.ok) {
+        throw new Error(`Scheduler error! status: ${schedulerResponse.status}`);
+      }
+
+      const freshDay = await schedulerResponse.json();
+
+      // Update context state
+      setDay(freshDay);
+      // Revalidate SWR data
+      mutate();
+
+      // Exit preview mode
+      setIsPreviewMode(false);
+      setPreviewSchedule(null);
+
+      toast.success("Schedule saved successfully!");
+    } catch (error) {
+      console.error("Error saving schedule:", error);
+      toast.error("Failed to save schedule. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  console.log(previewSchedule);
 
   return (
     <div className="flex h-screen bg-white font-sans text-gray-900">
@@ -2150,13 +2391,122 @@ export default function Component() {
           status={generationStatus}
         />
       ) : isPreviewMode && previewSchedule ? (
-        <SchedulePreview
-          schedule={previewSchedule}
-          dayId={day?._id}
-          userId={user?._id}
-          mutate={mutate}
-          onGenerateSchedule={() => setIsDialogOpen(true)} // Add this prop
-        />
+        <main className="relative flex-1 overflow-y-auto bg-gray-50">
+          <div className="p-4 md:p-8 pb-24">
+            {/* Header: "Preview Schedule" on the left, date on the right */}
+            <header className="mb-6">
+              <div className="flex items-center justify-between">
+                <h1 className="text-2xl font-bold">Preview Schedule</h1>
+                <h2 className="text-xl font-semibold">
+                  {formatDate(currentDate)}
+                </h2>
+              </div>
+
+              {/* Rationale Card (if any) */}
+              {previewSchedule.scheduleRationale && (
+                <div className="mt-3 bg-white border rounded-lg p-4 shadow-sm">
+                  <p className="text-sm text-gray-700">
+                    {previewSchedule.scheduleRationale}
+                  </p>
+                </div>
+              )}
+            </header>
+
+            {/* Row with "Add" Buttons */}
+            <div className="flex items-center justify-end mb-6 gap-2">
+              <Button variant="outline" size="sm" onClick={OpenNewRoutineModal}>
+                <Repeat className="h-4 w-4 mr-1" />
+                <span className="hidden md:inline">Add Routine</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={OpenNewEventModal}>
+                <Clock className="h-4 w-4 mr-1" />
+                <span className="hidden md:inline">Add Event</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                onClick={OpenNewBlockModal}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                <span className="hidden md:inline">Add Block</span>
+              </Button>
+            </div>
+
+            {/* Schedule Blocks (Drag & Drop) */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={onDragStart}
+              onDragOver={onDragOver}
+              onDragEnd={onDragEnd}
+              modifiers={[restrictToVerticalAxis, restrictToWindowEdges]}
+            >
+              <div className="space-y-4">
+                {sortedPreviewBlocks.map((block) => (
+                  <PreviewTimeBlock
+                    key={block._id}
+                    block={block}
+                    onDeleteBlock={handleDeleteBlock}
+                    onEditBlock={(block) => {
+                      setSelectedBlock(block);
+                      setIsEditBlockDialogOpen(true);
+                    }}
+                    onAddTask={handleAddTask}
+                    onCompleteBlock={handleCompleteBlock}
+                    onTaskCompletion={handleTaskCompletion}
+                    onEditTask={handleEditTask}
+                    onRemoveTask={handleRemoveTaskFromBlock}
+                    onDeleteTask={handleDeleteTask}
+                    updatingTasks={updatingTasks}
+                    updatingTaskId={updatingTaskId}
+                    onStartFocusSession={(block) => setFocusSessionBlock(block)}
+                  />
+                ))}
+              </div>
+
+              {activeTask &&
+                createPortal(
+                  <DragOverlay>
+                    <TaskCard
+                      task={activeTask}
+                      block={
+                        sortedBlocks.find((b) => b._id === activeTask.block) ||
+                        sortedBlocks[0]
+                      }
+                      updatingTasks={updatingTasks}
+                      updatingTaskId={updatingTaskId}
+                      onTaskCompletion={handleTaskCompletion}
+                      onEditTask={handleEditTask}
+                      onRemoveTask={handleRemoveTaskFromBlock}
+                      onDeleteTask={handleDeleteTask}
+                    />
+                  </DragOverlay>,
+                  document.body
+                )}
+            </DndContext>
+          </div>
+
+          {/* Sticky Bottom Bar for Primary Actions */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-sm px-6 py-4 flex items-center justify-end gap-3">
+            <Button variant="outline" onClick={handleDiscardClick} size="sm">
+              <X className="h-4 w-4 mr-2" />
+              Discard
+            </Button>
+            <Button variant="outline" size="sm">
+              <Repeat className="h-4 w-4 mr-2" />
+              Regenerate
+            </Button>
+            <Button
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              onClick={handleSaveGeneratedSchedule}
+              size="sm"
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Accept Schedule
+            </Button>
+          </div>
+        </main>
       ) : !day ? (
         <div className="flex h-screen w-full">
           <LoadingSpinner />
@@ -2280,6 +2630,16 @@ export default function Component() {
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* <Button
+                      size="lg"
+                      className="bg-white text-gray-500 hover:bg-gray-50 flex items-center gap-2"
+                      onClick={OpenNewBlockModal}
+                    >
+                      <div className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center bg-white">
+                        <Plus className="h-4 w-4 text-purple-500" />
+                      </div>
+                      <span className="text-gray-600">Add Time Block</span>
+                    </Button> */}
                     <Button
                       variant="outline"
                       size="sm"
@@ -2320,8 +2680,29 @@ export default function Component() {
                     </Button>
                   </div>
                 </div>
+
+                {/* Preview Mode Header */}
+                {isPreviewMode && previewSchedule && (
+                  <div className="flex items-center justify-between bg-white p-3 border border-gray-200 rounded-md shadow-sm mb-4">
+                    <Button variant="outline" onClick={handleDiscardClick}>
+                      <X className="h-4 w-4 mr-2" />
+                      Discard
+                    </Button>
+                    <Button variant="outline">
+                      <Repeat className="h-4 w-4 mr-2" />
+                      Regenerate
+                    </Button>
+                    <Button
+                      className="bg-blue-600 text-white hover:bg-blue-700"
+                      onClick={handleSaveGeneratedSchedule}
+                    >
+                      <Check className="h-4 w-4 mr-2" />
+                      Accept Schedule
+                    </Button>
+                  </div>
+                )}
                 <Separator className="mb-6" />
-                {day.blocks.length === 0 ? (
+                {!isPreviewMode && day.blocks.length === 0 ? (
                   <NoBlocksCard
                     activeTab={activeTab}
                     onGenerateSchedule={handleGenerateSchedule}
@@ -2361,7 +2742,77 @@ export default function Component() {
                     modifiers={[restrictToVerticalAxis, restrictToWindowEdges]}
                   >
                     <div className="space-y-4">
-                      {sortedBlocks.map((block: Block) => (
+                      {isPreviewMode && previewSchedule
+                        ? sortedPreviewBlocks.map((block, index) => (
+                            <PreviewTimeBlock
+                              key={block._id}
+                              block={block}
+                              onDeleteBlock={handleDeleteBlock}
+                              onEditBlock={(block) => {
+                                setSelectedBlock(block);
+                                setIsEditBlockDialogOpen(true);
+                              }}
+                              onAddTask={handleAddTask}
+                              onCompleteBlock={handleCompleteBlock}
+                              onTaskCompletion={handleTaskCompletion}
+                              onEditTask={handleEditTask}
+                              onRemoveTask={handleRemoveTaskFromBlock}
+                              onDeleteTask={handleDeleteTask}
+                              updatingTasks={updatingTasks}
+                              updatingTaskId={updatingTaskId}
+                              onStartFocusSession={(block) =>
+                                setFocusSessionBlock(block)
+                              }
+                            />
+                          ))
+                        : sortedBlocks.map((block) => (
+                            <TimeBlock
+                              key={block._id}
+                              block={block}
+                              onDeleteBlock={handleDeleteBlock}
+                              onEditBlock={(block) => {
+                                setSelectedBlock(block);
+                                setIsEditBlockDialogOpen(true);
+                              }}
+                              onAddTask={handleAddTask}
+                              onCompleteBlock={handleCompleteBlock}
+                              onTaskCompletion={handleTaskCompletion}
+                              onEditTask={handleEditTask}
+                              onRemoveTask={handleRemoveTaskFromBlock}
+                              onDeleteTask={handleDeleteTask}
+                              updatingTasks={updatingTasks}
+                              updatingTaskId={updatingTaskId}
+                              onStartFocusSession={(block) =>
+                                setFocusSessionBlock(block)
+                              }
+                            />
+                          ))}
+                      {/* {(isPreviewMode && previewSchedule
+                        ? previewSchedule.blocks
+                        : sortedBlocks
+                      ).map((block, index) => (
+                        <TimeBlock
+                          key={block._id || index}
+                          block={block}
+                          onDeleteBlock={handleDeleteBlock}
+                          onEditBlock={(block) => {
+                            setSelectedBlock(block);
+                            setIsEditBlockDialogOpen(true);
+                          }}
+                          onAddTask={(blockId) => handleAddTask(blockId)}
+                          onCompleteBlock={handleCompleteBlock}
+                          onTaskCompletion={handleTaskCompletion}
+                          onEditTask={handleEditTask}
+                          onRemoveTask={handleRemoveTaskFromBlock}
+                          onDeleteTask={handleDeleteTask}
+                          updatingTasks={updatingTasks}
+                          updatingTaskId={updatingTaskId}
+                          onStartFocusSession={(block) =>
+                            setFocusSessionBlock(block)
+                          }
+                        />
+                      ))} */}
+                      {/* {sortedBlocks.map((block: Block) => (
                         <TimeBlock
                           key={block._id}
                           block={block}
@@ -2382,156 +2833,7 @@ export default function Component() {
                             setFocusSessionBlock(block)
                           }
                         />
-                        // <Card
-                        //   key={block._id}
-                        //   className="border-gray-200 shadow-sm"
-                        // >
-                        //   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        //     <CardTitle className="text-base font-medium flex-1">
-                        //       <div className="flex items-center gap-2">
-                        //         {block.name}
-                        //         {block.isStandaloneBlock && (
-                        //           <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-                        //             <Sparkles className="mr-1 h-3 w-3" />
-                        //             <span className="hidden sm:inline">
-                        //               AI Optimized
-                        //             </span>
-                        //           </span>
-                        //         )}
-                        //         <TooltipProvider>
-                        //           <Tooltip>
-                        //             <TooltipTrigger>
-                        //               <Info className="h-4 w-4 text-gray-400" />
-                        //             </TooltipTrigger>
-                        //             <TooltipContent>
-                        //               <p className="max-w-xs">
-                        //                 {block.description}
-                        //               </p>
-                        //             </TooltipContent>
-                        //           </Tooltip>
-                        //         </TooltipProvider>
-                        //         <BlockProgress tasks={block.tasks} />
-                        //       </div>
-                        //     </CardTitle>
-                        //     <div className="flex items-center space-x-2">
-                        //       <div className="hidden md:flex items-center text-sm text-gray-500">
-                        //         <Clock className="mr-1.5 h-3.5 w-3.5" />
-                        //         {block.startTime} - {block.endTime}
-                        //       </div>
-
-                        //       <DropdownMenu modal={false}>
-                        //         <DropdownMenuTrigger asChild>
-                        //           <Button
-                        //             variant="ghost"
-                        //             size="icon"
-                        //             className="h-8 w-8 p-0"
-                        //           >
-                        //             <MoreVertical className="h-4 w-4" />
-                        //           </Button>
-                        //         </DropdownMenuTrigger>
-                        //         <DropdownMenuContent align="end">
-                        //           <DropdownMenuItem className="md:hidden">
-                        //             <Clock className="mr-2 h-4 w-4" />
-                        //             <span>
-                        //               {block.startTime} - {block.endTime}
-                        //             </span>
-                        //           </DropdownMenuItem>
-                        //           <DropdownMenuItem
-                        //             onSelect={(e) => {
-                        //               e.preventDefault();
-                        //               setSelectedBlock(block);
-                        //               setIsEditBlockDialogOpen(true);
-                        //             }}
-                        //           >
-                        //             <Edit className="mr-2 h-4 w-4" />
-                        //             <span>Edit Block</span>
-                        //           </DropdownMenuItem>
-                        //           <DropdownMenuItem
-                        //             onClick={() => handleDeleteBlock(block)}
-                        //           >
-                        //             <Trash2 className="mr-2 h-4 w-4" />
-                        //             <span>Delete Block</span>
-                        //           </DropdownMenuItem>
-                        //         </DropdownMenuContent>
-                        //       </DropdownMenu>
-                        //     </div>
-                        //   </CardHeader>
-                        //   <CardContent>
-                        //     {block.tasks.map((task: Task) => (
-                        //       <TaskCard
-                        //         key={task._id}
-                        //         task={task}
-                        //         block={block}
-                        //         updatingTasks={updatingTasks}
-                        //         updatingTaskId={updatingTaskId}
-                        //         onTaskCompletion={handleTaskCompletion}
-                        //         onEditTask={(task) => {
-                        //           setEditingTask(task);
-                        //           setIsEditDialogOpen(true);
-                        //         }}
-                        //         onRemoveTask={handleRemoveTaskFromBlock}
-                        //         onDeleteTask={handleDeleteTask}
-                        //       />
-                        //     ))}
-                        //     <div className="flex justify-between items-center mt-4">
-                        //       <Button
-                        //         variant="outline"
-                        //         size="sm"
-                        //         className="h-8 text-sm"
-                        //         onClick={() => handleAddTask(block._id)}
-                        //       >
-                        //         <Plus className="h-4 w-4 mr-1" />
-                        //         Add Task
-                        //       </Button>
-                        //       <div className="space-x-2">
-                        //         <Button
-                        //           variant="outline"
-                        //           size="sm"
-                        //           className="h-8 text-sm text-green-600 hover:bg-green-50 hover:text-green-700"
-                        //           onClick={() => handleCompleteBlock(block._id)}
-                        //         >
-                        //           <Check className="h-4 w-4 md:mr-1" />
-                        //           <span className="hidden md:inline">
-                        //             Complete
-                        //           </span>
-                        //         </Button>
-                        //         {block.meetingLink ? (
-                        //           <Button
-                        //             variant="outline"
-                        //             size="sm"
-                        //             className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                        //             asChild
-                        //           >
-                        //             <a
-                        //               href={block.meetingLink}
-                        //               target="_blank"
-                        //               rel="noopener noreferrer"
-                        //               className="flex items-center"
-                        //             >
-                        //               <LinkIcon className="h-4 w-4 md:mr-1" />
-                        //               <span className="hidden md:inline">
-                        //                 Join Meeting
-                        //               </span>
-                        //             </a>
-                        //           </Button>
-                        //         ) : (
-                        //           <Button
-                        //             variant="outline"
-                        //             size="sm"
-                        //             className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                        //             onClick={() => setFocusSessionBlock(block)}
-                        //           >
-                        //             <Clock className="h-4 w-4 md:mr-1" />
-                        //             <span className="hidden md:inline">
-                        //               Start
-                        //             </span>
-                        //           </Button>
-                        //         )}
-                        //       </div>
-                        //     </div>
-                        //   </CardContent>
-                        // </Card>
-                      ))}
+                      ))} */}
                     </div>
                     {activeTask &&
                       createPortal(
@@ -2600,6 +2902,7 @@ export default function Component() {
           updateDay={updateDay}
           day={day}
           isCustomDuration={false}
+          isPreviewMode={isPreviewMode}
         />
       )}
       {/* Then, add this Dialog component outside of the task card, at the same level as other dialogs */}
@@ -2621,6 +2924,7 @@ export default function Component() {
                 await handleSaveTask(updatedTask);
                 setIsEditTaskDialogOpen(false);
               }}
+              isPreviewMode={isPreviewMode}
             />
           </DialogContent>
         )}
@@ -2644,6 +2948,7 @@ export default function Component() {
                 await handleSaveBlock(updatedBlock);
                 setIsEditBlockDialogOpen(false);
               }}
+              isPreviewMode={isPreviewMode}
             />
           </DialogContent>
         )}

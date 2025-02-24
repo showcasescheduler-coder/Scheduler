@@ -21,7 +21,13 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PlusCircle, CheckCircle, Loader2, ListTodo } from "lucide-react";
-import { Task, Project, Block, Day } from "@/app/context/models";
+import {
+  Task,
+  Project,
+  Block,
+  Day,
+  PreviewSchedule,
+} from "@/app/context/models";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
@@ -36,7 +42,12 @@ interface AddTaskModalProps {
   updateDay: () => void; // New prop to update the day state
   day: Day; // This prop was missing
   isCustomDuration: false;
+  isPreviewMode: boolean; // Add this prop
 }
+
+const updatePreviewStorage = (updatedSchedule: PreviewSchedule) => {
+  localStorage.setItem("previewSchedule", JSON.stringify(updatedSchedule));
+};
 
 const projectsData = [
   {
@@ -119,10 +130,18 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   blockId,
   updateDay,
   day,
+  isPreviewMode,
 }) => {
   const [selectedProject, setSelectedProject] = useState(projectsData[0].id);
   const [activeTab, setActiveTab] = useState<string>("newTask");
-  const { tasks, projects, setProjects, setTasks, setBlocks } = useAppContext();
+  const {
+    tasks,
+    projects,
+    setProjects,
+    setTasks,
+    setBlocks,
+    setPreviewSchedule,
+  } = useAppContext();
   const { userId } = useAuth();
   const [newTask, setNewTask] = useState<Partial<Task> & { duration: number }>({
     name: "",
@@ -216,43 +235,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     fetchSchedule();
   }, [isTomorrow, userId, todayDate]);
 
-  // // Fetch today's schedule if needed
-  // useEffect(() => {
-  //   const fetchTodaySchedule = async () => {
-  //     if (isTomorrow && !todaySchedule) {
-  //       setIsLoadingTodaySchedule(true);
-  //       try {
-  //         const response = await fetch(`/api/get-today`);
-  //         if (!response.ok) {
-  //           throw new Error("Failed to fetch today's schedule");
-  //         }
-  //         const data = await response.json();
-  //         setTodaySchedule(data);
-  //       } catch (error) {
-  //         console.error("Error fetching today's schedule:", error);
-  //       } finally {
-  //         setIsLoadingTodaySchedule(false);
-  //       }
-  //     }
-  //   };
-
-  //   fetchTodaySchedule();
-  // }, [isTomorrow, userId, todayDate]);
-
-  // const fetchTasks = async () => {
-  //   try {
-  //     const res = await fetch(`/api/get-tasks-for-modal?userId=${userId}`);
-  //     if (!res.ok) {
-  //       throw new Error("Failed to fetch tasks");
-  //     }
-  //     const data = await res.json();
-  //     console.log("tasks", data);
-  //     setTasks(data);
-  //   } catch (error) {
-  //     console.error("Error fetching tasks:", error);
-  //   }
-  // };
-
   const fetchTasks = async () => {
     try {
       const res = await fetch(`/api/tasks?userId=${userId}`);
@@ -294,81 +276,200 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     }
   }, [activeTab, isOpen]); // Add isOpen to the dependency array
 
-  const addTaskToBlock = async (taskId: string) => {
-    try {
-      const res = await fetch(`/api/blocks/${blockId}`, {
-        method: "POST",
-        body: JSON.stringify({ taskId: taskId }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to add task to block");
+  const firstpreviewSchedule = JSON.parse(
+    localStorage.getItem("schedule") || "{}"
+  );
+  console.log(firstpreviewSchedule);
+
+  const addTaskToBlock = async (task: Task) => {
+    if (isPreviewMode) {
+      // Handle preview mode
+      try {
+        const taskToAdd = task._id
+          ? task
+          : { ...task, _id: task._id || `temp-${Date.now()}` };
+        // Get current preview schedule
+        const previewSchedule = JSON.parse(
+          localStorage.getItem("schedule") ||
+            JSON.stringify({
+              currentTime: new Date().toLocaleTimeString(),
+              scheduleRationale: "",
+              userStartTime: "",
+              userEndTime: "",
+              blocks: [],
+            })
+        );
+        console.log(previewSchedule);
+
+        // Find the block and add the task
+        const updatedBlocks = previewSchedule.blocks.map(
+          (block: { _id: string | null; tasks: any }) => {
+            if (block._id === blockId) {
+              return {
+                ...block,
+                tasks: [...(block.tasks || []), taskToAdd],
+              };
+            }
+            return block;
+          }
+        );
+
+        console.log("Updated Blocks", updatedBlocks);
+
+        // // Update preview schedule
+        const updatedSchedule = {
+          ...previewSchedule,
+          blocks: updatedBlocks,
+        };
+
+        // // Save to localStorage
+        updatePreviewStorage(updatedSchedule);
+
+        // // Update UI state
+        setPreviewSchedule(updatedSchedule);
+
+        onClose();
+      } catch (error) {
+        console.error("Error adding task in preview mode:", error);
       }
-      const data = await res.json();
-      // Assuming the API returns the updated block and task
-      const { updatedBlock, updatedTask } = data;
-      console.log("task added to block", data);
+    } else {
+      // Existing database logic
+      try {
+        const res = await fetch(`/api/blocks/${blockId}`, {
+          method: "POST",
+          body: JSON.stringify({ taskId: task._id }),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
 
-      // Update projects state
-      setProjects((prevProjects: Project[]) =>
-        prevProjects.map((project) => ({
-          ...project,
-          tasks: project.tasks.map((task) =>
-            task._id === taskId ? { ...task, block: blockId } : task
-          ),
-        }))
-      );
+        if (!res.ok) {
+          throw new Error("Failed to add task to block");
+        }
 
-      // Update tasks state
-      setTasks((prevTasks: Task[]) =>
-        prevTasks.map((task) => (task._id === taskId ? updatedTask : task))
-      );
+        const data = await res.json();
+        const { updatedBlock, updatedTask } = data;
 
-      updateDay();
-    } catch (error) {
-      console.error("Error adding task to block:", error);
+        // Update local state
+        setProjects((prevProjects: Project[]) =>
+          prevProjects.map((project) => ({
+            ...project,
+            tasks: project.tasks.map((task) =>
+              task._id === task._id ? { ...task, block: blockId } : task
+            ),
+          }))
+        );
+
+        setTasks((prevTasks: Task[]) =>
+          prevTasks.map((task) => (task._id === task._id ? updatedTask : task))
+        );
+
+        updateDay();
+      } catch (error) {
+        console.error("Error adding task to block:", error);
+      }
     }
   };
+
+  // const addTaskToBlock = async (taskId: string) => {
+  //   try {
+  //     const res = await fetch(`/api/blocks/${blockId}`, {
+  //       method: "POST",
+  //       body: JSON.stringify({ taskId: taskId }),
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //     });
+  //     if (!res.ok) {
+  //       throw new Error("Failed to add task to block");
+  //     }
+  //     const data = await res.json();
+  //     // Assuming the API returns the updated block and task
+  //     const { updatedBlock, updatedTask } = data;
+  //     console.log("task added to block", data);
+
+  //     // Update projects state
+  //     setProjects((prevProjects: Project[]) =>
+  //       prevProjects.map((project) => ({
+  //         ...project,
+  //         tasks: project.tasks.map((task) =>
+  //           task._id === taskId ? { ...task, block: blockId } : task
+  //         ),
+  //       }))
+  //     );
+
+  //     // Update tasks state
+  //     setTasks((prevTasks: Task[]) =>
+  //       prevTasks.map((task) => (task._id === taskId ? updatedTask : task))
+  //     );
+
+  //     updateDay();
+  //   } catch (error) {
+  //     console.error("Error adding task to block:", error);
+  //   }
+  // };
 
   const isTaskAssigned = (task: Task) => {
-    if (!task.block) return false;
-
-    // Look for the block in the current day
-    const currentDayBlock = day.blocks.find(
-      (block: any) => block._id === task.block
-    );
-
-    // If we're in today’s view, only consider the task assigned if the block is not complete
-    if (!isTomorrow) {
-      return currentDayBlock ? currentDayBlock.status !== "complete" : false;
-    }
-
-    // For tomorrow's view, check today's schedule for an incomplete block assignment
-    if (isTomorrow && todaySchedule?.blocks) {
-      const incompleteTaskBlock = todaySchedule.blocks.find(
-        (block: any) => block._id === task.block && block.status !== "complete"
+    if (isPreviewMode) {
+      // Get current preview schedule from localStorage
+      const previewSchedule = JSON.parse(
+        localStorage.getItem("schedule") ||
+          JSON.stringify({
+            currentTime: new Date().toLocaleTimeString(),
+            scheduleRationale: "",
+            userStartTime: "",
+            userEndTime: "",
+            blocks: [],
+          })
       );
-      if (incompleteTaskBlock) {
-        return true;
+
+      // Check if the task exists in any block in the preview schedule
+      return previewSchedule.blocks.some((block: any) =>
+        block.tasks?.some((t: any) => t._id === task._id)
+      );
+    } else {
+      // Original logic for non-preview mode
+      if (!task.block) return false;
+
+      // Look for the block in the current day
+      const currentDayBlock = day.blocks.find(
+        (block: any) => block._id === task.block
+      );
+
+      // If we're in today's view, only consider the task assigned if the block is not complete
+      if (!isTomorrow) {
+        return currentDayBlock ? currentDayBlock.status !== "complete" : false;
       }
+
+      // For tomorrow's view, check today's schedule for an incomplete block assignment
+      if (isTomorrow && todaySchedule?.blocks) {
+        const incompleteTaskBlock = todaySchedule.blocks.find(
+          (block: any) =>
+            block._id === task.block && block.status !== "complete"
+        );
+        if (incompleteTaskBlock) {
+          return true;
+        }
+      }
+
+      // Fallback: if the block exists in the current day, mark it as assigned
+      return !!currentDayBlock;
     }
-
-    // Fallback: if the block exists in the current day, mark it as assigned
-    return !!currentDayBlock;
   };
-
-  // // Then update the isTaskAssigned function
   // const isTaskAssigned = (task: Task) => {
-  //   // console.log(task);
-  //   // If task has no block, it's not assigned
   //   if (!task.block) return false;
 
-  //   // Get block IDs from the current day
-  //   const currentDayBlockIds = day.blocks.map((block: any) => block._id);
+  //   // Look for the block in the current day
+  //   const currentDayBlock = day.blocks.find(
+  //     (block: any) => block._id === task.block
+  //   );
 
-  //   // If we're looking at tomorrow's schedule, check today's blocks
+  //   // If we're in today’s view, only consider the task assigned if the block is not complete
+  //   if (!isTomorrow) {
+  //     return currentDayBlock ? currentDayBlock.status !== "complete" : false;
+  //   }
+
+  //   // For tomorrow's view, check today's schedule for an incomplete block assignment
   //   if (isTomorrow && todaySchedule?.blocks) {
   //     const incompleteTaskBlock = todaySchedule.blocks.find(
   //       (block: any) => block._id === task.block && block.status !== "complete"
@@ -378,80 +479,172 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   //     }
   //   }
 
-  //   // If we're looking at today's schedule, check tomorrow
-  //   if (!isTomorrow && tomorrowSchedule?.blocks) {
-  //     const tomorrowBlockIds = tomorrowSchedule.blocks.map(
-  //       (block: any) => block._id
-  //     );
-  //     if (tomorrowBlockIds.includes(task.block)) {
-  //       return true;
-  //     }
-  //   }
-
-  //   console.log("Current block ids", currentDayBlockIds);
-  //   console.log("these are the tasks", task);
-  //   // Check if it's assigned in the current day's schedule
-  //   return currentDayBlockIds.includes(task.block);
-  // };
-  // const isTaskAssigned = (task: Task) => {
-  //   // If task has no block, it's not assigned
-  //   if (!task.block) return false;
-
-  //   console.log(task);
-  //   console.log(day);
-
-  //   // Get all block IDs from the current day
-  //   const dayBlockIds = day.blocks.map((block: any) => block._id);
-
-  //   // Check if the task's block ID is in today's blocks
-  //   return dayBlockIds.includes(task.block);
+  //   // Fallback: if the block exists in the current day, mark it as assigned
+  //   return !!currentDayBlock;
   // };
 
   const handleNewTaskSubmit = async () => {
-    console.log("Creating new task:");
-    try {
-      const taskData = {
-        ...newTask,
-        blockId: blockId,
-        userId: userId,
-        duration: Math.max(5, Math.min(240, newTask.duration)), // Ensure duration is between 5 and 240 minutes
-      };
+    if (isPreviewMode) {
+      console.log("are we in the preview mode.");
+      try {
+        // Generate temporary ID for preview mode
+        const tempId = `preview-${Date.now()}`;
 
-      const response = await fetch("/api/tasks", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(taskData),
-      });
+        const newTaskData = {
+          _id: tempId,
+          ...newTask,
+          blockId: blockId,
+          userId: userId,
+          duration: Math.max(5, Math.min(240, newTask.duration)),
+        };
 
-      if (!response.ok) {
-        throw new Error("Failed to create task");
+        console.log(newTaskData);
+        console.log(localStorage);
+
+        // Get current preview schedule with proper default structure
+        const previewSchedule = JSON.parse(
+          localStorage.getItem("schedule") ||
+            JSON.stringify({
+              currentTime: new Date().toLocaleTimeString(),
+              scheduleRationale: "",
+              userStartTime: "",
+              userEndTime: "",
+              blocks: [],
+            })
+        );
+        console.log(previewSchedule);
+
+        // Ensure blocks array exists
+        if (!previewSchedule.blocks) {
+          previewSchedule.blocks = [];
+        }
+
+        // Find and update the block
+        const updatedBlocks = previewSchedule.blocks.map((block: any) => {
+          if (block._id === blockId) {
+            // Ensure block.tasks exists
+            const currentTasks = Array.isArray(block.tasks) ? block.tasks : [];
+            return {
+              ...block,
+              tasks: [...currentTasks, newTaskData],
+            };
+          }
+          return block;
+        });
+
+        const updatedSchedule = {
+          ...previewSchedule,
+          blocks: updatedBlocks,
+        };
+
+        console.log("this is the updated Schedule", updatedSchedule);
+
+        // Save to localStorage
+        updatePreviewStorage(updatedSchedule);
+
+        // Update UI state
+        setPreviewSchedule(updatedSchedule);
+
+        // Clear form
+        setNewTask({
+          name: "",
+          description: "",
+          duration: 5,
+          isCustomDuration: false,
+          completed: false,
+          block: null,
+          project: null,
+          type: "deep-work",
+          priority: "Medium",
+          isRoutineTask: false,
+        });
+
+        onClose();
+      } catch (error) {
+        console.error("Error creating task in preview mode:", error);
+        // toast.error("Failed to add task to preview schedule");
       }
+    } else {
+      // Existing database logic
+      try {
+        const taskData = {
+          ...newTask,
+          blockId: blockId,
+          userId: userId,
+          duration: Math.max(5, Math.min(240, newTask.duration)),
+        };
 
-      const data = await response.json();
-      // console.log("New task created:", data.task);
+        const response = await fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(taskData),
+        });
 
-      // Update local state
-      setTasks((prevTasks) => [...prevTasks, data.task]);
+        if (!response.ok) throw new Error("Failed to create task");
 
-      // Clear the form
-      setNewTask({
-        name: "",
-        description: "",
+        const data = await response.json();
+        setTasks((prevTasks) => [...prevTasks, data.task]);
 
-        duration: 5,
-      });
+        // Clear form and close modal
+        setNewTask({
+          name: "",
+          description: "",
+          duration: 5,
+        });
 
-      // Close the modal
-      onClose();
-
-      // Update the day view
-      updateDay();
-    } catch (error) {
-      console.error("Error creating new task:", error);
+        onClose();
+        updateDay();
+      } catch (error) {
+        console.error("Error creating new task:", error);
+      }
     }
   };
+
+  // const handleNewTaskSubmit = async () => {
+  //   console.log("Creating new task:");
+  //   try {
+  //     const taskData = {
+  //       ...newTask,
+  //       blockId: blockId,
+  //       userId: userId,
+  //       duration: Math.max(5, Math.min(240, newTask.duration)), // Ensure duration is between 5 and 240 minutes
+  //     };
+
+  //     const response = await fetch("/api/tasks", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify(taskData),
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error("Failed to create task");
+  //     }
+
+  //     const data = await response.json();
+  //     // console.log("New task created:", data.task);
+
+  //     // Update local state
+  //     setTasks((prevTasks) => [...prevTasks, data.task]);
+
+  //     // Clear the form
+  //     setNewTask({
+  //       name: "",
+  //       description: "",
+
+  //       duration: 5,
+  //     });
+
+  //     // Close the modal
+  //     onClose();
+
+  //     // Update the day view
+  //     updateDay();
+  //   } catch (error) {
+  //     console.error("Error creating new task:", error);
+  //   }
+  // };
 
   const tags = Array.from({ length: 50 }).map(
     (_, i, a) => `v1.2.0-beta.${a.length - i}`
@@ -657,7 +850,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                             size="sm"
                             variant="outline"
                             className="shrink-0"
-                            onClick={() => addTaskToBlock(task._id)}
+                            onClick={() => addTaskToBlock(task)}
                             disabled={isTaskAssigned(task)}
                           >
                             <PlusCircle className="h-4 w-4 mr-1" />
@@ -731,7 +924,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                               size="sm"
                               variant="outline"
                               className="shrink-0"
-                              onClick={() => addTaskToBlock(task._id)}
+                              onClick={() => addTaskToBlock(task)}
                               disabled={isTaskAssigned(task)}
                             >
                               <PlusCircle className="h-4 w-4 mr-1" />
