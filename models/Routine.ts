@@ -9,6 +9,19 @@ const RoutineSchema = new mongoose.Schema(
     startTime: { type: String },
     endTime: { type: String },
     tasks: [{ type: mongoose.Schema.Types.ObjectId, ref: "Task" }],
+    blockType: {
+      type: String,
+      enum: [
+        "deep-work",
+        "break",
+        "meeting",
+        "health",
+        "exercise",
+        "admin",
+        "personal",
+      ],
+      default: "deep-work",
+    },
   },
   { timestamps: true }
 );

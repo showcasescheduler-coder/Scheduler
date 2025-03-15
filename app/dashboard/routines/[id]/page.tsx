@@ -74,6 +74,14 @@ interface Routine {
   tasks: Task[];
   startTime: string;
   endTime: string;
+  blockType?:
+    | "deep-work"
+    | "break"
+    | "meeting"
+    | "health"
+    | "exercise"
+    | "admin"
+    | "personal";
 }
 
 // interface RoutineTask {
@@ -92,6 +100,19 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
+  const [routineFormErrors, setRoutineFormErrors] = useState({
+    name: "",
+    time: "",
+    days: "",
+  });
+
+  const [newTaskFormErrors, setNewTaskFormErrors] = useState({
+    name: "",
+  });
+
+  const [editTaskFormErrors, setEditTaskFormErrors] = useState({
+    name: "",
+  });
   const router = useRouter();
 
   const [newTask, setNewTask] = useState<Partial<Task>>({
@@ -119,6 +140,53 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
 
   const handleSave = async () => {
     if (!routine) return;
+
+    // Reset form errors
+    setRoutineFormErrors({
+      name: "",
+      time: "",
+      days: "",
+    });
+
+    // Validate form
+    let isValid = true;
+    const newErrors = {
+      name: "",
+      time: "",
+      days: "",
+    };
+
+    // Name is required
+    if (!routine.name.trim()) {
+      newErrors.name = "Routine name is required";
+      isValid = false;
+    }
+
+    // Start time and end time validation
+    if (!routine.startTime) {
+      newErrors.time = "Start time is required";
+      isValid = false;
+    } else if (!routine.endTime) {
+      newErrors.time = "End time is required";
+      isValid = false;
+    } else if (routine.startTime >= routine.endTime) {
+      newErrors.time = "End time must be after start time";
+      isValid = false;
+    }
+
+    // At least one day must be selected
+    if (routine.days.length === 0) {
+      newErrors.days = "Please select at least one day";
+      isValid = false;
+    }
+
+    // If validation fails, update errors and return
+    if (!isValid) {
+      setRoutineFormErrors(newErrors);
+      return;
+    }
+
+    // Continue with saving routine if validation passes
     try {
       const response = await fetch(`/api/routines/${id}`, {
         method: "PUT",
@@ -139,6 +207,25 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
   ) => {
     const { name, value } = e.target;
     setRoutine((prev) => (prev ? { ...prev, [name]: value } : null));
+
+    // Clear errors when field changes
+    if (routineFormErrors[name as keyof typeof routineFormErrors]) {
+      setRoutineFormErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
+
+    // Clear time error when either time input changes
+    if (
+      (name === "startTime" || name === "endTime") &&
+      routineFormErrors.time
+    ) {
+      setRoutineFormErrors((prev) => ({
+        ...prev,
+        time: "",
+      }));
+    }
   };
 
   const handleDayToggle = (day: string) => {
@@ -149,10 +236,27 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
         : [...prev.days, day];
       return { ...prev, days: newDays };
     });
+
+    // Clear days error when toggling days
+    if (routineFormErrors.days) {
+      setRoutineFormErrors((prev) => ({
+        ...prev,
+        days: "",
+      }));
+    }
   };
 
   const handleAddTask = async () => {
-    if (!routine || !newTask.name || !newTask.duration) return;
+    if (!routine) return;
+
+    // Reset form errors
+    setNewTaskFormErrors({ name: "" });
+
+    // Validate task name
+    if (!newTask.name || !newTask.name.trim()) {
+      setNewTaskFormErrors({ name: "Task name is required" });
+      return;
+    }
 
     try {
       const response = await fetch(`/api/routines/${id}/tasks`, {
@@ -176,6 +280,15 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
 
   const handleUpdateTask = async () => {
     if (!editingTask || !routine) return;
+
+    // Reset form errors
+    setEditTaskFormErrors({ name: "" });
+
+    // Validate task name
+    if (!editingTask.name || !editingTask.name.trim()) {
+      setEditTaskFormErrors({ name: "Task name is required" });
+      return;
+    }
 
     try {
       const response = await fetch(
@@ -239,6 +352,29 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
     }
   };
 
+  const handleNewTaskInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setNewTask((prev) => ({ ...prev, [name]: value }));
+
+    if (name === "name" && newTaskFormErrors.name) {
+      setNewTaskFormErrors({ name: "" });
+    }
+  };
+
+  // Add this near handleUpdateTask or editingTask state
+  const handleEditTaskInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setEditingTask((prev) => (prev ? { ...prev, [name]: value } : null));
+
+    if (name === "name" && editTaskFormErrors.name) {
+      setEditTaskFormErrors({ name: "" });
+    }
+  };
+
   if (isLoading)
     return (
       <div className="flex items-center justify-center h-screen">
@@ -299,6 +435,30 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                     <span className="text-xs text-gray-500">
                       {routine.days.join(", ")}
                     </span>
+                    <span className="flex items-center gap-1">
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          routine.blockType === "deep-work"
+                            ? "bg-blue-500"
+                            : routine.blockType === "break"
+                            ? "bg-green-500"
+                            : routine.blockType === "meeting"
+                            ? "bg-purple-500"
+                            : routine.blockType === "health"
+                            ? "bg-pink-500"
+                            : routine.blockType === "exercise"
+                            ? "bg-orange-500"
+                            : routine.blockType === "admin"
+                            ? "bg-gray-500"
+                            : routine.blockType === "personal"
+                            ? "bg-yellow-500"
+                            : "bg-blue-500"
+                        }`}
+                      ></div>
+                      <span className="text-xs text-gray-500 capitalize">
+                        {(routine.blockType || "deep-work").replace("-", " ")}
+                      </span>
+                    </span>
                   </div>
                 </div>
                 <Button
@@ -338,6 +498,32 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                       <Calendar className="h-4 w-4 text-blue-500" />
                       {routine.days.join(", ")}
                     </span>
+                    <span className="flex items-center gap-1">
+                      <div
+                        className="w-2 h-2 rounded-full"
+                        style={{
+                          backgroundColor:
+                            routine.blockType === "deep-work"
+                              ? "#9333ea" // purple-600
+                              : routine.blockType === "break"
+                              ? "#16a34a" // green-600
+                              : routine.blockType === "meeting"
+                              ? "#0284c7" // sky-600
+                              : routine.blockType === "health"
+                              ? "#0d9488" // teal-600
+                              : routine.blockType === "exercise"
+                              ? "#059669" // emerald-600
+                              : routine.blockType === "admin"
+                              ? "#4b5563" // gray-600
+                              : routine.blockType === "personal"
+                              ? "#c026d3" // fuchsia-600
+                              : "#9333ea", // Default (purple-600)
+                        }}
+                      ></div>
+                      <span className="text-sm text-gray-500 capitalize">
+                        {(routine.blockType || "deep-work").replace("-", " ")}
+                      </span>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -363,14 +549,21 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                       <div>
                         <Label className="flex items-center gap-2 text-sm font-medium">
                           <ListTodo className="h-4 w-4 text-blue-500" />
-                          Routine Name
+                          Routine Name <span className="text-red-500">*</span>
                         </Label>
                         <Input
                           name="name"
                           value={routine.name}
                           onChange={handleInputChange}
-                          className="mt-2"
+                          className={`mt-2 ${
+                            routineFormErrors.name ? "border-red-500" : ""
+                          }`}
                         />
+                        {routineFormErrors.name && (
+                          <p className="text-sm text-red-500 mt-1">
+                            {routineFormErrors.name}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -390,35 +583,44 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                         <div>
                           <Label className="flex items-center gap-2 text-sm font-medium">
                             <Clock className="h-4 w-4 text-blue-500" />
-                            Start Time
+                            Start Time <span className="text-red-500">*</span>
                           </Label>
                           <Input
                             name="startTime"
                             type="time"
                             value={routine.startTime}
                             onChange={handleInputChange}
-                            className="mt-2"
+                            className={`mt-2 ${
+                              routineFormErrors.time ? "border-red-500" : ""
+                            }`}
                           />
                         </div>
                         <div>
                           <Label className="flex items-center gap-2 text-sm font-medium">
                             <Clock className="h-4 w-4 text-blue-500" />
-                            End Time
+                            End Time <span className="text-red-500">*</span>
                           </Label>
                           <Input
                             name="endTime"
                             type="time"
                             value={routine.endTime}
                             onChange={handleInputChange}
-                            className="mt-2"
+                            className={`mt-2 ${
+                              routineFormErrors.time ? "border-red-500" : ""
+                            }`}
                           />
                         </div>
+                        {routineFormErrors.time && (
+                          <p className="text-sm text-red-500 col-span-2">
+                            {routineFormErrors.time}
+                          </p>
+                        )}
                       </div>
 
                       <div>
                         <Label className="flex items-center gap-2 text-sm font-medium">
                           <Calendar className="h-4 w-4 text-blue-500" />
-                          Recurring Days
+                          Recurring Days <span className="text-red-500">*</span>
                         </Label>
                         <div className="grid grid-cols-4 md:grid-cols-7 gap-2 md:gap-4 mt-2">
                           {[
@@ -446,6 +648,65 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                             </div>
                           ))}
                         </div>
+                        {routineFormErrors.days && (
+                          <p className="text-sm text-red-500 mt-1">
+                            {routineFormErrors.days}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="flex items-center gap-2 text-sm font-medium">
+                          <FolderKanban className="h-4 w-4 text-blue-500" />
+                          Block Type
+                        </Label>
+                        <Select
+                          value={routine.blockType || "deep-work"}
+                          onValueChange={(value) => {
+                            setRoutine((prev) => {
+                              if (!prev) return null;
+                              return {
+                                ...prev,
+                                blockType: value as
+                                  | "deep-work"
+                                  | "break"
+                                  | "meeting"
+                                  | "health"
+                                  | "exercise"
+                                  | "admin"
+                                  | "personal",
+                              };
+                            });
+                          }}
+                        >
+                          <SelectTrigger className="mt-2">
+                            <SelectValue placeholder="Select block type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="deep-work">
+                              <span style={{ color: "#9333ea" }}>
+                                Deep Work
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="break">
+                              <span style={{ color: "#16a34a" }}>Break</span>
+                            </SelectItem>
+                            <SelectItem value="meeting">
+                              <span style={{ color: "#0284c7" }}>Meeting</span>
+                            </SelectItem>
+                            <SelectItem value="health">
+                              <span style={{ color: "#0d9488" }}>Health</span>
+                            </SelectItem>
+                            <SelectItem value="exercise">
+                              <span style={{ color: "#059669" }}>Exercise</span>
+                            </SelectItem>
+                            <SelectItem value="admin">
+                              <span style={{ color: "#4b5563" }}>Admin</span>
+                            </SelectItem>
+                            <SelectItem value="personal">
+                              <span style={{ color: "#c026d3" }}>Personal</span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </CardContent>
@@ -510,15 +771,11 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                           <TableHeader>
                             <TableRow>
                               <TableHead>Task</TableHead>
-                              <TableHead className="hidden md:table-cell">
-                                Type
-                              </TableHead>
+
                               <TableHead className="hidden md:table-cell">
                                 Duration
                               </TableHead>
-                              <TableHead className="hidden md:table-cell">
-                                Priority
-                              </TableHead>
+
                               <TableHead className="w-24">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -533,45 +790,9 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
                                     </div>
                                   </div>
                                 </TableCell>
-                                <TableCell className="hidden md:table-cell">
-                                  {/* <span
-                                    className={`inline-block px-2 py-1 rounded-full text-xs ${
-                                      task.type === "deep-work"
-                                        ? "bg-purple-100 text-purple-800"
-                                        : task.type === "planning"
-                                        ? "bg-blue-100 text-blue-800"
-                                        : task.type === "break"
-                                        ? "bg-green-100 text-green-800"
-                                        : task.type === "admin"
-                                        ? "bg-orange-100 text-orange-800"
-                                        : "bg-pink-100 text-pink-800"
-                                    }`}
-                                  >
-                                    {task.type
-                                      .split("-")
-                                      .map(
-                                        (word) =>
-                                          word.charAt(0).toUpperCase() +
-                                          word.slice(1)
-                                      )
-                                      .join(" ")}
-                                  </span> */}
-                                </TableCell>
+
                                 <TableCell className="hidden md:table-cell">
                                   {task.duration} min
-                                </TableCell>
-                                <TableCell className="hidden md:table-cell">
-                                  <span
-                                    className={`inline-block px-2 py-1 rounded-full text-xs ${
-                                      task.priority === "High"
-                                        ? "bg-red-100 text-red-800"
-                                        : task.priority === "Medium"
-                                        ? "bg-yellow-100 text-yellow-800"
-                                        : "bg-blue-100 text-blue-800"
-                                    }`}
-                                  >
-                                    {task.priority}
-                                  </span>
                                 </TableCell>
                                 <TableCell>
                                   <DropdownMenu modal={false}>
@@ -668,16 +889,24 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
             <div className="grid gap-6 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="name" className="text-right">
-                  Name
+                  Name <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="name"
-                  value={newTask.name || ""}
-                  onChange={(e) =>
-                    setNewTask({ ...newTask, name: e.target.value })
-                  }
-                  className="col-span-3"
-                />
+                <div className="col-span-3">
+                  <Input
+                    id="name"
+                    name="name"
+                    value={newTask.name || ""}
+                    onChange={handleNewTaskInputChange}
+                    className={`${
+                      newTaskFormErrors.name ? "border-red-500" : ""
+                    }`}
+                  />
+                  {newTaskFormErrors.name && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {newTaskFormErrors.name}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-4 items-start gap-4">
@@ -789,19 +1018,24 @@ export default function RoutineDetailsPage({ params: { id } }: Props) {
               <div className="grid gap-6 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="edit-name" className="text-right">
-                    Name
+                    Name <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    id="edit-name"
-                    value={editingTask.name}
-                    onChange={(e) =>
-                      setEditingTask({
-                        ...editingTask,
-                        name: e.target.value,
-                      })
-                    }
-                    className="col-span-3"
-                  />
+                  <div className="col-span-3">
+                    <Input
+                      id="edit-name"
+                      name="name"
+                      value={editingTask.name}
+                      onChange={handleEditTaskInputChange}
+                      className={`col-span-3 ${
+                        editTaskFormErrors.name ? "border-red-500" : ""
+                      }`}
+                    />
+                    {editTaskFormErrors.name && (
+                      <p className="text-sm text-red-500 mt-1">
+                        {editTaskFormErrors.name}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-4 items-start gap-4">

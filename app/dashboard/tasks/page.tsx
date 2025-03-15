@@ -101,6 +101,11 @@ export default function StandaloneTasks() {
     isCustomDuration: false,
   });
   const [activeTab, setActiveTab] = useState("active");
+  const [taskFormErrors, setTaskFormErrors] = useState({
+    name: "",
+    timeWindow: "",
+    deadline: "",
+  });
 
   // Fetch tasks on component mount
   useEffect(() => {
@@ -129,11 +134,66 @@ export default function StandaloneTasks() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setNewTask((prev) => ({ ...prev, [name]: value }));
+
+    // Clear errors when typing
+    if (taskFormErrors[name as keyof typeof taskFormErrors]) {
+      setTaskFormErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
   };
 
   const handleAddTask = async () => {
     if (!userId) return;
-    console.log("this is the new task im sending 0", newTask);
+
+    // Reset previous errors
+    setTaskFormErrors({
+      name: "",
+      timeWindow: "",
+      deadline: "",
+    });
+
+    // Validate form
+    let isValid = true;
+    const newErrors = {
+      name: "",
+      timeWindow: "",
+      deadline: "",
+    };
+
+    // Name is required
+    if (!newTask.name.trim()) {
+      newErrors.name = "Task name is required";
+      isValid = false;
+    }
+
+    // Time window validation: start must be before end if both are provided
+    if (newTask.timeWindow?.start && newTask.timeWindow?.end) {
+      if (newTask.timeWindow.start >= newTask.timeWindow.end) {
+        newErrors.timeWindow = "Start time must be before end time";
+        isValid = false;
+      }
+    }
+
+    // Deadline validation: date cannot be in the past
+    if (newTask.deadline) {
+      const selectedDate = new Date(newTask.deadline);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time for fair comparison
+
+      if (selectedDate < today) {
+        newErrors.deadline = "Deadline cannot be in the past";
+        isValid = false;
+      }
+    }
+
+    // If validation fails, show errors and return
+    if (!isValid) {
+      setTaskFormErrors(newErrors);
+      return;
+    }
+
     try {
       const response = await fetch("/api/tasks/stand-alone-tasks", {
         method: "POST",
@@ -159,6 +219,24 @@ export default function StandaloneTasks() {
     } catch (error) {
       console.error("Error creating task:", error);
       toast.error("Failed to create task. Please try again.");
+    }
+  };
+
+  const handleTimeWindowChange = (field: "start" | "end", value: string) => {
+    setNewTask((prev) => ({
+      ...prev,
+      timeWindow: {
+        ...prev.timeWindow,
+        [field]: value,
+      },
+    }));
+
+    // Clear time window error when user changes either time
+    if (taskFormErrors.timeWindow) {
+      setTaskFormErrors((prev) => ({
+        ...prev,
+        timeWindow: "",
+      }));
     }
   };
 
@@ -302,15 +380,24 @@ export default function StandaloneTasks() {
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="name" className="text-right">
-                      Name
+                      Name <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={newTask.name}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                    />
+                    <div className="col-span-3">
+                      <Input
+                        id="name"
+                        name="name"
+                        value={newTask.name}
+                        onChange={handleInputChange}
+                        className={`${
+                          taskFormErrors.name ? "border-red-500" : ""
+                        }`}
+                      />
+                      {taskFormErrors.name && (
+                        <p className="text-sm text-red-500 mt-1">
+                          {taskFormErrors.name}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-4 items-start gap-4">
@@ -403,62 +490,109 @@ export default function StandaloneTasks() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="timeWindow.start" className="text-right">
-                      Time Window Start
-                    </Label>
-                    <Input
-                      id="timeWindow.start"
-                      name="timeWindow.start"
-                      type="time"
-                      value={newTask.timeWindow?.start || ""}
-                      onChange={(e) =>
-                        setNewTask((prev) => ({
-                          ...prev,
-                          timeWindow: {
-                            ...prev.timeWindow,
-                            start: e.target.value,
-                          },
-                        }))
-                      }
-                      className="col-span-3"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="timeWindow.end" className="text-right">
-                      Time Window End
-                    </Label>
-                    <Input
-                      id="timeWindow.end"
-                      name="timeWindow.end"
-                      type="time"
-                      value={newTask.timeWindow?.end || ""}
-                      onChange={(e) =>
-                        setNewTask((prev) => ({
-                          ...prev,
-                          timeWindow: {
-                            ...prev.timeWindow,
-                            end: e.target.value,
-                          },
-                        }))
-                      }
-                      className="col-span-3"
-                    />
+                  <div className="grid grid-cols-4 items-start gap-4">
+                    <div className="text-right pt-2 flex justify-end items-center">
+                      <Label htmlFor="timeWindow" className="mr-1">
+                        {"Time Window (Optional)"}
+                      </Label>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 p-0"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-4 w-4 text-gray-400"
+                            >
+                              <circle cx="12" cy="12" r="10" />
+                              <path d="M12 16v-4M12 8h.01" />
+                            </svg>
+                            <span className="sr-only">Info</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="center"
+                          className="w-[260px] p-2"
+                        >
+                          <p className="text-xs text-gray-600">
+                            Optional. Specify a preferred time range for when
+                            this task should be performed. This helps the
+                            scheduler optimize when to place this task in your
+                            day.
+                          </p>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="col-span-3 space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label htmlFor="timeWindow.start" className="text-xs">
+                            Earliest start time
+                          </Label>
+                          <Input
+                            id="timeWindow.start"
+                            name="timeWindow.start"
+                            type="time"
+                            value={newTask.timeWindow?.start || ""}
+                            onChange={(e) =>
+                              handleTimeWindowChange("start", e.target.value)
+                            }
+                            placeholder="e.g., 09:00"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="timeWindow.end" className="text-xs">
+                            Latest end time
+                          </Label>
+                          <Input
+                            id="timeWindow.end"
+                            name="timeWindow.end"
+                            type="time"
+                            value={newTask.timeWindow?.end || ""}
+                            onChange={(e) =>
+                              handleTimeWindowChange("end", e.target.value)
+                            }
+                            placeholder="e.g., 17:00"
+                          />
+                        </div>
+                      </div>
+                      {taskFormErrors.timeWindow && (
+                        <p className="text-sm text-red-500">
+                          {taskFormErrors.timeWindow}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="deadline" className="text-right">
                       Deadline
                     </Label>
-                    <Input
-                      id="deadline"
-                      name="deadline"
-                      type="date"
-                      value={newTask.deadline}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                    />
+                    <div className="col-span-3">
+                      <Input
+                        id="deadline"
+                        name="deadline"
+                        type="date"
+                        value={newTask.deadline}
+                        onChange={handleInputChange}
+                        className={`${
+                          taskFormErrors.deadline ? "border-red-500" : ""
+                        }`}
+                      />
+                      {taskFormErrors.deadline && (
+                        <p className="text-sm text-red-500 mt-1">
+                          {taskFormErrors.deadline}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 

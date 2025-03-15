@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -37,6 +37,19 @@ import BlockProgress from "./BlockProgress";
 import BlockTypeBadge from "./BlockTypeBadge";
 import SourceBadge from "./SourceBadge";
 import { Block, Task } from "@/app/context/models";
+import BlockDurationIndicator from "./BlockDurationIndicator";
+import { Badge } from "@/components/ui/badge";
+
+interface EventData {
+  _id: string;
+  name: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  meetingLink?: string;
+  eventType?: string;
+  isRecurring: boolean;
+}
 
 interface TimeBlockProps {
   block: Block;
@@ -67,6 +80,46 @@ export function PreviewTimeBlock({
   updatingTaskId,
   onStartFocusSession,
 }: TimeBlockProps) {
+  const [eventData, setEventData] = useState<EventData | null>(null);
+  const [isLoadingEvent, setIsLoadingEvent] = useState<boolean>(false);
+  const isEventBlock = !!block.event || !!block.eventId; // Check both properties
+
+  console.log("is this and event", isEventBlock, eventData);
+
+  // Add the useEffect to fetch event data
+  useEffect(() => {
+    const fetchEventData = async () => {
+      if (isEventBlock) {
+        setIsLoadingEvent(true);
+        try {
+          const response = await fetch("/api/get-event-by-id", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ eventId: block.event || block.eventId }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setEventData(data);
+          }
+        } catch (error) {
+          console.error("Error fetching event data:", error);
+        } finally {
+          setIsLoadingEvent(false);
+        }
+      }
+    };
+
+    fetchEventData();
+  }, [block.event, block.eventId, isEventBlock]);
+
+  const displayMeetingLink =
+    eventData && !eventData.isRecurring
+      ? eventData.meetingLink
+      : block.meetingLink;
+
   // DnD setup
   const { setNodeRef } = useDroppable({
     id: block._id,
@@ -106,8 +159,33 @@ export function PreviewTimeBlock({
         <CardTitle className="text-base font-medium flex-1">
           <div className="flex items-center gap-2">
             {block.name}
+
+            {isEventBlock && (
+              <Badge
+                variant="outline"
+                className={`text-xs flex items-center gap-1 ${
+                  eventData?.isRecurring
+                    ? "bg-rose-50 text-rose-700 border-rose-200"
+                    : "bg-rose-50 text-rose-700 border-rose-200"
+                } font-medium`}
+              >
+                <Calendar className="h-3 w-3" />
+                {isLoadingEvent
+                  ? "Loading..."
+                  : eventData?.isRecurring
+                  ? "Recurring Event"
+                  : "Event"}
+              </Badge>
+            )}
             {block.blockType && <BlockTypeBadge type={block.blockType} />}
             {block.routineId && <SourceBadge type={block.routineId} />}
+
+            {/* Duration Indicator - NEW! */}
+            <BlockDurationIndicator
+              startTime={block.startTime}
+              endTime={block.endTime}
+              tasks={block.tasks}
+            />
 
             {/* <SourceBadge
               isEvent={block.isEvent}
@@ -184,16 +262,44 @@ export function PreviewTimeBlock({
         </SortableContext>
 
         <div className="flex justify-between items-center mt-4">
+          {/* Only show Add Task button if not an event block */}
+          {!block.eventId && !block.event && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-sm"
+              onClick={() => onAddTask(block._id)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add Task
+            </Button>
+          )}
+        </div>
+        {/* Similar to TimeBlock component */}
+        {eventData?.meetingLink ? (
           <Button
             variant="outline"
             size="sm"
-            className="h-8 text-sm"
-            onClick={() => onAddTask(block._id)}
+            className="h-8 text-sm text-gray-400 hover:bg-gray-50 cursor-not-allowed opacity-60"
+            asChild
           >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Task
+            <span className="flex items-center">
+              <LinkIcon className="h-4 w-4 md:mr-1" />
+              <span className="hidden md:inline">Join Meeting (Preview)</span>
+            </span>
           </Button>
-        </div>
+        ) : (
+          <></>
+          // <Button
+          //   variant="outline"
+          //   size="sm"
+          //   className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+          //   onClick={() => onStartFocusSession?.(block)}
+          // >
+          //   <Clock className="h-4 w-4 md:mr-1" />
+          //   <span className="hidden md:inline">Start</span>
+          // </Button>
+        )}
       </CardContent>
     </Card>
   );

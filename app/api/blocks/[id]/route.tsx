@@ -4,6 +4,7 @@ import dbConnect from "@/lib/mongo";
 import Task from "@/models/Task";
 import Block from "@/models/Block";
 import Day from "@/models/Day";
+import Event from "@/models/Event";
 
 export async function POST(
   request: NextRequest,
@@ -58,6 +59,45 @@ export async function POST(
   }
 }
 
+// export async function PUT(
+//   request: NextRequest,
+//   { params }: { params: { id: string } }
+// ) {
+//   await dbConnect();
+
+//   try {
+//     const blockId = params.id;
+//     const updateData = await request.json();
+
+//     // Remove _id from updateData if it exists, as we shouldn't update the _id
+//     delete updateData._id;
+
+//     // Update the block with all provided fields
+//     const updatedBlock = await Block.findByIdAndUpdate(
+//       blockId,
+//       { $set: updateData },
+//       { new: true, runValidators: true }
+//     ).populate({
+//       path: "tasks",
+//       model: Task,
+//       select:
+//         "name description duration priority completed isRoutineTask projectId deadline",
+//     });
+
+//     if (!updatedBlock) {
+//       return NextResponse.json({ message: "Block not found" }, { status: 404 });
+//     }
+
+//     return NextResponse.json({ updatedBlock }, { status: 200 });
+//   } catch (error) {
+//     console.error("Error updating block:", error);
+//     return NextResponse.json(
+//       { message: "Error updating block", error },
+//       { status: 500 }
+//     );
+//   }
+// }
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -76,15 +116,50 @@ export async function PUT(
       blockId,
       { $set: updateData },
       { new: true, runValidators: true }
-    ).populate({
-      path: "tasks",
-      model: Task,
-      select:
-        "name description duration priority completed isRoutineTask projectId deadline",
-    });
+    )
+      .populate({
+        path: "tasks",
+        model: Task,
+        select:
+          "name description duration priority completed isRoutineTask projectId deadline",
+      })
+      .populate("event");
 
     if (!updatedBlock) {
       return NextResponse.json({ message: "Block not found" }, { status: 404 });
+    }
+
+    // If this is an event block and we're marking it as complete,
+    // update the associated event
+    if (updatedBlock.event && updateData.status === "complete") {
+      const event = updatedBlock.event;
+
+      // Handle recurring vs. one-time events differently
+      if (event.isRecurring) {
+        // For recurring events, add this instance to the history
+        const today = new Date();
+        await Event.findByIdAndUpdate(
+          event._id,
+          {
+            $push: {
+              instanceHistory: {
+                date: today,
+                blockId: blockId,
+                status: "complete",
+                completedAt: today,
+              },
+            },
+          },
+          { new: true }
+        );
+      } else {
+        // For one-time events, mark the event itself as completed
+        await Event.findByIdAndUpdate(
+          event._id,
+          { completed: true },
+          { new: true }
+        );
+      }
     }
 
     return NextResponse.json({ updatedBlock }, { status: 200 });

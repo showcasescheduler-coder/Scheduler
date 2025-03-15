@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +55,9 @@ export function EditBlockDialog({
     status: block.status,
     meetingLink: block.meetingLink,
   });
+  const [errors, setErrors] = useState({
+    timeOrder: false,
+  });
 
   const updatePreviewStorage = (updatedSchedule: PreviewSchedule) => {
     localStorage.setItem("schedule", JSON.stringify(updatedSchedule));
@@ -65,10 +68,34 @@ export function EditBlockDialog({
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Check time order when either time field changes
+    if (name === "startTime" || name === "endTime") {
+      const start = name === "startTime" ? value : formData.startTime;
+      const end = name === "endTime" ? value : formData.endTime;
+
+      if (start && end) {
+        setErrors((prev) => ({
+          ...prev,
+          timeOrder: start >= end,
+        }));
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate time order before submission
+    const timeOrderError = formData.startTime >= formData.endTime;
+
+    if (timeOrderError) {
+      setErrors((prev) => ({
+        ...prev,
+        timeOrder: true,
+      }));
+      return;
+    }
 
     if (isPreviewMode) {
       try {
@@ -139,13 +166,13 @@ export function EditBlockDialog({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
+          <Label htmlFor="description">Description (Optional)</Label>
           <Input
             id="description"
             name="description"
             value={formData.description}
             onChange={handleChange}
-            required
+            placeholder="Add a description (optional)"
           />
         </div>
 
@@ -160,13 +187,19 @@ export function EditBlockDialog({
             required
           >
             <option value="deep-work">Deep Work</option>
-            <option value="planning">Planning</option>
             <option value="break">Break</option>
+            <option value="meeting">Meeting</option>
+            <option value="health">Health</option>
+            <option value="exercise">Exercise</option>
             <option value="admin">Admin</option>
-            <option value="collaboration">Collaboration</option>
+            <option value="personal">Personal</option>
           </select>
         </div>
-
+        {errors.timeOrder && (
+          <div className="text-xs text-red-500 mt-1">
+            End time must be after start time
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="startTime">Start Time</Label>
           <Input
@@ -175,6 +208,11 @@ export function EditBlockDialog({
             type="time"
             value={formData.startTime}
             onChange={handleChange}
+            className={
+              errors.timeOrder
+                ? "border-red-500 focus-visible:ring-red-500"
+                : ""
+            }
             required
           />
         </div>
@@ -187,6 +225,11 @@ export function EditBlockDialog({
             type="time"
             value={formData.endTime}
             onChange={handleChange}
+            className={
+              errors.timeOrder
+                ? "border-red-500 focus-visible:ring-red-500"
+                : ""
+            }
             required
           />
         </div>
@@ -207,7 +250,9 @@ export function EditBlockDialog({
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit">Save Changes</Button>
+          <Button type="submit" className={"bg-blue-600 hover:bg-blue-700"}>
+            Save Changes
+          </Button>
         </div>
       </form>
     </>

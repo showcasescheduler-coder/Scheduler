@@ -12,6 +12,14 @@ interface AddRoutineRequestBody {
   startTime: string;
   endTime: string;
   tasks: Omit<ITask, "blockId">[];
+  blockType?:
+    | "deep-work"
+    | "break"
+    | "meeting"
+    | "health"
+    | "exercise"
+    | "admin"
+    | "personal";
 }
 
 export async function POST(request: Request) {
@@ -19,7 +27,8 @@ export async function POST(request: Request) {
 
   try {
     const body: AddRoutineRequestBody = await request.json();
-    const { dayId, routineId, name, startTime, endTime, tasks } = body;
+    const { dayId, routineId, name, startTime, endTime, tasks, blockType } =
+      body;
 
     console.log("Add routine to schedule:", body);
 
@@ -30,6 +39,7 @@ export async function POST(request: Request) {
       startTime,
       endTime,
       routineId,
+      blockType: blockType || "personal",
     });
 
     // Create new tasks based on the routine's tasks

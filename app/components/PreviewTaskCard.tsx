@@ -24,6 +24,7 @@ import {
   Info,
 } from "lucide-react";
 import { Block, Task } from "@/app/context/models";
+import TaskSourceBadge from "./TaskSourceBadge";
 
 interface TaskCardProps {
   task: Task;
@@ -145,7 +146,9 @@ export function PreviewTaskCard({
                     <span className="hidden md:inline">min</span>
                   </span>
 
-                  <SourceBadge task={task} />
+                  <TaskSourceBadge task={task} />
+
+                  {/* <SourceBadge task={task} /> */}
                 </div>
 
                 <DropdownMenu modal={false}>
@@ -179,7 +182,7 @@ export function PreviewTaskCard({
             </div>
           </div>
         </CardContent>
-        <div
+        {/* <div
           className={`absolute top-0 right-0 bottom-0 w-1 ${
             task.priority === "High"
               ? "bg-red-500"
@@ -188,7 +191,7 @@ export function PreviewTaskCard({
               : "bg-green-500"
           }`}
           aria-label="Priority Indicator"
-        />
+        /> */}
       </Card>
     </div>
   );

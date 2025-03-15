@@ -14,13 +14,30 @@ export interface IEvent extends Document {
   meetingLink?: string;
   completed: boolean;
   tasks: mongoose.Types.ObjectId[];
+  eventType?: string; // Add this line to include the eventType in the interface
 }
+
+// Create a schema for the event instance
+const EventInstanceSchema = new Schema({
+  date: { type: Date, required: true },
+  blockId: {
+    type: Schema.Types.ObjectId,
+    ref: "Block",
+    required: true,
+  },
+  status: {
+    type: String,
+    enum: ["pending", "complete", "incomplete", "missed"],
+    default: "pending",
+  },
+  completedAt: { type: Date },
+});
 
 const EventSchema: Schema = new Schema(
   {
     userId: { type: String, required: true },
     name: { type: String, required: true },
-    description: { type: String, required: true },
+    description: { type: String, required: false },
     date: { type: Date, required: false },
     startTime: { type: String, required: true },
     endTime: { type: String, required: true },
@@ -40,6 +57,12 @@ const EventSchema: Schema = new Schema(
         ref: "Task",
       },
     ],
+    eventType: {
+      type: String,
+      enum: ["meeting", "personal", "health", "exercise"],
+      default: "meeting",
+    },
+    instanceHistory: [EventInstanceSchema],
   },
   { timestamps: true }
 );

@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, Info, RotateCcw, Check, X } from "lucide-react";
+import { Clock, Info, RotateCcw, Check, X, Calendar } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -9,15 +9,22 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Task, Block } from "@/app/context/models";
+import { Badge } from "@/components/ui/badge";
+import BlockTypeBadge from "./BlockTypeBadge";
+import SourceBadge from "./SourceBadge";
+import BlockProgress from "./BlockProgress";
+import TaskSourceBadge from "./TaskSourceBadge";
 
 interface CompletedBlockProps {
   block: Block;
   onReactivateBlock: (blockId: string) => void;
+  hideReactivateButton?: boolean;
 }
 
 const CompletedBlock: React.FC<CompletedBlockProps> = ({
   block,
   onReactivateBlock,
+  hideReactivateButton = false,
 }) => {
   return (
     <Card className="border-gray-200 shadow-sm">
@@ -25,11 +32,28 @@ const CompletedBlock: React.FC<CompletedBlockProps> = ({
         <CardTitle className="text-base font-medium">
           <div className="flex items-center gap-2">
             {block.name}
-            {block.isStandaloneBlock && (
+            {/* {block.isStandaloneBlock && (
               <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
                 AI Optimized
               </span>
+            )} */}
+            {/* Event Badge */}
+            {block.event && (
+              <Badge
+                variant="outline"
+                className="text-xs flex items-center gap-1 bg-rose-50 text-rose-700 border-rose-200 font-medium"
+              >
+                <Calendar className="h-3 w-3" />
+                Event
+              </Badge>
             )}
+
+            {/* Block Type Badge */}
+            {block.blockType && <BlockTypeBadge type={block.blockType} />}
+
+            {/* Source Badge */}
+            {block.routineId && <SourceBadge type={block.routineId} />}
+
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
@@ -78,24 +102,12 @@ const CompletedBlock: React.FC<CompletedBlockProps> = ({
                       {task.duration}
                       <span className="hidden md:inline">min</span>
                     </span>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <div className="md:hidden h-2.5 w-2.5 rounded-full bg-purple-500 flex-shrink-0" />
-                          <span className="hidden md:inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800 flex-shrink-0">
-                            {task.type}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{task.type}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <TaskSourceBadge task={task} />
                   </div>
                 </div>
               </div>
             </CardContent>
-            <div
+            {/* <div
               className={`absolute top-0 right-0 bottom-0 w-1 ${
                 task.priority === "High"
                   ? "bg-red-500"
@@ -104,20 +116,22 @@ const CompletedBlock: React.FC<CompletedBlockProps> = ({
                   : "bg-green-500"
               }`}
               aria-label="Priority Indicator"
-            />
+            /> */}
           </Card>
         ))}
-        <div className="flex justify-end mt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-            onClick={() => onReactivateBlock(block._id)}
-          >
-            <RotateCcw className="h-4 w-4 md:mr-1" />
-            <span className="hidden md:inline">Reactivate</span>
-          </Button>
-        </div>
+        {!hideReactivateButton && (
+          <div className="flex justify-end mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+              onClick={() => onReactivateBlock(block._id)}
+            >
+              <RotateCcw className="h-4 w-4 md:mr-1" />
+              <span className="hidden md:inline">Reactivate</span>
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState, useRef, useContext } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -36,6 +36,21 @@ import BlockProgress from "./BlockProgress";
 import BlockTypeBadge from "./BlockTypeBadge";
 import SourceBadge from "./SourceBadge";
 import { Block, Task } from "@/app/context/models";
+import { Badge } from "@/components/ui/badge";
+import BlockDurationIndicator from "./BlockDurationIndicator";
+import { useRouter } from "next/navigation";
+import { useAppContext } from "@/app/context/AppContext";
+
+interface EventData {
+  _id: string;
+  name: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  meetingLink?: string;
+  eventType?: string;
+  isRecurring: boolean;
+}
 
 interface TimeBlockProps {
   block: Block;
@@ -50,6 +65,7 @@ interface TimeBlockProps {
   updatingTasks: boolean;
   updatingTaskId: string | null;
   onStartFocusSession?: (block: Block) => void;
+  isTodayView: boolean; // Add this
 }
 
 export function TimeBlock({
@@ -65,15 +81,86 @@ export function TimeBlock({
   updatingTasks,
   updatingTaskId,
   onStartFocusSession,
+  isTodayView,
 }: TimeBlockProps) {
+  const [eventData, setEventData] = useState<EventData | null>(null);
+  const [isLoadingEvent, setIsLoadingEvent] = useState<boolean>(false);
+  const router = useRouter();
+  const isEventBlock = !!block.event;
+  const blockRef = useRef(block);
+  const { events } = useAppContext();
   // DnD setup
+
+  useEffect(() => {
+    if (isEventBlock && events && block.event) {
+      // Find the updated event from the global events array
+      const updatedEvent = events.find((e) => e._id === block.event);
+      if (updatedEvent) {
+        setEventData(updatedEvent);
+      }
+    }
+  }, [events, block.event, isEventBlock]);
+
+  useEffect(() => {
+    blockRef.current = block;
+  }, [block]);
+
+  useEffect(() => {
+    if (isEventBlock) {
+      console.log("Event block detected:", {
+        blockId: block._id,
+        blockName: block.name,
+        eventId: block.event,
+        eventData,
+        isRecurring: eventData?.isRecurring,
+      });
+    }
+  }, [block, eventData, isEventBlock]);
+
   const { setNodeRef } = useDroppable({
     id: block._id,
     data: {
       type: "Block",
-      block,
+      block: {
+        ...block,
+        _eventData: eventData,
+      } as Block & { _eventData?: EventData | null },
     },
   });
+
+  // Fetch event data if this block has an event reference
+  useEffect(() => {
+    const fetchEventData = async () => {
+      if (isEventBlock) {
+        setIsLoadingEvent(true);
+        try {
+          const response = await fetch("/api/get-event-by-id", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ eventId: block.event }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setEventData(data);
+
+            // Attach the event data to the block object for DnD access
+            if (blockRef.current) {
+              blockRef.current._eventData = data;
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching event data:", error);
+        } finally {
+          setIsLoadingEvent(false);
+        }
+      }
+    };
+
+    fetchEventData();
+  }, [block.event, isEventBlock]);
 
   // Calculate progress
   const calculateProgress = () => {
@@ -90,7 +177,30 @@ export function TimeBlock({
     return block.tasks.map((task) => task._id);
   }, [block.tasks]);
 
-  console.log(block);
+  const displayName =
+    eventData && !eventData.isRecurring ? eventData.name : block.name;
+  const displayDescription =
+    eventData && !eventData.isRecurring
+      ? eventData.description
+      : block.description;
+  const displayMeetingLink =
+    eventData && !eventData.isRecurring
+      ? eventData.meetingLink
+      : block.meetingLink;
+  const displayStartTime =
+    eventData && !eventData.isRecurring ? eventData.startTime : block.startTime;
+  const displayEndTime =
+    eventData && !eventData.isRecurring ? eventData.endTime : block.endTime;
+
+  const handleEditClick = () => {
+    if (isEventBlock && eventData) {
+      // Navigate to event edit page
+      router.push(`/dashboard/events/${eventData._id}`);
+    } else {
+      // Use regular edit block function
+      onEditBlock(block);
+    }
+  };
 
   return (
     <Card ref={setNodeRef} className="border-gray-200 shadow-sm">
@@ -99,47 +209,60 @@ export function TimeBlock({
         <div className="flex items-center text-gray-700 font-medium">
           <Clock className="mr-2 h-4 w-4" />
           <span>
-            {block.startTime} - {block.endTime}
+            {displayStartTime} - {displayEndTime}
           </span>
         </div>
       </div>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-base font-medium flex-1">
           <div className="flex items-center gap-2">
-            {block.name}
+            {isLoadingEvent ? (
+              <span className="animate-pulse">Loading...</span>
+            ) : (
+              displayName
+            )}
+
+            {isEventBlock && (
+              <Badge
+                variant="outline"
+                className={`text-xs flex items-center gap-1 ${
+                  eventData?.isRecurring
+                    ? "bg-rose-50 text-rose-700 border-rose-200"
+                    : "bg-rose-50 text-rose-700 border-rose-200"
+                } font-medium`}
+              >
+                <Calendar className="h-3 w-3" />
+                {eventData?.isRecurring ? "Recurring Event" : "Event"}
+              </Badge>
+            )}
+
             {block.blockType && <BlockTypeBadge type={block.blockType} />}
             {block.routineId && <SourceBadge type={block.routineId} />}
 
-            {/* <SourceBadge
-              isEvent={block.isEvent}
-              isRoutine={block.isRoutine}
-              eventId={block.eventId}
-              routineId={block.routineId}
-            /> */}
-            {/* {block.isStandaloneBlock && (
-              <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-                <Sparkles className="mr-1 h-3 w-3" />
-                <span className="hidden sm:inline">AI Optimized</span>
-              </span>
-            )} */}
+            <BlockDurationIndicator
+              startTime={displayStartTime}
+              endTime={displayEndTime}
+              tasks={block.tasks}
+            />
+
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
                   <Info className="h-4 w-4 text-gray-400" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p className="max-w-xs">{block.description}</p>
+                  <p className="max-w-xs">{displayDescription}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <BlockProgress tasks={block.tasks} />
+            {!isEventBlock && <BlockProgress tasks={block.tasks} />}
           </div>
         </CardTitle>
 
         <div className="flex items-center space-x-2">
           <div className="hidden md:flex items-center text-sm text-gray-500">
             <Clock className="mr-1.5 h-3.5 w-3.5" />
-            {block.startTime} - {block.endTime}
+            {displayStartTime} - {displayEndTime}
           </div>
 
           <DropdownMenu modal={false}>
@@ -149,90 +272,106 @@ export function TimeBlock({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {/* <DropdownMenuItem className="md:hidden">
-                <Clock className="mr-2 h-4 w-4" />
-                <span>
-                  {block.startTime} - {block.endTime}
-                </span>
-              </DropdownMenuItem> */}
-              <DropdownMenuItem onClick={() => onEditBlock(block)}>
+              <DropdownMenuItem onClick={handleEditClick}>
                 <Edit className="mr-2 h-4 w-4" />
-                <span>Edit Block</span>
+                <span>
+                  {eventData?.isRecurring
+                    ? "Edit Occurance"
+                    : eventData
+                    ? "Edit Event"
+                    : "Edit Block"}
+                </span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDeleteBlock(block)}>
                 <Trash2 className="mr-2 h-4 w-4" />
-                <span>Delete Block</span>
+                {isEventBlock ? "Remove Event from Day" : "Delete Block"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </CardHeader>
       <CardContent>
-        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-          {block.tasks.map((task) => (
-            <TaskCard
-              key={task._id}
-              task={task}
-              block={block}
-              updatingTasks={updatingTasks}
-              updatingTaskId={updatingTaskId}
-              onTaskCompletion={onTaskCompletion}
-              onEditTask={onEditTask}
-              onRemoveTask={onRemoveTask}
-              onDeleteTask={onDeleteTask}
-            />
-          ))}
-        </SortableContext>
-
-        <div className="flex justify-between items-center mt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-sm"
-            onClick={() => onAddTask(block._id)}
+        {!isEventBlock ? (
+          <SortableContext
+            items={taskIds}
+            strategy={verticalListSortingStrategy}
           >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Task
-          </Button>
-          <div className="space-x-2">
+            {block.tasks.map((task: Task) => (
+              <TaskCard
+                key={task._id}
+                task={task}
+                block={block}
+                updatingTasks={updatingTasks}
+                updatingTaskId={updatingTaskId}
+                onTaskCompletion={onTaskCompletion}
+                onEditTask={onEditTask}
+                onRemoveTask={onRemoveTask}
+                onDeleteTask={onDeleteTask}
+                isTodayView={isTodayView}
+                isReadOnly={false}
+              />
+            ))}
+          </SortableContext>
+        ) : null}
+
+        <div className="flex justify-end items-center gap-2 mt-4">
+          {!isEventBlock && (
             <Button
               variant="outline"
               size="sm"
-              className="h-8 text-sm text-green-600 hover:bg-green-50 hover:text-green-700"
-              onClick={() => onCompleteBlock(block._id)}
+              className="h-8 text-sm"
+              onClick={() => onAddTask(block._id)}
             >
-              <Check className="h-4 w-4 md:mr-1" />
-              <span className="hidden md:inline">Complete</span>
+              <Plus className="h-4 w-4 mr-1" />
+              Add Task
             </Button>
-            {block.meetingLink ? (
+          )}
+
+          {/* Only show action buttons for today's view */}
+          {isTodayView && (
+            <div className="space-x-2">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                asChild
+                className="h-8 text-sm text-green-600 hover:bg-green-50 hover:text-green-700"
+                onClick={() => onCompleteBlock(block._id)}
               >
-                <a
-                  href={block.meetingLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center"
+                <Check className="h-4 w-4 md:mr-1" />
+                <span className="hidden md:inline">Complete</span>
+              </Button>
+
+              {/* Similar to TimeBlock component */}
+              {displayMeetingLink ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                  asChild
                 >
-                  <LinkIcon className="h-4 w-4 md:mr-1" />
-                  <span className="hidden md:inline">Join Meeting</span>
-                </a>
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                onClick={() => onStartFocusSession?.(block)}
-              >
-                <Clock className="h-4 w-4 md:mr-1" />
-                <span className="hidden md:inline">Start</span>
-              </Button>
-            )}
-          </div>
+                  <a
+                    href={displayMeetingLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center"
+                  >
+                    <LinkIcon className="h-4 w-4 md:mr-1" />
+                    <span className="hidden md:inline">Join Meeting</span>
+                  </a>
+                </Button>
+              ) : (
+                <></>
+                // <Button
+                //   variant="outline"
+                //   size="sm"
+                //   className="h-8 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                //   onClick={() => onStartFocusSession?.(block)}
+                // >
+                //   <Clock className="h-4 w-4 md:mr-1" />
+                //   <span className="hidden md:inline">Start</span>
+                // </Button>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

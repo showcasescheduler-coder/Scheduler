@@ -19,6 +19,7 @@ export async function POST(request: Request) {
       priority,
       userId,
       meetingLink, // Add meetingLink to destructured properties
+      eventType,
     } = body;
 
     if (!userId) {
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
       status: "pending",
       userId, // Add userId to the block
       meetingLink, // Add meetingLink to destructured properties
+      blockType: eventType || "meeting", // Set blockType from eventType
     });
     await block.save();
 
@@ -54,6 +56,7 @@ export async function POST(request: Request) {
       priority,
       userId, // Add userId to the event
       meetingLink, // Add meeting link to the event
+      eventType, // Add eventType to the event
     });
     await event.save();
 

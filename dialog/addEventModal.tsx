@@ -27,6 +27,7 @@ import {
   LinkIcon,
   Calendar,
   Circle,
+  RepeatIcon,
 } from "lucide-react";
 import { Event, EventTask } from "@/app/context/models";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +42,6 @@ import {
   validateTimeRange,
 } from "@/helpers/timeValidation";
 import toast from "react-hot-toast";
-// ... at the top of your component:
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -65,14 +65,17 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
     description: "",
     startTime: "",
     endTime: "",
-    meetingLink: "", // New field for meeting link
+    meetingLink: "",
+    eventType: "meeting", // Default type
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { userId } = useAuth();
   const { isPreviewMode, setPreviewSchedule, previewSchedule } =
     useAppContext();
 
-  const allowedStart = "08:00";
-  const allowedEnd = "22:00";
+  const allowedStart = "00:00";
+  const allowedEnd = "23:59";
 
   const fetchEvents = async () => {
     try {
@@ -91,10 +94,10 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   };
 
   useEffect(() => {
-    if (activeTab === "existingEvent" && day.date) {
+    if (activeTab === "existingEvent" && isOpen) {
       fetchEvents();
     }
-  }, [activeTab, day.date]);
+  }, [activeTab, isOpen, day.blocks, previewSchedule?.blocks]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -103,11 +106,15 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
     setNewEvent((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSelectChange = (name: string) => (value: string) => {
-    setNewEvent((prev) => ({ ...prev, [name]: value }));
-  };
-
   const handleNewEventSubmit = async () => {
+    setIsSubmitting(true);
+
+    // Validate the form first
+    if (!validateForm()) {
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!userId) {
       console.error("User ID is not available");
       return;
@@ -123,17 +130,6 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
       toast.error(errorMessage);
       return;
     }
-
-    // const errorMessage = validateTimeRange(
-    //   newEvent,
-    //   isPreviewMode ? previewSchedule?.blocks || [] : day.blocks,
-    //   allowedStart,
-    //   allowedEnd
-    // );
-    // if (errorMessage) {
-    //   toast.error(errorMessage);
-    //   return;
-    // }
 
     if (isPreviewMode) {
       try {
@@ -188,7 +184,10 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
 
         // Update UI state
         setPreviewSchedule(updatedSchedule);
-        setEvents((prevEvents) => [...prevEvents, newEventObj as Event]);
+        setEvents((prevEvents) => [
+          ...prevEvents,
+          newEventObj as unknown as Event,
+        ]);
         toast.success("Event added to preview schedule");
 
         // Clear form and close modal
@@ -198,6 +197,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
           startTime: "",
           endTime: "",
           meetingLink: "",
+          eventType: "meeting", // Default type
         });
         onClose();
       } catch (error) {
@@ -237,7 +237,9 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
           startTime: "",
           endTime: "",
           meetingLink: "",
+          eventType: "meeting", // Default type
         });
+        setIsSubmitting(false);
         onClose();
       } catch (error) {
         console.error("Error creating event with block:", error);
@@ -246,7 +248,57 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
     }
   };
 
-  const addEventToBlock = async (eventId: string) => {
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    // Check if name is empty
+    if (!newEvent.name.trim()) {
+      errors.name = "Event name is required";
+    }
+
+    // Check if start time is provided
+    if (!newEvent.startTime) {
+      errors.startTime = "Start time is required";
+    }
+
+    // Check if end time is provided
+    if (!newEvent.endTime) {
+      errors.endTime = "End time is required";
+    }
+
+    // Check if start time is before end time
+    if (
+      newEvent.startTime &&
+      newEvent.endTime &&
+      newEvent.startTime >= newEvent.endTime
+    ) {
+      errors.endTime = "End time must be after start time";
+    }
+
+    // Validate meeting link if provided (optional basic URL validation)
+    if (newEvent.meetingLink && !isValidUrl(newEvent.meetingLink)) {
+      errors.meetingLink = "Please enter a valid URL";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const isValidUrl = (url: string): boolean => {
+    try {
+      // Simple check: either empty (which is valid since it's optional)
+      // or starts with http:// or https://
+      if (!url.trim()) return true;
+      return url.startsWith("http://") || url.startsWith("https://");
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const addEventToBlock = async (
+    eventId: string,
+    isRecurring: boolean = false
+  ) => {
     const eventToAdd = events.find((e) => e._id === eventId);
     if (!eventToAdd) {
       toast.error("Event not found");
@@ -263,17 +315,6 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
       toast.error(errorMessage);
       return;
     }
-
-    // const errorMessage = validateTimeRange(
-    //   { startTime: eventToAdd.startTime, endTime: eventToAdd.endTime },
-    //   isPreviewMode ? previewSchedule?.blocks || [] : day.blocks,
-    //   allowedStart,
-    //   allowedEnd
-    // );
-    // if (errorMessage) {
-    //   toast.error(errorMessage);
-    //   return;
-    // }
 
     if (isPreviewMode) {
       try {
@@ -305,6 +346,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
           event: eventId,
           tasks: [],
           isEvent: true,
+          isRecurringInstance: isRecurring,
         };
 
         // Add block to schedule
@@ -319,11 +361,16 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
 
         // Update UI state
         setPreviewSchedule(updatedSchedule);
-        setEvents((prevEvents) =>
-          prevEvents.map((event) =>
-            event._id === eventId ? { ...event, block: tempBlockId } : event
-          )
-        );
+
+        // Only mark non-recurring events as "assigned" in the UI
+        if (!isRecurring) {
+          setEvents((prevEvents) =>
+            prevEvents.map((event) =>
+              event._id === eventId ? { ...event, block: tempBlockId } : event
+            )
+          );
+        }
+
         toast.success("Event added to preview schedule");
         onClose();
       } catch (error) {
@@ -339,6 +386,8 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
             eventId: eventId,
             dayId: day._id,
             date: day.date,
+            isRecurringInstance: isRecurring,
+            meetingLink: eventToAdd.meetingLink, // Mak
           }),
         });
 
@@ -347,11 +396,17 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
         }
 
         const data = await res.json();
-        setEvents((prevEvents) =>
-          prevEvents.map((event) =>
-            event._id === eventId ? { ...event, block: data.block._id } : event
-          )
-        );
+
+        // Only mark non-recurring events as "assigned" in the UI
+        if (!isRecurring) {
+          setEvents((prevEvents) =>
+            prevEvents.map((event) =>
+              event._id === eventId
+                ? { ...event, block: data.block._id }
+                : event
+            )
+          );
+        }
 
         setDay((prevDay) => ({
           ...prevDay,
@@ -365,6 +420,36 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
         toast.error("Failed to add event");
       }
     }
+  };
+
+  // Check if an event is already scheduled for today
+  const isEventScheduledForToday = (event: Event) => {
+    if (!event.isRecurring) {
+      // For non-recurring events, check if it has a block and that block exists in the day's blocks
+      if (!event.block) return false;
+
+      // Check if the block still exists in the current day's blocks
+      const blockExists = isPreviewMode
+        ? (previewSchedule?.blocks || []).some(
+            (block) => block._id === event.block
+          )
+        : day.blocks.some((block) => block._id === event.block);
+
+      return blockExists;
+    }
+
+    // For recurring events, check if there's a block with this event's ID in the current day
+    const hasBlockForRecurringEvent = isPreviewMode
+      ? (previewSchedule?.blocks || []).some(
+          (block) => block.event === event._id
+        )
+      : day.blocks.some((block) => block.event === event._id);
+
+    return hasBlockForRecurringEvent;
+  };
+
+  const handleSelectChange = (field: string) => (value: string) => {
+    setNewEvent((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -405,6 +490,9 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                 onChange={handleInputChange}
                 className="h-9"
               />
+              {formErrors.name && (
+                <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Textarea
@@ -425,6 +513,11 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                   onChange={handleInputChange}
                   className="h-9"
                 />
+                {formErrors.startTime && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {formErrors.startTime}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Input
@@ -435,7 +528,37 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                   onChange={handleInputChange}
                   className="h-9"
                 />
+                {formErrors.endTime && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {formErrors.endTime}
+                  </p>
+                )}
               </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Event Type</label>
+              <Select
+                value={newEvent.eventType}
+                onValueChange={handleSelectChange("eventType")}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Select event type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="meeting">
+                    <span style={{ color: "#0284c7" }}>Meeting</span>
+                  </SelectItem>
+                  <SelectItem value="health">
+                    <span style={{ color: "#0d9488" }}>Health</span>
+                  </SelectItem>
+                  <SelectItem value="personal">
+                    <span style={{ color: "#c026d3" }}>Personal</span>
+                  </SelectItem>
+                  <SelectItem value="exercise">
+                    <span style={{ color: "#059669" }}>Exercise</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <div className="relative flex items-center">
@@ -448,20 +571,12 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                   className="h-9 pl-8"
                 />
               </div>
+              {formErrors.meetingLink && (
+                <p className="text-red-500 text-xs mt-1">
+                  {formErrors.meetingLink}
+                </p>
+              )}
             </div>
-            {/* <Select
-              value={newEvent.priority}
-              onValueChange={handleSelectChange("priority")}
-            >
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Select priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Low">Low</SelectItem>
-                <SelectItem value="Medium">Medium</SelectItem>
-                <SelectItem value="High">High</SelectItem>
-              </SelectContent>
-            </Select> */}
 
             <div className="flex justify-end gap-2 pt-4 mt-4 border-t">
               <Button variant="outline" onClick={onClose} className="h-9">
@@ -471,7 +586,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                 onClick={handleNewEventSubmit}
                 className="h-9 bg-blue-600 hover:bg-blue-700"
               >
-                Add Event
+                {isSubmitting ? "Adding..." : "Add Event"}
               </Button>
             </div>
           </TabsContent>
@@ -483,17 +598,43 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                   events.map((event) => (
                     <Card
                       key={event._id}
-                      className={`border ${event.block ? "opacity-50" : ""}`}
+                      className={`border ${
+                        isEventScheduledForToday(event) ? "opacity-50" : ""
+                      }`}
                     >
                       <CardContent className="p-3">
                         <div className="space-y-1.5">
-                          <h4 className="text-sm font-medium">{event.name}</h4>
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-medium">
+                              {event.name}
+                            </h4>
+                            {event.isRecurring && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs flex items-center gap-1"
+                              >
+                                <RepeatIcon className="h-3 w-3" />
+                                Recurring
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-500">
                             {event.description}
                           </p>
                           <p className="text-xs text-gray-500">
                             {event.startTime} - {event.endTime}
                           </p>
+                          {event.isRecurring && event.days && (
+                            <p className="text-xs text-gray-500">
+                              Repeats on:{" "}
+                              {event.days
+                                .map(
+                                  (day) =>
+                                    day.charAt(0).toUpperCase() + day.slice(1)
+                                )
+                                .join(", ")}
+                            </p>
+                          )}
                           {event.meetingLink && (
                             <a
                               href={event.meetingLink}
@@ -524,11 +665,15 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
                             size="sm"
                             variant="outline"
                             className="h-9 shrink-0"
-                            onClick={() => addEventToBlock(event._id)}
-                            disabled={!!event.block}
+                            onClick={() =>
+                              addEventToBlock(event._id, !!event.isRecurring)
+                            }
+                            disabled={isEventScheduledForToday(event)}
                           >
                             <PlusCircle className="h-4 w-4 mr-1" />
-                            {event.block ? "Assigned" : "Add"}
+                            {isEventScheduledForToday(event)
+                              ? "Assigned"
+                              : "Add"}
                           </Button>
                         </div>
                       </CardContent>

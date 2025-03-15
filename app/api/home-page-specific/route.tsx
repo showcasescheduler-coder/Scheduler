@@ -41,10 +41,11 @@ SCHEDULE CREATION PRIORITIES:
 
 3. Fallback Template Usage:
    - If the user does not provide any specifics, generate a balanced schedule using one of the above templates that best suits a generic day.
- 
+  
 Return ONLY a JSON object with this structure:
+
 {
-  "scheduleRationale": "Response speaking directly to the user explaining how their request was handled, any conflicts, suggestions, and clarifications.",
+  "scheduleRationale": "Response to user explaining how their request was handled, any conflicts, suggestions, and clarifications. You are speaking directly to the customer, so please speak with good customer service",
   "blocks": [
     {
       "name": "Clear context-appropriate name",
@@ -54,16 +55,18 @@ Return ONLY a JSON object with this structure:
       "tasksDuration": number,
       "type": "deep-work" | "break" | "meeting" | "health" | "exercise" | "admin" | "personal",
       "routineId": "exact _id from routines or null",
-      "tasks": [
-        {
-          "id": "existing-id-if-found or null",
-          "name": "Task name",
-          "duration": number,
-          "projectId": "exact _id from projects or null",
-          "routineId": "exact _id from routines or null",
-          "eventId": "exact _id from events or null"
-        }
-      ]
+      "eventId": "exact _id from events or null",
+      "tasks": // If eventId is not null, this MUST be an empty array ([])
+               // If eventId is null, include task objects:
+               [
+                 {
+                   "id": "existing-id-if-found or null",
+                   "name": "Task name",
+                   "duration": number,
+                   "projectId": "exact _id from projects or null",
+                   "routineId": "exact _id from routines or null"
+                 }
+               ]
     }
   ]
 }`;

@@ -68,6 +68,11 @@ export default function TaskDetails({ params: { id } }: Props) {
   const [task, setTask] = useState<Task | null>(null);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [formErrors, setFormErrors] = useState({
+    name: "",
+    timeWindow: "",
+    deadline: "",
+  });
 
   const getTypeStyles = (type: string) => {
     const styles = {
@@ -105,6 +110,14 @@ export default function TaskDetails({ params: { id } }: Props) {
   ) => {
     const { name, value } = e.target;
     setTask((prev) => (prev ? { ...prev, [name]: value } : null));
+
+    // Clear error when user types
+    if (formErrors[name as keyof typeof formErrors]) {
+      setFormErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
   };
 
   const handleSelectChange = (name: string, value: string) => {
@@ -119,6 +132,14 @@ export default function TaskDetails({ params: { id } }: Props) {
         deadline: date ? format(date, "yyyy-MM-dd") : prev.deadline,
       };
     });
+
+    // Clear deadline error when user changes date
+    if (formErrors.deadline) {
+      setFormErrors((prev) => ({
+        ...prev,
+        deadline: "",
+      }));
+    }
   };
 
   const handleTimeWindowChange = (field: "start" | "end", value: string) => {
@@ -132,31 +153,88 @@ export default function TaskDetails({ params: { id } }: Props) {
         },
       };
     });
+
+    // Clear time window error when user changes time
+    if (formErrors.timeWindow) {
+      setFormErrors((prev) => ({
+        ...prev,
+        timeWindow: "",
+      }));
+    }
   };
 
   const handleSave = async () => {
-    if (task) {
-      try {
-        const response = await fetch(`/api/tasks/stand-alone-tasks`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(task),
-        });
+    if (!task) return;
 
-        if (!response.ok) {
-          throw new Error("Failed to update task");
-        }
+    // Reset errors
+    setFormErrors({
+      name: "",
+      timeWindow: "",
+      deadline: "",
+    });
 
-        const { task: updatedTask } = await response.json();
-        updateTask(id, updatedTask);
-        toast.success("Task updated successfully!");
-        router.push("/dashboard/tasks"); // Navigate to tasks dashboard after successful save
-      } catch (error) {
-        console.error("Error updating task:", error);
-        toast.error("Failed to update task. Please try again.");
+    // Validate form
+    let isValid = true;
+    const newErrors = {
+      name: "",
+      timeWindow: "",
+      deadline: "",
+    };
+
+    // Name is required
+    if (!task.name.trim()) {
+      newErrors.name = "Task name is required";
+      isValid = false;
+    }
+
+    // Time window validation: start must be before end if both are provided
+    if (task.timeWindow?.start && task.timeWindow?.end) {
+      if (task.timeWindow.start >= task.timeWindow.end) {
+        newErrors.timeWindow = "Start time must be before end time";
+        isValid = false;
       }
+    }
+
+    // Deadline validation: date cannot be in the past
+    if (task.deadline) {
+      const selectedDate = new Date(task.deadline);
+      selectedDate.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (selectedDate < today) {
+        newErrors.deadline = "Deadline cannot be in the past";
+        isValid = false;
+      }
+    }
+
+    // If validation fails, show errors and return
+    if (!isValid) {
+      setFormErrors(newErrors);
+      return;
+    }
+
+    // Continue with save if validation passes
+    try {
+      const response = await fetch(`/api/tasks/stand-alone-tasks`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(task),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update task");
+      }
+
+      const { task: updatedTask } = await response.json();
+      updateTask(id, updatedTask);
+      toast.success("Task updated successfully!");
+      router.push("/dashboard/tasks"); // Navigate to tasks dashboard after successful save
+    } catch (error) {
+      console.error("Error updating task:", error);
+      toast.error("Failed to update task. Please try again.");
     }
   };
 
@@ -255,12 +333,6 @@ export default function TaskDetails({ params: { id } }: Props) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  className="text-red-600 hover:text-red-700"
-                >
-                  Delete
-                </Button>
                 <Button onClick={handleSave}>Save Changes</Button>
               </div>
             </div>
@@ -277,14 +349,21 @@ export default function TaskDetails({ params: { id } }: Props) {
                     <div>
                       <label className="text-sm font-medium flex items-center gap-2">
                         <ListTodo className="h-4 w-4 text-blue-500" />
-                        Task Name
+                        Task Name <span className="text-red-500">*</span>
                       </label>
                       <Input
                         name="name"
                         value={task?.name}
                         onChange={handleInputChange}
-                        className="mt-2"
+                        className={`mt-2 ${
+                          formErrors.name ? "border-red-500" : ""
+                        }`}
                       />
+                      {formErrors.name && (
+                        <p className="text-sm text-red-500 mt-1">
+                          {formErrors.name}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -314,7 +393,9 @@ export default function TaskDetails({ params: { id } }: Props) {
                             <PopoverTrigger asChild>
                               <Button
                                 variant="outline"
-                                className="w-full justify-start text-left font-normal"
+                                className={`w-full justify-start text-left font-normal ${
+                                  formErrors.deadline ? "border-red-500" : ""
+                                }`}
                               >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                 <span>
@@ -343,6 +424,11 @@ export default function TaskDetails({ params: { id } }: Props) {
                               />
                             </PopoverContent>
                           </Popover>
+                          {formErrors.deadline && (
+                            <p className="text-sm text-red-500 mt-1">
+                              {formErrors.deadline}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -453,7 +539,9 @@ export default function TaskDetails({ params: { id } }: Props) {
                               onChange={(e) =>
                                 handleTimeWindowChange("start", e.target.value)
                               }
-                              className="mt-1"
+                              className={`mt-1 ${
+                                formErrors.timeWindow ? "border-red-500" : ""
+                              }`}
                             />
                           </div>
                           <div>
@@ -466,172 +554,26 @@ export default function TaskDetails({ params: { id } }: Props) {
                               onChange={(e) =>
                                 handleTimeWindowChange("end", e.target.value)
                               }
-                              className="mt-1"
+                              className={`mt-1 ${
+                                formErrors.timeWindow ? "border-red-500" : ""
+                              }`}
                             />
                           </div>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Optional: Set a time window for when this task needs
-                          to be completed
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-gray-500 mt-1">
+                            Optional: Set a time window for when this task needs
+                            to be completed
+                          </p>
+                          {formErrors.timeWindow && (
+                            <p className="text-sm text-red-500 mt-1">
+                              {formErrors.timeWindow}
+                            </p>
+                          )}
+                        </div>
                       </div>
-
-                      {/* <div>
-                        <label className="text-sm font-medium flex items-center gap-2">
-                          <BarChart2 className="h-4 w-4 text-blue-500" />
-                          Status
-                        </label>
-                        <Select
-                          value={task?.status}
-                          onValueChange={(value) =>
-                            handleSelectChange("status", value)
-                          }
-                        >
-                          <SelectTrigger className="mt-2">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Todo">
-                              <div className="flex items-center">
-                                <Clock className="mr-2 h-4 w-4 text-blue-500" />
-                                <span>Todo</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="In Progress">
-                              <div className="flex items-center">
-                                <AlertCircle className="mr-2 h-4 w-4 text-yellow-500" />
-                                <span>In Progress</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="Completed">
-                              <div className="flex items-center">
-                                <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                                <span>Completed</span>
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div> */}
-
-                      {/* <div>
-                        <label className="text-sm font-medium flex items-center gap-2">
-                          <FolderKanban className="h-4 w-4 text-blue-500" />
-                          Priority
-                        </label>
-                        <Select
-                          value={task?.priority}
-                          onValueChange={(value) =>
-                            handleSelectChange("priority", value)
-                          }
-                        >
-                          <SelectTrigger className="mt-2">
-                            <SelectValue placeholder="Select priority" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="High">
-                              <div className="flex items-center">
-                                <div className="w-2 h-2 rounded-full bg-red-500 mr-2" />
-                                High
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="Medium">
-                              <div className="flex items-center">
-                                <div className="w-2 h-2 rounded-full bg-yellow-500 mr-2" />
-                                Medium
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="Low">
-                              <div className="flex items-center">
-                                <div className="w-2 h-2 rounded-full bg-green-500 mr-2" />
-                                Low
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div> */}
-
-                      {/* <div>
-                        <label className="text-sm font-medium flex items-center gap-2">
-                          <Repeat className="h-4 w-4 text-blue-500" />
-                          Task Type
-                        </label>
-                        <Select
-                          value={task?.type}
-                          onValueChange={(value) =>
-                            handleSelectChange("type", value)
-                          }
-                        >
-                          <SelectTrigger className="mt-2">
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="deep-work">
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs ${getTypeStyles(
-                                  "deep-work"
-                                )}`}
-                              >
-                                Deep Work
-                              </span>
-                            </SelectItem>
-                            <SelectItem value="planning">
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs ${getTypeStyles(
-                                  "planning"
-                                )}`}
-                              >
-                                Planning
-                              </span>
-                            </SelectItem>
-                            <SelectItem value="break">
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs ${getTypeStyles(
-                                  "break"
-                                )}`}
-                              >
-                                Break
-                              </span>
-                            </SelectItem>
-                            <SelectItem value="admin">
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs ${getTypeStyles(
-                                  "admin"
-                                )}`}
-                              >
-                                Admin
-                              </span>
-                            </SelectItem>
-                            <SelectItem value="collaboration">
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs ${getTypeStyles(
-                                  "collaboration"
-                                )}`}
-                              >
-                                Collaboration
-                              </span>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div> */}
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-red-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium text-red-600">
-                      Delete Event
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      Permanently delete this event
-                    </p>
-                  </div>
-                  <Button variant="destructive" size="sm">
-                    Delete Event
-                  </Button>
                 </div>
               </CardContent>
             </Card>

@@ -62,7 +62,7 @@ const ScheduleGenerationSpinner: React.FC<ScheduleGenerationSpinnerProps> = ({
         {/* Brain Icon with Pulsing Animation */}
         <div className="relative flex justify-center">
           <Brain className="h-16 w-16 text-blue-600 animate-pulse" />
-          <div className="absolute -bottom-6 left-1/2 -translate-x-1/2">
+          {/* <div className="absolute -bottom-6 left-1/2 -translate-x-1/2">
             <div className="flex gap-1">
               {[...Array(3)].map((_, i) => (
                 <div
@@ -72,10 +72,10 @@ const ScheduleGenerationSpinner: React.FC<ScheduleGenerationSpinnerProps> = ({
                 />
               ))}
             </div>
-          </div>
+          </div> */}
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress Bar
         <div className="space-y-2 pt-8">
           <div className="flex justify-between font-medium text-sm text-gray-700">
             <span className="font-semibold">Generating schedule...</span>
@@ -87,9 +87,9 @@ const ScheduleGenerationSpinner: React.FC<ScheduleGenerationSpinnerProps> = ({
             value={displayProgress}
             className="h-2 [&>div]:bg-blue-600" // Makes the progress indicator blue
           />
-        </div>
+        </div> */}
 
-        {/* Status Message */}
+        {/* Status Message
         <div className="text-center space-y-3">
           <p className="text-gray-700 text-base font-medium transition-all duration-300">
             {currentStatus}
@@ -102,7 +102,7 @@ const ScheduleGenerationSpinner: React.FC<ScheduleGenerationSpinnerProps> = ({
               Processing complex schedule arrangements...
             </p>
           )}
-        </div>
+        </div> */}
       </div>
     </div>
   );

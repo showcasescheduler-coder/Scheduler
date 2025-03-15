@@ -26,6 +26,7 @@ import {
   ListTodo,
   BarChart2,
   FolderKanban,
+  CheckCircle,
 } from "lucide-react";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
@@ -116,6 +117,10 @@ import {
   Block,
   Task,
 } from "@/app/context/models"; // adjust the import path if needed
+import DataDisplay from "../components/DataDisplay"; // Update the path as needed
+import CollapsibleRationale from "../components/CollapsibleRationale";
+import AuthModal from "@/dialog/authModal";
+import StreamingIndicator from "../components/StreamingIndicator";
 
 type EditableBlockFields = {
   _id: string;
@@ -251,6 +256,13 @@ export default function Component() {
   );
   const [rationaleText, setRationaleText] = useState("");
   const [sortedPreviewBlocks, setSortedPreviewBlocks] = useState<Block[]>([]);
+  const [scheduleInputData, setScheduleInputData] = useState(null);
+  const [scheduleOutputData, setScheduleOutputData] = useState(null);
+  const [showTestingPanel, setShowTestingPanel] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authAction, setAuthAction] = useState<"accept" | "regenerate">(
+    "accept"
+  );
 
   const generationStartedRef = useRef(false);
 
@@ -259,6 +271,7 @@ export default function Component() {
   const updateQueueRef = useRef<any>(null);
   const isUpdatingRef = useRef(false);
   const frameRef = useRef<number>();
+  const isTodayView = selectedDay === "today";
 
   const throttledMutate = (updateFn: any) => {
     const now = Date.now();
@@ -270,13 +283,13 @@ export default function Component() {
 
   const router = useRouter();
 
-  const { isLoaded, userId } = useAuth();
+  const { isLoaded, userId, isSignedIn } = useAuth();
 
   const LoadingSpinner = () => (
     <div className="flex-1 flex flex-col items-center justify-center">
       <div className="relative">
         <Brain className="h-12 w-12 text-blue-600 animate-pulse" />
-        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
+        {/* <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
           <div className="flex gap-1">
             {[...Array(3)].map((_, i) => (
               <div
@@ -286,9 +299,9 @@ export default function Component() {
               />
             ))}
           </div>
-        </div>
+        </div> */}
       </div>
-      <p className="mt-12 text-sm text-gray-500">Generating your schedule...</p>
+      {/* <p className="mt-12 text-sm text-gray-500">Generating your schedule...</p> */}
     </div>
   );
 
@@ -311,6 +324,8 @@ export default function Component() {
       userEndTime: streaming.userEndTime,
       blocks: streaming.blocks.map((block, index): PreviewBlock => {
         const blockId = block._id ?? `temp-${index}`;
+
+        // Make sure to preserve the routineId from the streaming block
         return {
           _id: blockId,
           name: block.name,
@@ -330,14 +345,16 @@ export default function Component() {
             | "personal",
           energyLevel:
             (block.energyLevel as "high" | "medium" | "low") ?? "medium",
+          routineId: block.routineId || null, // Ensure routineId is preserved here
+          eventId: block.eventId || null, // Add this line to preserve eventId
+          event: block.event || null,
           tasks: block.tasks.map((task, taskIndex) => ({
             ...task,
-            _id: task._id ?? `temp-task-${index}-${taskIndex}`,
+            _id: task.id ?? `temp-task-${index}-${taskIndex}`,
             block: blockId, // use computed blockId here
             blockId: blockId, // use computed blockId here
           })),
           type: "deep-work",
-          routineId: null,
         };
       }),
     };
@@ -361,7 +378,14 @@ export default function Component() {
   };
 
   const handleDiscardClick = () => {
+    if (!isSignedIn) {
+      setAuthAction("accept");
+      setShowAuthModal(true);
+      return;
+    }
     localStorage.removeItem("schedule");
+    localStorage.removeItem("scheduleDayType"); // Add this line
+    localStorage.removeItem("scheduleDayId"); // Add this line
     localStorage.setItem("isPreviewMode", "false");
     setIsPreviewMode(false);
     setPreviewSchedule(null);
@@ -502,6 +526,8 @@ export default function Component() {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
+        if (!userId) return;
+
         const response = await fetch(`/api/events?userId=${userId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch events");
@@ -520,6 +546,7 @@ export default function Component() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
+        if (!userId) return;
         const response = await fetch(`/api/projects?userId=${userId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch projects");
@@ -537,6 +564,7 @@ export default function Component() {
   useEffect(() => {
     const fetchRoutines = async () => {
       try {
+        if (!userId) return;
         const response = await fetch(`/api/routines?userId=${userId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch routines");
@@ -556,6 +584,7 @@ export default function Component() {
     // Fetch tasks from the API
     const fetchTasks = async () => {
       try {
+        if (!userId) return;
         const response = await fetch(`/api/tasks?userId=${userId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch tasks");
@@ -601,25 +630,35 @@ export default function Component() {
     const handleKeyPress = (e: KeyboardEvent) => {
       // Only handle keyboard shortcuts if Meta/Ctrl is pressed
       if (e.ctrlKey || e.metaKey) {
-        e.preventDefault(); // Prevent default browser behavior
+        // Define the keys you want to handle
+        const handledKeys = ["g", "b", "e", "r"];
 
-        switch (e.key.toLowerCase()) {
-          case "g": // Generate Schedule
-            // Remove the blocks check and just open the dialog
-            setIsDialogOpen(true);
-            break;
+        // Only prevent default and handle the shortcut if it's one of your specific keys
+        if (handledKeys.includes(e.key.toLowerCase())) {
+          e.preventDefault(); // Prevent default browser behavior
 
-          case "b": // Add Block
-            setIsAddBlockDialogOpen(true);
-            break;
+          switch (e.key.toLowerCase()) {
+            case "g": // Generate Schedule
+              if (!isSignedIn) {
+                setAuthAction("accept");
+                setShowAuthModal(true);
+                return;
+              }
+              setIsDialogOpen(true);
+              break;
 
-          case "e": // Add Event
-            setIsAddEventModalOpen(true);
-            break;
+            case "b": // Add Block
+              setIsAddBlockDialogOpen(true);
+              break;
 
-          case "r": // Add Routine
-            setIsAddRoutineModalOpen(true);
-            break;
+            case "e": // Add Event
+              setIsAddEventModalOpen(true);
+              break;
+
+            case "r": // Add Routine
+              setIsAddRoutineModalOpen(true);
+              break;
+          }
         }
       }
     };
@@ -940,12 +979,16 @@ export default function Component() {
       return "Block start time must be before end time.";
     }
 
-    // Ensure both times are within the allowed day range.
-    if (
-      !isTimeWithinRange(newBlock.startTime, dayStartTime, dayEndTime) ||
-      !isTimeWithinRange(newBlock.endTime, dayStartTime, dayEndTime)
-    ) {
-      return "Block times must be within the allowed day schedule.";
+    // For existing blocks (editing), skip the day range check
+    // This allows editing blocks with start times in the past
+    if (!currentBlockId) {
+      // Only for NEW blocks, ensure times are within the allowed day range
+      if (
+        !isTimeWithinRange(newBlock.startTime, dayStartTime, dayEndTime) ||
+        !isTimeWithinRange(newBlock.endTime, dayStartTime, dayEndTime)
+      ) {
+        return "Block times must be within the allowed day schedule.";
+      }
     }
 
     // Check against each existing block.
@@ -1216,7 +1259,7 @@ export default function Component() {
   const getScheduleTimes = (
     selectedDay: "today" | "tomorrow"
   ): { startTime: string; endTime: string } => {
-    const endTime = "22:00"; // 10:00 PM for both cases
+    const endTime = "23:59"; // 10:00 PM for both cases
 
     if (selectedDay === "today") {
       // For today, start from current time rounded to nearest half hour
@@ -1243,6 +1286,12 @@ export default function Component() {
     // setPreviewSchedule(localSchedule);
     setIsPreviewMode(true);
     setIsGeneratingSchedule(false);
+    // Store the selected day and day ID in localStorage
+    if (day) {
+      localStorage.setItem("scheduleDayType", selectedDay); // Add this line
+      localStorage.setItem("scheduleDayId", day._id); // Add this line
+    }
+
     let accumulatedRationale = "";
 
     // Read the response as a stream
@@ -1254,6 +1303,9 @@ export default function Component() {
         const { done, value } = await reader.read();
         if (done) {
           console.log("Stream complete");
+          setIsStreaming(false);
+          // Optionally, you can also mark the stream as complete
+          setStreamingComplete(true);
           break;
         }
         const chunk = decoder.decode(value);
@@ -1306,6 +1358,9 @@ export default function Component() {
                 blockMatches.forEach((blockText) => {
                   try {
                     const blockJson = JSON.parse(blockText);
+
+                    console.log("Parsed block:", blockJson);
+                    console.log("Block routineId:", blockJson.routineId);
 
                     // A valid block must have name + startTime, etc.
                     if (blockJson.name && blockJson.startTime) {
@@ -1554,12 +1609,14 @@ export default function Component() {
         description: event.description?.trim().replace(/\n/g, " ") || "",
         startTime: event.startTime,
         endTime: event.endTime,
+        eventType: event.eventType || "meeting",
       }));
 
     // Filter and optimize routines
     const optimizedRoutines = routines.map((routine) => ({
       id: routine._id,
       name: routine.name,
+      blockType: routine.blockType,
       startTimeWindow: {
         earliestStart: routine.startTime, // When this routine can start
         latestStart: routine.endTime, // When this routine needs to end by
@@ -1648,6 +1705,8 @@ export default function Component() {
       tasks: optimizedTasks,
       projects: optimizedProjects,
     };
+
+    setScheduleInputData(payload);
 
     try {
       // Intent Analysis
@@ -2023,31 +2082,75 @@ export default function Component() {
     }
   };
 
+  const getDateToDisplay = () => {
+    if (isPreviewMode) {
+      // Check if we have a saved day type in localStorage
+      const savedDayType = localStorage.getItem("scheduleDayType");
+      if (savedDayType === "today") {
+        return new Date(); // Today's date
+      } else if (savedDayType === "tomorrow") {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return tomorrow;
+      }
+    }
+    // Fall back to the current selected day
+    return selectedDay === "today" ? today : tomorrow;
+  };
+
   const onDragOver = (event: DragOverEvent) => {
-    console.log("DragOver Event started:", event);
+    console.log("[DragOver] Event triggered:", event);
     const { active, over } = event;
     if (!over) {
-      console.log("No over element found");
+      console.log("[DragOver] No 'over' element found.");
       return;
     }
 
     const activeId = active.id;
     const overId = over.id;
+    console.log("[DragOver] Active ID:", activeId, "Over ID:", overId);
 
-    if (activeId === overId) return;
+    if (activeId === overId) {
+      console.log("[DragOver] Active and Over IDs are the same. Exiting.");
+      return;
+    }
 
     const activeData = active.data.current as DragData;
     const overData = over.data.current as DragData;
+    console.log("[DragOver] activeData:", activeData);
+    console.log("[DragOver] overData:", overData);
 
     const isActiveTask = activeData?.type === "Task";
     const isOverTask = overData?.type === "Task";
     const isOverBlock = overData?.type === "Block";
+    console.log(
+      "[DragOver] isActiveTask:",
+      isActiveTask,
+      "isOverTask:",
+      isOverTask,
+      "isOverBlock:",
+      isOverBlock
+    );
 
     const activeTask = activeData?.task;
-    if (!activeTask) return;
+    if (!activeTask) {
+      console.log("[DragOver] No active task found in drag data. Exiting.");
+      return;
+    }
+
+    // Add this block right here - CHECK FOR NON-RECURRING EVENT BLOCKS
+    if (isOverBlock) {
+      const overBlock = overData?.block;
+      // If the block has an event property, it's an event block - prevent drop
+      if (overBlock?.event) {
+        console.log("[DragOver] Target is an event block. Aborting drop.");
+        return; // Abort the drop operation
+      }
+    }
 
     const getBlockId = (task: any) => task.block || task.blockId;
     const activeBlockId = getBlockId(activeTask);
+    console.log("[DragOver] activeBlockId:", activeBlockId);
 
     if (isPreviewMode) {
       try {
@@ -2062,12 +2165,19 @@ export default function Component() {
               blocks: [],
             })
         );
+        console.log("[DragOver] Current previewSchedule:", previewSchedule);
 
         if (isActiveTask && isOverTask) {
           const overTask = overData?.task;
-          if (!overTask) return;
+          if (!overTask) {
+            console.log(
+              "[DragOver] No overTask found for task-to-task reordering."
+            );
+            return;
+          }
 
           const overBlockId = getBlockId(overTask);
+          console.log("[DragOver] overBlockId:", overBlockId);
 
           // Find the relevant blocks
           const activeBlock = previewSchedule.blocks.find(
@@ -2076,8 +2186,17 @@ export default function Component() {
           const overBlock = previewSchedule.blocks.find(
             (b: Block) => b._id === overBlockId
           );
+          console.log(
+            "[DragOver] activeBlock:",
+            activeBlock,
+            "overBlock:",
+            overBlock
+          );
 
-          if (!activeBlock || !overBlock) return;
+          if (!activeBlock || !overBlock) {
+            console.log("[DragOver] One or both blocks not found. Exiting.");
+            return;
+          }
 
           let updatedBlocks;
           if (activeBlock._id === overBlock._id) {
@@ -2088,8 +2207,17 @@ export default function Component() {
             const newIndex = activeBlock.tasks.findIndex(
               (t: Task) => t._id === overTask._id
             );
+            console.log(
+              "[DragOver] Reordering within block. Old index:",
+              oldIndex,
+              "New index:",
+              newIndex
+            );
 
-            if (oldIndex === -1 || newIndex === -1) return;
+            if (oldIndex === -1 || newIndex === -1) {
+              console.log("[DragOver] Could not determine indices. Exiting.");
+              return;
+            }
 
             updatedBlocks = previewSchedule.blocks.map((block: Block) => {
               if (block._id !== activeBlock._id) return block;
@@ -2102,6 +2230,7 @@ export default function Component() {
                 blockId: block._id,
               };
               newTasks.splice(newIndex, 0, updatedMovedTask);
+              console.log("[DragOver] New task order for block:", newTasks);
 
               return {
                 ...block,
@@ -2115,6 +2244,10 @@ export default function Component() {
               block: overBlock._id,
               blockId: overBlock._id,
             };
+            console.log(
+              "[DragOver] Moving task to different block. Updated task:",
+              updatedTask
+            );
 
             updatedBlocks = previewSchedule.blocks.map((block: Block) => {
               if (block._id === activeBlock._id) {
@@ -2131,6 +2264,11 @@ export default function Component() {
                 );
                 const newTasks = [...block.tasks];
                 newTasks.splice(insertIndex, 0, updatedTask);
+                console.log(
+                  "[DragOver] New task order for destination block:",
+                  newTasks
+                );
+
                 return { ...block, tasks: newTasks };
               }
               return block;
@@ -2142,24 +2280,46 @@ export default function Component() {
             ...previewSchedule,
             blocks: updatedBlocks,
           };
+          console.log("[DragOver] Updated previewSchedule:", updatedSchedule);
+
           localStorage.setItem("schedule", JSON.stringify(updatedSchedule));
           setPreviewSchedule(updatedSchedule);
+          setScheduleOutputData(previewSchedule); // Store the output data
         }
 
         if (isActiveTask && isOverBlock) {
           const overBlock = overData?.block;
           if (!overBlock || overBlock._id === activeBlockId) return;
+          console.log(
+            "[DragOver] Over block invalid or same as active block. Exiting."
+          );
+
+          if (overBlock.event || overBlock.eventId) {
+            console.log(
+              "[DragOver] Target is an event block in preview mode. Aborting drop."
+            );
+            return; // Abort the drop operation
+          }
 
           const activeBlock = previewSchedule.blocks.find(
             (b: Block) => b._id === activeBlockId
           );
-          if (!activeBlock) return;
+          if (!activeBlock) {
+            console.log(
+              "[DragOver] Active block not found in previewSchedule."
+            );
+            return;
+          }
 
           const updatedTask = {
             ...activeTask,
             block: overBlock._id,
             blockId: overBlock._id,
           };
+          console.log(
+            "[DragOver] Dropping task on block. Updated task:",
+            updatedTask
+          );
 
           const updatedBlocks = previewSchedule.blocks.map((block: Block) => {
             if (block._id === activeBlock._id) {
@@ -2184,11 +2344,17 @@ export default function Component() {
             ...previewSchedule,
             blocks: updatedBlocks,
           };
+          console.log(
+            "[DragOver] Updated schedule after drop on block:",
+            updatedSchedule
+          );
+
           localStorage.setItem("schedule", JSON.stringify(updatedSchedule));
           setPreviewSchedule(updatedSchedule);
         }
       } catch (error) {
-        console.error("Error updating task positions in preview mode:", error);
+        console.error("Error in onDragOver for preview mode:", error);
+
         toast.error("Failed to update task position");
       }
     } else {
@@ -2324,17 +2490,35 @@ export default function Component() {
     }
   };
 
+  const handleRegenerateSchedule = async () => {
+    if (!isSignedIn) {
+      setAuthAction("accept");
+      setShowAuthModal(true);
+      return;
+    }
+    // Use the last generation input if available, otherwise open the dialog
+    if (lastGenerationInput) {
+      // Start the regeneration process with the last input
+      await generateScheduleTest(lastGenerationInput);
+    } else {
+      // If no last input is available, open the dialog for user input
+      setIsDialogOpen(true);
+    }
+  };
+
   const handleSaveGeneratedSchedule = async () => {
-    // if (!isSignedIn) {
-    //   setAuthAction("accept");
-    //   setShowAuthModal(true);
-    //   return;
-    // }
+    if (!isSignedIn) {
+      setAuthAction("accept");
+      setShowAuthModal(true);
+      return;
+    }
 
     if (!day?._id || !userId) {
       toast.error("Missing required information. Please try again.");
       return;
     }
+
+    const scheduleDayId = localStorage.getItem("scheduleDayId");
 
     try {
       setIsLoading(true);
@@ -2345,7 +2529,7 @@ export default function Component() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          dayId: day._id,
+          dayId: scheduleDayId,
           schedule: previewSchedule,
           userId: user._id,
         }),
@@ -2375,8 +2559,6 @@ export default function Component() {
     }
   };
 
-  console.log(previewSchedule);
-
   return (
     <div className="flex h-screen bg-white font-sans text-gray-900">
       {/* Desktop Sidebar */}
@@ -2392,46 +2574,96 @@ export default function Component() {
         />
       ) : isPreviewMode && previewSchedule ? (
         <main className="relative flex-1 overflow-y-auto bg-gray-50">
+          {/* Mobile Header for Preview Mode */}
+          <div className="md:hidden px-4 py-2 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              {/* Menu Button with MobileNav */}
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 p-0">
+                  <MobileNav />
+                </SheetContent>
+              </Sheet>
+              {/* Date Selector */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 flex items-center gap-2 px-2"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    <span className="font-medium">
+                      {formatShortDate(currentDate)}
+                    </span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                  <DropdownMenuItem onClick={() => handleDayChange("today")}>
+                    Today ({formatShortDate(today)})
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleDayChange("tomorrow")}>
+                    Tomorrow ({formatShortDate(tomorrow)})
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {/* User Button */}
+              <UserButton />
+            </div>
+          </div>
           <div className="p-4 md:p-8 pb-24">
             {/* Header: "Preview Schedule" on the left, date on the right */}
             <header className="mb-6">
               <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold">Preview Schedule</h1>
                 <h2 className="text-xl font-semibold">
-                  {formatDate(currentDate)}
+                  {formatDate(getDateToDisplay())}
                 </h2>
               </div>
 
               {/* Rationale Card (if any) */}
               {previewSchedule.scheduleRationale && (
-                <div className="mt-3 bg-white border rounded-lg p-4 shadow-sm">
-                  <p className="text-sm text-gray-700">
-                    {previewSchedule.scheduleRationale}
-                  </p>
-                </div>
+                <CollapsibleRationale
+                  rationale={previewSchedule.scheduleRationale}
+                />
+                // <div className="mt-3 bg-white border rounded-lg p-4 shadow-sm">
+                //   <p className="text-sm text-gray-700">
+                //     {previewSchedule.scheduleRationale}
+                //   </p>
+                // </div>
               )}
             </header>
 
-            {/* Row with "Add" Buttons */}
-            <div className="flex items-center justify-end mb-6 gap-2">
-              <Button variant="outline" size="sm" onClick={OpenNewRoutineModal}>
-                <Repeat className="h-4 w-4 mr-1" />
-                <span className="hidden md:inline">Add Routine</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={OpenNewEventModal}>
-                <Clock className="h-4 w-4 mr-1" />
-                <span className="hidden md:inline">Add Event</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-purple-200 text-purple-700 hover:bg-purple-50"
-                onClick={OpenNewBlockModal}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                <span className="hidden md:inline">Add Block</span>
-              </Button>
-            </div>
+            {previewSchedule?.blocks?.length > 0 && (
+              <div className="flex items-center justify-end mb-6 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={OpenNewRoutineModal}
+                >
+                  <Repeat className="h-4 w-4 mr-1" />
+                  <span className="hidden md:inline">Add Routine</span>
+                </Button>
+                <Button variant="outline" size="sm" onClick={OpenNewEventModal}>
+                  <Clock className="h-4 w-4 mr-1" />
+                  <span className="hidden md:inline">Add Event</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                  onClick={OpenNewBlockModal}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  <span className="hidden md:inline">Add Block</span>
+                </Button>
+              </div>
+            )}
 
             {/* Schedule Blocks (Drag & Drop) */}
             <DndContext
@@ -2464,6 +2696,7 @@ export default function Component() {
                   />
                 ))}
               </div>
+              {isStreaming && <StreamingIndicator />}
 
               {activeTask &&
                 createPortal(
@@ -2480,31 +2713,111 @@ export default function Component() {
                       onEditTask={handleEditTask}
                       onRemoveTask={handleRemoveTaskFromBlock}
                       onDeleteTask={handleDeleteTask}
+                      isTodayView={isTodayView}
                     />
                   </DragOverlay>,
                   document.body
                 )}
             </DndContext>
+            <div className="mt-8 mb-24 border-t border-gray-200 pt-6">
+              <h2 className="text-xl font-semibold mb-4">Debug Data</h2>
+              <DataDisplay
+                title="Preview Schedule Data"
+                data={previewSchedule}
+              />
+              <DataDisplay
+                title="Schedule Input Payload"
+                data={scheduleInputData}
+              />
+              <DataDisplay
+                title="Schedule Output Data"
+                data={scheduleOutputData}
+              />
+            </div>
           </div>
 
           {/* Sticky Bottom Bar for Primary Actions */}
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-sm px-6 py-4 flex items-center justify-end gap-3">
-            <Button variant="outline" onClick={handleDiscardClick} size="sm">
-              <X className="h-4 w-4 mr-2" />
-              Discard
-            </Button>
-            <Button variant="outline" size="sm">
-              <Repeat className="h-4 w-4 mr-2" />
-              Regenerate
-            </Button>
-            <Button
-              className="bg-blue-600 text-white hover:bg-blue-700"
-              onClick={handleSaveGeneratedSchedule}
-              size="sm"
-            >
-              <Check className="h-4 w-4 mr-2" />
-              Accept Schedule
-            </Button>
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-sm px-4 sm:px-6 py-3">
+            {/* Mobile view: stacked layout */}
+            <div className="sm:hidden flex flex-col gap-2">
+              <div className="flex items-center gap-2 w-full justify-between">
+                <Button
+                  variant="outline"
+                  onClick={handleDiscardClick}
+                  size="sm"
+                  className="flex-1"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  <span>Discard</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleRegenerateSchedule}
+                  size="sm"
+                  className="flex-1"
+                >
+                  <Repeat className="h-4 w-4 mr-1" />
+                  <span>Regenerate</span>
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2 w-full justify-between">
+                <Button
+                  className="bg-blue-600 text-white hover:bg-blue-700 flex-1"
+                  onClick={handleSaveGeneratedSchedule}
+                  size="sm"
+                >
+                  <Check className="h-4 w-4 mr-1" />
+                  <span>Accept Schedule</span>
+                </Button>
+
+                {/* {showTestingPanel !== undefined && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowTestingPanel(!showTestingPanel)}
+                    className="bg-gray-100 flex-1"
+                  >
+                    {showTestingPanel ? "Hide Debug" : "Show Debug"}
+                  </Button>
+                )} */}
+              </div>
+            </div>
+
+            {/* Desktop view: all buttons to the right */}
+            <div className="hidden sm:flex items-center justify-end gap-3">
+              <Button variant="outline" onClick={handleDiscardClick} size="sm">
+                <X className="h-4 w-4 mr-2" />
+                Discard
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleRegenerateSchedule}
+                size="sm"
+              >
+                <Repeat className="h-4 w-4 mr-2" />
+                Regenerate
+              </Button>
+              <Button
+                className="bg-blue-600 text-white hover:bg-blue-700"
+                onClick={handleSaveGeneratedSchedule}
+                size="sm"
+              >
+                <Check className="h-4 w-4 mr-2" />
+                Accept Schedule
+              </Button>
+
+              {showTestingPanel !== undefined && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTestingPanel(!showTestingPanel)}
+                  className="ml-4 bg-gray-100"
+                >
+                  {showTestingPanel ? "Hide Debug Data" : "Show Debug Data"}
+                </Button>
+              )}
+            </div>
           </div>
         </main>
       ) : !day ? (
@@ -2603,6 +2916,7 @@ export default function Component() {
                 taskCompletionRate={calculateTaskCompletionRate(day.blocks)}
                 blockCompletionRate={calculateBlockCompletionRate(day.blocks)}
                 onReactivateDay={handleReactivateDay}
+                onReactivateBlock={handleReactivateBlock}
               />
             ) : (
               <>
@@ -2670,7 +2984,7 @@ export default function Component() {
                     <Button
                       variant="default"
                       size="sm"
-                      className="h-8 md:bg-blue-600 md:hover:bg-blue-700 md:text-white border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 hover:text-blue-800 transition-all md:border-transparent"
+                      className="h-8 bg-blue-600 hover:bg-blue-500 text-white border-none transition-colors"
                       onClick={handleGenerateSchedule}
                     >
                       <Sparkles className="h-4 w-4 md:mr-1" />
@@ -2694,7 +3008,7 @@ export default function Component() {
                     </Button>
                     <Button
                       className="bg-blue-600 text-white hover:bg-blue-700"
-                      onClick={handleSaveGeneratedSchedule}
+                      onClick={handleGenerateSchedule}
                     >
                       <Check className="h-4 w-4 mr-2" />
                       Accept Schedule
@@ -2713,15 +3027,34 @@ export default function Component() {
                   />
                 ) : activeTab === "completed" ? (
                   <div className="space-y-4">
-                    {sortedBlocks.map((block) => (
-                      <CompletedBlock
-                        key={block._id}
-                        block={block}
-                        onReactivateBlock={(blockId) =>
-                          handleReactivateBlock(blockId)
-                        }
-                      />
-                    ))}
+                    {sortedBlocks.length > 0 ? (
+                      sortedBlocks.map((block) => (
+                        <CompletedBlock
+                          key={block._id}
+                          block={block}
+                          onReactivateBlock={(blockId) =>
+                            handleReactivateBlock(blockId)
+                          }
+                        />
+                      ))
+                    ) : (
+                      <Card className="border-dashed border-2 border-gray-200 bg-gray-50">
+                        <CardContent className="flex flex-col items-center justify-center py-10 px-6 text-center">
+                          <div className="rounded-full bg-blue-50 p-3 mb-4">
+                            <CheckCircle className="h-6 w-6 text-blue-400" />
+                          </div>
+                          <h3 className="text-base font-medium text-gray-900 mb-1">
+                            No completed blocks{" "}
+                            {isTodayView ? "today" : "tomorrow"}
+                          </h3>
+                          <p className="text-sm text-gray-500 max-w-md mb-4">
+                            {isTodayView
+                              ? "You haven't completed any blocks yet today. Complete your tasks to build progress."
+                              : "Your schedule for tomorrow doesn't have any completed blocks yet."}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 ) : allBlocksCompleted ? (
                   <AllBlocksCompleted
@@ -2785,56 +3118,29 @@ export default function Component() {
                               onStartFocusSession={(block) =>
                                 setFocusSessionBlock(block)
                               }
+                              isTodayView={isTodayView}
                             />
                           ))}
-                      {/* {(isPreviewMode && previewSchedule
-                        ? previewSchedule.blocks
-                        : sortedBlocks
-                      ).map((block, index) => (
-                        <TimeBlock
-                          key={block._id || index}
-                          block={block}
-                          onDeleteBlock={handleDeleteBlock}
-                          onEditBlock={(block) => {
-                            setSelectedBlock(block);
-                            setIsEditBlockDialogOpen(true);
-                          }}
-                          onAddTask={(blockId) => handleAddTask(blockId)}
-                          onCompleteBlock={handleCompleteBlock}
-                          onTaskCompletion={handleTaskCompletion}
-                          onEditTask={handleEditTask}
-                          onRemoveTask={handleRemoveTaskFromBlock}
-                          onDeleteTask={handleDeleteTask}
-                          updatingTasks={updatingTasks}
-                          updatingTaskId={updatingTaskId}
-                          onStartFocusSession={(block) =>
-                            setFocusSessionBlock(block)
-                          }
-                        />
-                      ))} */}
-                      {/* {sortedBlocks.map((block: Block) => (
-                        <TimeBlock
-                          key={block._id}
-                          block={block}
-                          onDeleteBlock={handleDeleteBlock}
-                          onEditBlock={(block) => {
-                            setSelectedBlock(block);
-                            setIsEditBlockDialogOpen(true);
-                          }}
-                          onAddTask={(blockId) => handleAddTask(blockId)}
-                          onCompleteBlock={handleCompleteBlock}
-                          onTaskCompletion={handleTaskCompletion}
-                          onEditTask={handleEditTask}
-                          onRemoveTask={handleRemoveTaskFromBlock}
-                          onDeleteTask={handleDeleteTask}
-                          updatingTasks={updatingTasks}
-                          updatingTaskId={updatingTaskId}
-                          onStartFocusSession={(block) =>
-                            setFocusSessionBlock(block)
-                          }
-                        />
-                      ))} */}
                     </div>
+                    {showTestingPanel && (
+                      <div className="mt-8 mb-24 border-t border-gray-200 pt-6">
+                        <h2 className="text-xl font-semibold mb-4">
+                          Debug Data
+                        </h2>
+                        <DataDisplay
+                          title="Preview Schedule Data"
+                          data={previewSchedule}
+                        />
+                        <DataDisplay
+                          title="Schedule Input Payload"
+                          data={scheduleInputData}
+                        />
+                        <DataDisplay
+                          title="Schedule Output Data"
+                          data={scheduleOutputData}
+                        />
+                      </div>
+                    )}
                     {activeTask &&
                       createPortal(
                         <DragOverlay>
@@ -2851,6 +3157,7 @@ export default function Component() {
                             onEditTask={handleEditTask}
                             onRemoveTask={handleRemoveTaskFromBlock}
                             onDeleteTask={handleDeleteTask}
+                            isTodayView={isTodayView}
                           />
                         </DragOverlay>,
                         document.body
@@ -2875,6 +3182,7 @@ export default function Component() {
         }
         isPreviewMode={isPreviewMode}
         initialPromptPoints={selectedTemplate?.promptPoints}
+        hasExistingBlocks={day?.blocks && day.blocks.length > 0}
       />
       <AddEventModal
         isOpen={isAddEventModalOpen}
@@ -2960,6 +3268,12 @@ export default function Component() {
           onClose={() => setFocusSessionBlock(null)}
         />
       )}
+
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        actionType={authAction}
+      />
     </div>
   );
 }

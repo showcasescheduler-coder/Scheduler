@@ -103,6 +103,22 @@ import { CSS } from "@dnd-kit/utilities";
 import SortableTaskRow from "@/app/components/SortableTaskRow";
 import MobileSortableTaskRow from "@/app/components/MobileSortableTaskRow";
 import { Task } from "@/app/context/models";
+import LoadingOverlay from "@/app/components/LoadingOverlay";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerClose,
+  DrawerDescription,
+} from "@/components/ui/drawer";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Props {
   params: { id: string };
@@ -119,9 +135,24 @@ export default function ProjectDetails({ params: { id } }: Props) {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [generatingTasks, setGeneratingTasks] = useState(false);
   const [activeTab, setActiveTab] = useState("incomplete");
-  const [isGenerateTasksDialogOpen, setIsGenerateTasksDialogOpen] =
+  // const [isGenerateTasksDialogOpen, setIsGenerateTasksDialogOpen] =
+  //   useState(false);
+  const [isGenerateTasksDrawerOpen, setIsGenerateTasksDrawerOpen] =
     useState(false);
+
   const [thoughts, setThoughts] = useState([""]);
+  const [isLoadingOverlayVisible, setIsLoadingOverlayVisible] = useState(false);
+  const [projectFormErrors, setProjectFormErrors] = useState({
+    name: "",
+    deadline: "",
+  });
+  const [taskFormErrors, setTaskFormErrors] = useState({
+    name: "",
+  });
+  const [editTaskFormErrors, setEditTaskFormErrors] = useState({
+    name: "",
+  });
+
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // KEEP - Router and Auth
@@ -163,6 +194,15 @@ export default function ProjectDetails({ params: { id } }: Props) {
   ) => {
     if (project?.completed) return; // Early return if project is completed
     const { name, value } = e.target;
+
+    // Clear error when user types in a field
+    if (projectFormErrors[name as keyof typeof projectFormErrors]) {
+      setProjectFormErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
+
     setProject((prev) => {
       if (!prev) return null;
       return {
@@ -171,7 +211,6 @@ export default function ProjectDetails({ params: { id } }: Props) {
       };
     });
   };
-
   const handlePriorityChange = (value: string) => {
     if (project?.completed) return;
     setProject((prev) => {
@@ -185,6 +224,48 @@ export default function ProjectDetails({ params: { id } }: Props) {
 
   const handleSave = async () => {
     if (!project) return;
+
+    // Reset previous errors
+    setProjectFormErrors({
+      name: "",
+      deadline: "",
+    });
+
+    // Validate form
+    let isValid = true;
+    const newErrors = {
+      name: "",
+      deadline: "",
+    };
+
+    // Name is required
+    if (!project.name.trim()) {
+      newErrors.name = "Project name is required";
+      isValid = false;
+    }
+
+    // Deadline is required and must not be in the past
+    if (!project.deadline) {
+      newErrors.deadline = "Deadline is required";
+      isValid = false;
+    } else {
+      const selectedDate = new Date(project.deadline);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time for fair comparison
+
+      if (selectedDate < today) {
+        newErrors.deadline = "Deadline cannot be in the past";
+        isValid = false;
+      }
+    }
+
+    // If validation fails, show errors and return
+    if (!isValid) {
+      setProjectFormErrors(newErrors);
+      return;
+    }
+
+    // Continue with save if validation passes
     console.log("this ran");
     try {
       const response = await fetch(`/api/projects/${id}`, {
@@ -205,7 +286,17 @@ export default function ProjectDetails({ params: { id } }: Props) {
   };
 
   const handleAddTask = async () => {
-    if (!project || !newTask.name || project.completed) return;
+    if (!project || project.completed) return;
+
+    // Reset errors
+    setTaskFormErrors({ name: "" });
+
+    // Validate task name
+    if (!newTask.name || !newTask.name.trim()) {
+      setTaskFormErrors({ name: "Task name is required" });
+      return;
+    }
+
     try {
       const response = await fetch("/api/tasks", {
         method: "POST",
@@ -237,6 +328,11 @@ export default function ProjectDetails({ params: { id } }: Props) {
 
   const handleGenerateTasks = async () => {
     if (!project || project.tasks.length > 0) return;
+    // setIsGenerateTasksDialogOpen(false);
+    setIsGenerateTasksDrawerOpen(false);
+
+    // Show the loading overlay
+    setIsLoadingOverlayVisible(true);
     setGeneratingTasks(true);
     try {
       const cleanThoughts = thoughts
@@ -281,12 +377,13 @@ export default function ProjectDetails({ params: { id } }: Props) {
         } as Project;
       });
 
-      setIsGenerateTasksDialogOpen(false);
       setThoughts([""]); // Add it here
     } catch (error) {
       console.error("Error:", error);
     } finally {
       setGeneratingTasks(false);
+      // Hide the loading overlay
+      setIsLoadingOverlayVisible(false);
     }
   };
 
@@ -320,6 +417,15 @@ export default function ProjectDetails({ params: { id } }: Props) {
   // Handle task updates
   const handleUpdateTask = async () => {
     if (!editingTask || !project) return;
+
+    // Reset errors
+    setEditTaskFormErrors({ name: "" });
+
+    // Validate task name
+    if (!editingTask.name || !editingTask.name.trim()) {
+      setEditTaskFormErrors({ name: "Task name is required" });
+      return;
+    }
 
     try {
       const response = await fetch(`/api/projects/tasks/${editingTask._id}`, {
@@ -571,7 +677,6 @@ export default function ProjectDetails({ params: { id } }: Props) {
       <aside className="hidden md:block w-16 border-r border-gray-200">
         <SidebarContent />
       </aside>
-
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Mobile Header */}
         <div className="md:hidden border-b border-gray-200">
@@ -672,16 +777,22 @@ export default function ProjectDetails({ params: { id } }: Props) {
                 </Button>
                 <Button
                   size="sm"
-                  variant="destructive"
+                  variant="outline"
+                  className="text-gray-600 hover:text-gray-900 border-gray-200 hover:bg-gray-50"
                   onClick={handleDeleteProject}
                 >
                   Delete Project
                 </Button>
                 <Button
                   size="sm"
+                  variant="outline"
                   onClick={handleCompleteProject}
                   disabled={!project.completed && !allTasksCompleted(project)}
-                  className="bg-green-600 hover:bg-green-700 text-white"
+                  className={`${
+                    project.completed
+                      ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                      : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  }`}
                 >
                   {project.completed
                     ? "Reactivate Project"
@@ -749,7 +860,8 @@ export default function ProjectDetails({ params: { id } }: Props) {
                         disabled={
                           !project.completed && !allTasksCompleted(project)
                         }
-                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        className="w-full border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                        variant="outline"
                       >
                         {project.completed
                           ? "Reactivate Project"
@@ -757,9 +869,9 @@ export default function ProjectDetails({ params: { id } }: Props) {
                       </Button>
                       <Button
                         size="sm"
-                        variant="destructive"
+                        variant="outline"
                         onClick={handleDeleteProject}
-                        className="w-full text-white mt-2"
+                        className="w-full text-gray-600 hover:text-gray-900 border-gray-200 hover:bg-gray-50 mt-2"
                       >
                         Delete Project
                       </Button>
@@ -774,15 +886,22 @@ export default function ProjectDetails({ params: { id } }: Props) {
                   <div className="space-y-4">
                     <div>
                       <label className="text-sm font-medium">
-                        Project Name
+                        Project Name <span className="text-red-500">*</span>
                       </label>
                       <Input
                         name="name"
-                        className="mt-2"
+                        className={`mt-2 ${
+                          projectFormErrors.name ? "border-red-500" : ""
+                        }`}
                         value={project.name}
                         onChange={handleInputChange}
                         disabled={project.completed}
                       />
+                      {projectFormErrors.name && (
+                        <p className="text-sm text-red-500 mt-1">
+                          {projectFormErrors.name}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="text-sm font-medium">Description</label>
@@ -795,12 +914,16 @@ export default function ProjectDetails({ params: { id } }: Props) {
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-medium">Deadline</label>
+                      <label className="text-sm font-medium">
+                        Deadline <span className="text-red-500">*</span>
+                      </label>
                       <div className="flex items-center gap-2 mt-2">
                         <Input
                           type="date"
                           name="deadline"
-                          className="flex-1"
+                          className={`flex-1 ${
+                            projectFormErrors.deadline ? "border-red-500" : ""
+                          }`}
                           value={
                             project.deadline
                               ? format(new Date(project.deadline), "yyyy-MM-dd")
@@ -809,34 +932,12 @@ export default function ProjectDetails({ params: { id } }: Props) {
                           onChange={handleInputChange}
                           disabled={project.completed}
                         />
-                        {/* <Button variant="outline" size="icon">
-                          <Calendar className="h-4 w-4" />
-                        </Button> */}
                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium">Priority</label>
-                        <Select
-                          value={
-                            project.priority
-                              ? project.priority.charAt(0).toUpperCase() +
-                                project.priority.slice(1)
-                              : "Medium"
-                          }
-                          onValueChange={handlePriorityChange}
-                          disabled={project.completed}
-                        >
-                          <SelectTrigger className="mt-2">
-                            <SelectValue placeholder="Priority" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="High">High</SelectItem>
-                            <SelectItem value="Medium">Medium</SelectItem>
-                            <SelectItem value="Low">Low</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      {projectFormErrors.deadline && (
+                        <p className="text-sm text-red-500 mt-1">
+                          {projectFormErrors.deadline}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -864,7 +965,8 @@ export default function ProjectDetails({ params: { id } }: Props) {
                       </Tabs>
                       {activeTab !== "completed" && (
                         <Button
-                          onClick={() => setIsGenerateTasksDialogOpen(true)}
+                          // onClick={() => setIsGenerateTasksDialogOpen(true)}
+                          onClick={() => setIsGenerateTasksDrawerOpen(true)}
                           disabled={generatingTasks}
                           className="w-full bg-blue-600 hover:bg-blue-700"
                         >
@@ -917,85 +1019,6 @@ export default function ProjectDetails({ params: { id } }: Props) {
                                   onDelete={handleDeleteTask}
                                   onEdit={handleEditTask}
                                 />
-                                //   <TableRow key={task._id}>
-                                //     <TableCell>
-                                //       <div className="flex items-center gap-2">
-                                //         <GripVertical className="h-4 w-4 text-gray-400" />
-                                //         <span className="text-sm text-gray-500">
-                                //           {index + 1}
-                                //         </span>
-                                //       </div>
-                                //     </TableCell>
-                                //     <TableCell>
-                                //       <Checkbox
-                                //         checked={task.completed}
-                                //         onCheckedChange={(
-                                //           checked: boolean | string
-                                //         ) =>
-                                //           handleTaskCompletion(
-                                //             task._id,
-                                //             checked === true
-                                //           )
-                                //         }
-                                //         disabled={project.completed}
-                                //         className="ml-2"
-                                //       />
-                                //     </TableCell>
-                                //     <TableCell className="py-3">
-                                //       <div className="space-y-1">
-                                //         <div className="font-medium">
-                                //           {task.name}
-                                //         </div>
-                                //         {task.description && (
-                                //           <div className="text-sm text-gray-500 truncate max-w-[280px]">
-                                //             {task.description}
-                                //           </div>
-                                //         )}
-                                //       </div>
-                                //     </TableCell>
-                                //     {/* <TableCell className="align-top py-3">
-                                //   <div className="text-sm font-medium">
-                                //     {format(parseISO(task.deadline), "MMM dd")}
-                                //   </div>
-                                // </TableCell> */}
-                                //     <TableCell className="text-center">
-                                //       <DropdownMenu modal={false}>
-                                //         <DropdownMenuTrigger asChild>
-                                //           <Button
-                                //             variant="ghost"
-                                //             size="icon"
-                                //             className="h-8 w-8"
-                                //             disabled={project.completed}
-                                //           >
-                                //             <MoreHorizontal className="h-4 w-4" />
-                                //           </Button>
-                                //         </DropdownMenuTrigger>
-                                //         <DropdownMenuContent align="end">
-                                //           <DropdownMenuItem
-                                //             onSelect={(e) => {
-                                //               e.preventDefault();
-                                //               setEditingTask(task);
-                                //               setIsEditDialogOpen(true);
-                                //             }}
-                                //           >
-                                //             <Edit className="mr-2 h-4 w-4" />
-                                //             <span>Edit Task</span>
-                                //           </DropdownMenuItem>
-                                //           <DropdownMenuItem
-                                //             onSelect={() =>
-                                //               handleDeleteTask(
-                                //                 task._id,
-                                //                 project._id
-                                //               )
-                                //             }
-                                //           >
-                                //             <Trash2 className="mr-2 h-4 w-4" />
-                                //             <span>Delete Task</span>
-                                //           </DropdownMenuItem>
-                                //         </DropdownMenuContent>
-                                //       </DropdownMenu>
-                                //     </TableCell>
-                                //   </TableRow>
                               ))}
                             </SortableContext>
                           </TableBody>
@@ -1043,7 +1066,8 @@ export default function ProjectDetails({ params: { id } }: Props) {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => setIsGenerateTasksDialogOpen(true)}
+                    // onClick={() => setIsGenerateTasksDialogOpen(true)}
+                    onClick={() => setIsGenerateTasksDrawerOpen(true)}
                     disabled={
                       generatingTasks ||
                       project.tasks.length > 0 ||
@@ -1122,91 +1146,6 @@ export default function ProjectDetails({ params: { id } }: Props) {
                             onDelete={handleDeleteTask}
                             onEdit={handleEditTask}
                           />
-                          // <TableRow key={task._id}>
-                          //   <TableCell>
-                          //     <div className="flex items-center gap-2">
-                          //       <GripVertical className="h-4 w-4 text-gray-400" />
-                          //       <span className="text-sm text-gray-500">
-                          //         {index + 1}
-                          //       </span>
-                          //     </div>
-                          //   </TableCell>
-                          //   <TableCell>
-                          //     <Checkbox
-                          //       checked={task.completed}
-                          //       onCheckedChange={(checked: boolean | string) =>
-                          //         handleTaskCompletion(task._id, checked === true)
-                          //       }
-                          //       className="ml-2"
-                          //     />
-                          //   </TableCell>
-                          //   <TableCell>
-                          //     <div>
-                          //       <div className="font-medium">{task.name}</div>
-                          //       {task.description && (
-                          //         <div className="text-sm text-gray-500 truncate max-w-[280px]">
-                          //           {task.description}
-                          //         </div>
-                          //       )}
-                          //     </div>
-                          //   </TableCell>
-                          //   <TableCell>
-                          //     <div className="text-sm">
-                          //       {format(parseISO(task.deadline), "MMM dd")}
-                          //     </div>
-                          //   </TableCell>
-                          //   <TableCell>
-                          //     <span
-                          //       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          //         task.priority === "High"
-                          //           ? "bg-red-100 text-red-800"
-                          //           : task.priority === "Medium"
-                          //           ? "bg-yellow-100 text-yellow-800"
-                          //           : "bg-green-100 text-green-800"
-                          //       }`}
-                          //     >
-                          //       {task.priority}
-                          //     </span>
-                          //   </TableCell>
-                          //   <TableCell>
-                          //     <div className="text-sm text-gray-500">
-                          //       {task.duration}m
-                          //     </div>
-                          //   </TableCell>
-                          //   <TableCell className="text-right">
-                          //     <DropdownMenu modal={false}>
-                          //       <DropdownMenuTrigger asChild>
-                          //         <Button
-                          //           variant="ghost"
-                          //           size="icon"
-                          //           className="h-8 w-8"
-                          //         >
-                          //           <MoreHorizontal className="h-4 w-4" />
-                          //         </Button>
-                          //       </DropdownMenuTrigger>
-                          //       <DropdownMenuContent align="end">
-                          //         <DropdownMenuItem
-                          //           onSelect={(e) => {
-                          //             e.preventDefault();
-                          //             setEditingTask(task);
-                          //             setIsEditDialogOpen(true);
-                          //           }}
-                          //         >
-                          //           <Edit className="mr-2 h-4 w-4" />
-                          //           <span>Edit Task</span>
-                          //         </DropdownMenuItem>
-                          //         <DropdownMenuItem
-                          //           onSelect={() =>
-                          //             handleDeleteTask(task._id, project._id)
-                          //           }
-                          //         >
-                          //           <Trash2 className="mr-2 h-4 w-4" />
-                          //           <span>Delete Task</span>
-                          //         </DropdownMenuItem>
-                          //       </DropdownMenuContent>
-                          //     </DropdownMenu>
-                          //   </TableCell>
-                          // </TableRow>
                         ))}
                       </SortableContext>
                     </TableBody>
@@ -1217,95 +1156,120 @@ export default function ProjectDetails({ params: { id } }: Props) {
           </div>
         </div>
       </div>
-
+      <LoadingOverlay
+        isVisible={isLoadingOverlayVisible}
+        message="AI is generating your tasks. This may take a moment..."
+      />
       {/* Generate Tasks Dialog */}
-      <Dialog
-        open={isGenerateTasksDialogOpen}
-        onOpenChange={setIsGenerateTasksDialogOpen}
+      <Drawer
+        open={isGenerateTasksDrawerOpen}
+        onOpenChange={setIsGenerateTasksDrawerOpen}
       >
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Generate Project Tasks</DialogTitle>
-            <DialogDescription>
-              What would you like to accomplish with these tasks?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 rounded-lg border-2 border-[#e2e8f0] p-6 bg-white shadow-sm hover:border-blue-100 hover:shadow-md transition-all duration-200 min-h-[150px]">
-            {thoughts.map((thought, index) => (
-              <div key={index} className="flex items-start space-x-3">
-                <span className="text-blue-600 mt-1 text-lg">•</span>
-                <input
-                  ref={(el) => {
-                    inputRefs.current[index] = el;
-                  }}
-                  type="text"
-                  value={thought}
-                  onChange={(e) => {
-                    const newThoughts = [...thoughts];
-                    newThoughts[index] = e.target.value;
-                    setThoughts(newThoughts);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const newThoughts = [...thoughts];
-                      newThoughts.splice(index + 1, 0, "");
-                      setThoughts(newThoughts);
-                      setTimeout(() => {
-                        if (inputRefs.current[index + 1]) {
-                          inputRefs.current[index + 1]?.focus();
+        <DrawerContent className="max-h-[85vh] pb-safe">
+          <div className="container max-w-4xl mx-auto h-full flex flex-col">
+            <div className="px-6">
+              <DrawerHeader className="px-0 pt-8 pb-6 border-b">
+                <DrawerTitle className="flex items-center gap-3 text-2xl font-semibold">
+                  <Sparkles className="h-6 w-6 text-blue-600" />
+                  Generate Project Tasks
+                </DrawerTitle>
+                <DrawerDescription>
+                  What would you like to accomplish with these tasks?
+                </DrawerDescription>
+              </DrawerHeader>
+            </div>
+
+            <div className="flex-1 py-8 overflow-y-auto px-6">
+              <div className="space-y-4">
+                {thoughts.map((thought, index) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <span className="text-blue-600 mt-3 text-xl">•</span>
+                    <input
+                      ref={(el) => {
+                        inputRefs.current[index] = el;
+                      }}
+                      type="text"
+                      value={thought}
+                      onChange={(e) => {
+                        const newThoughts = [...thoughts];
+                        newThoughts[index] = e.target.value;
+                        setThoughts(newThoughts);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const newThoughts = [...thoughts];
+                          newThoughts.splice(index + 1, 0, "");
+                          setThoughts(newThoughts);
+                          setTimeout(() => {
+                            if (inputRefs.current[index + 1]) {
+                              inputRefs.current[index + 1]?.focus();
+                            }
+                          }, 0);
+                        } else if (
+                          e.key === "Backspace" &&
+                          thoughts[index] === "" &&
+                          thoughts.length > 1
+                        ) {
+                          e.preventDefault();
+                          const newThoughts = thoughts.filter(
+                            (_, i) => i !== index
+                          );
+                          setThoughts(newThoughts);
+                          setTimeout(() => {
+                            const prevInput =
+                              inputRefs.current[Math.max(0, index - 1)];
+                            if (prevInput) {
+                              prevInput.focus();
+                            }
+                          }, 0);
                         }
-                      }, 0);
-                    } else if (
-                      e.key === "Backspace" &&
-                      thoughts[index] === "" &&
-                      thoughts.length > 1
-                    ) {
-                      e.preventDefault();
-                      const newThoughts = thoughts.filter(
-                        (_, i) => i !== index
-                      );
-                      setThoughts(newThoughts);
-                      setTimeout(() => {
-                        const prevInput =
-                          inputRefs.current[Math.max(0, index - 1)];
-                        if (prevInput) {
-                          prevInput.focus();
-                        }
-                      }, 0);
-                    }
-                  }}
-                  placeholder={
-                    index === 0
-                      ? "What tasks would you like to generate..."
-                      : "Add another thought..."
-                  }
-                  className="flex-1 p-2 focus:outline-none focus:ring-2 focus:ring-blue-100 rounded-md w-full text-lg placeholder:text-gray-400 bg-transparent"
-                />
+                      }}
+                      placeholder={
+                        index === 0
+                          ? "What tasks would you like to generate..."
+                          : "Add another thought..."
+                      }
+                      className="flex-1 py-2 px-3 bg-zinc-50/50 rounded-md text-base placeholder:text-zinc-400 
+                           focus:outline-none focus:ring-1 focus:ring-blue-100 focus:bg-white 
+                           border border-zinc-200 hover:border-zinc-300 transition-colors"
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            <div className="px-6">
+              <DrawerFooter className="px-0 py-4 border-t">
+                <div className="flex gap-3 w-full max-w-xs ml-auto">
+                  <DrawerClose asChild>
+                    <Button variant="outline" className="flex-1">
+                      Cancel
+                    </Button>
+                  </DrawerClose>
+                  <Button
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    onClick={handleGenerateTasks}
+                    disabled={generatingTasks}
+                  >
+                    {generatingTasks ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Generate
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DrawerFooter>
+            </div>
           </div>
-          <DialogFooter>
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={handleGenerateTasks}
-              disabled={generatingTasks}
-            >
-              {generatingTasks ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate Tasks
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </DrawerContent>
+      </Drawer>
 
       <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
         <DialogContent className="sm:max-w-[525px]">
@@ -1319,16 +1283,27 @@ export default function ProjectDetails({ params: { id } }: Props) {
           <div className="grid gap-6 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="task-name" className="text-right">
-                Name
+                Name <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="task-name"
-                value={newTask.name}
-                onChange={(e) =>
-                  setNewTask({ ...newTask, name: e.target.value })
-                }
-                className="col-span-3"
-              />
+              <div className="col-span-3">
+                <Input
+                  id="task-name"
+                  value={newTask.name}
+                  onChange={(e) => {
+                    setNewTask({ ...newTask, name: e.target.value });
+                    // Clear error when typing
+                    if (taskFormErrors.name) {
+                      setTaskFormErrors({ name: "" });
+                    }
+                  }}
+                  className={`${taskFormErrors.name ? "border-red-500" : ""}`}
+                />
+                {taskFormErrors.name && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {taskFormErrors.name}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-4 items-start gap-4">
@@ -1423,7 +1398,6 @@ export default function ProjectDetails({ params: { id } }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Edit Task Dialog */}
       <Dialog
         open={isEditDialogOpen}
@@ -1431,6 +1405,7 @@ export default function ProjectDetails({ params: { id } }: Props) {
           setIsEditDialogOpen(open);
           if (!open) {
             setEditingTask(null);
+            setEditTaskFormErrors({ name: "" }); // Reset errors when dialog closes
           }
         }}
       >
@@ -1445,18 +1420,31 @@ export default function ProjectDetails({ params: { id } }: Props) {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-name" className="text-right">
-                  Name
+                  Name <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="edit-name"
-                  value={editingTask.name || ""}
-                  onChange={(e) =>
-                    setEditingTask((prev) =>
-                      prev ? { ...prev, name: e.target.value } : null
-                    )
-                  }
-                  className="col-span-3"
-                />
+                <div className="col-span-3">
+                  <Input
+                    id="edit-name"
+                    value={editingTask.name || ""}
+                    onChange={(e) => {
+                      setEditingTask((prev) =>
+                        prev ? { ...prev, name: e.target.value } : null
+                      );
+                      // Clear error when typing
+                      if (editTaskFormErrors.name) {
+                        setEditTaskFormErrors({ name: "" });
+                      }
+                    }}
+                    className={`${
+                      editTaskFormErrors.name ? "border-red-500" : ""
+                    }`}
+                  />
+                  {editTaskFormErrors.name && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {editTaskFormErrors.name}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-4 items-start gap-4">

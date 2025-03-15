@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongo";
 import Task from "@/models/Task";
 import Block from "@/models/Block";
 import Day from "@/models/Day";
+import Event from "@/models/Event";
 
 export async function PUT(
   request: NextRequest,
@@ -12,10 +13,16 @@ export async function PUT(
 
   try {
     const { id } = params;
-    const { completed, dayId, completedTasksCount } = await request.json();
+    const { completed, dayId, eventId } = await request.json();
 
-    console.log("Received completedTasksCount:", completedTasksCount);
+    console.log("Received task update request:", {
+      id,
+      completed,
+      dayId,
+      eventId,
+    });
 
+    // Update the task
     const updatedTask = await Task.findByIdAndUpdate(
       id,
       { completed },
@@ -26,12 +33,19 @@ export async function PUT(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    // Update the day's completed tasks count and populate in a single query
-    const updatedDay = await Day.findByIdAndUpdate(
-      dayId,
-      { $set: { completedTasksCount } },
-      { new: true, runValidators: true }
-    ).populate({
+    // If the task belongs to an event, fetch the event with populated tasks
+    let updatedEvent = null;
+    if (eventId) {
+      console.log("Fetching updated event:", eventId);
+
+      // Fetch the event with populated tasks
+      updatedEvent = await Event.findById(eventId).populate("tasks");
+
+      console.log("Event fetched successfully");
+    }
+
+    // Update the day
+    const updatedDay = await Day.findById(dayId).populate({
       path: "blocks",
       populate: {
         path: "tasks",
@@ -43,15 +57,16 @@ export async function PUT(
       return NextResponse.json({ error: "Day not found" }, { status: 404 });
     }
 
-    console.log("Updated Day:", updatedDay);
-
-    return NextResponse.json({ updatedTask, updatedDay });
+    return NextResponse.json({
+      updatedTask,
+      updatedDay,
+      updatedEvent,
+    });
   } catch (error) {
     console.error("Error updating task:", error);
     return NextResponse.json({ error: "Error updating task" }, { status: 500 });
   }
 }
-
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }

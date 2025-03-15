@@ -20,7 +20,14 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PlusCircle, CheckCircle, Circle, Repeat } from "lucide-react";
+import {
+  PlusCircle,
+  CheckCircle,
+  Circle,
+  Repeat,
+  ArrowLeft,
+  Clock,
+} from "lucide-react";
 import { Routine, Task } from "@/app/context/models";
 import { Badge } from "@/components/ui/badge";
 import { useAppContext } from "@/app/context/AppContext";
@@ -46,7 +53,7 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
   onClose,
   updateDay,
 }) => {
-  const { day } = useAppContext();
+  const { day, selectedDay } = useAppContext();
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
   const [startTime, setStartTime] = useState("");
@@ -79,9 +86,42 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
     setEndTime("");
   };
 
-  // …inside your component:
-  const allowedStart = "08:00";
-  const allowedEnd = "22:00";
+  // Add this to AddRoutineModal
+  const roundToNearestHalfHour = (date: Date): string => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const roundedMinutes = Math.round(minutes / 30) * 30;
+    let finalHours = hours;
+    let finalMinutes = roundedMinutes;
+    if (roundedMinutes === 60) {
+      finalHours = (hours + 1) % 24;
+      finalMinutes = 0;
+    }
+    return `${String(finalHours).padStart(2, "0")}:${String(
+      finalMinutes
+    ).padStart(2, "0")}`;
+  };
+
+  const getScheduleTimes = (
+    selectedDay: "today" | "tomorrow"
+  ): { startTime: string; endTime: string } => {
+    const endTime = "23:59";
+    if (selectedDay === "today") {
+      const currentTime = new Date();
+      return {
+        startTime: roundToNearestHalfHour(currentTime),
+        endTime,
+      };
+    } else {
+      return {
+        startTime: "08:00",
+        endTime,
+      };
+    }
+  };
+
+  const { startTime: allowedStart, endTime: allowedEnd } =
+    getScheduleTimes(selectedDay);
 
   const handleAddRoutineToSchedule = async () => {
     if (!selectedRoutine || !startTime || !endTime) return;
@@ -98,18 +138,6 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
       toast.error(errorMessage);
       return;
     }
-
-    // const errorMessage = validateTimeRange(
-    //   routineTime,
-    //   isPreviewMode ? previewSchedule?.blocks || [] : day.blocks,
-    //   allowedStart,
-    //   allowedEnd,
-    //   isPreviewMode
-    // );
-    // if (errorMessage) {
-    //   toast.error(errorMessage);
-    //   return;
-    // }
 
     if (isPreviewMode) {
       try {
@@ -151,7 +179,7 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
           startTime,
           endTime,
           status: "pending",
-          blockType: "deep-work",
+          blockType: selectedRoutine.blockType || "deep-work",
           description: selectedRoutine.description || "",
           routineId: selectedRoutine._id,
           tasks: tempTasks,
@@ -188,6 +216,7 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
             startTime,
             endTime,
             tasks: selectedRoutine.tasks,
+            blockType: selectedRoutine.blockType || "personal",
           }),
         });
 
@@ -205,7 +234,7 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px] p-0">
+      <DialogContent className="sm:max-w-[400px] p-0 rounded-lg shadow-md">
         <DialogHeader className="p-6 pb-2">
           <div className="flex items-center gap-2">
             <Repeat className="h-4 w-4 text-blue-600" />
@@ -222,21 +251,57 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
                 routines.map((routine) => (
                   <Card
                     key={routine._id}
-                    className="cursor-pointer hover:bg-gray-50 transition-colors"
+                    className="cursor-pointer hover:bg-blue-50 transition-colors border border-gray-200 hover:border-blue-200"
                     onClick={() => handleRoutineSelect(routine)}
                   >
                     <CardContent className="p-4">
-                      <h4 className="text-sm font-medium">{routine.name}</h4>
+                      <div className="flex justify-between">
+                        <h4 className="text-sm font-medium">{routine.name}</h4>
+                        <Badge className="bg-blue-100 text-blue-600 hover:bg-blue-100 flex items-center px-2 py-0.5">
+                          <CheckCircle className="h-2.5 w-2.5 mr-1" />
+                          <span>
+                            {routine.tasks.length}{" "}
+                            {routine.tasks.length === 1 ? "task" : "tasks"}
+                          </span>
+                        </Badge>
+                      </div>
                       <p className="text-xs text-gray-500 mt-1">
                         {routine.description}
                       </p>
+                      {/* Add type indicator */}
+                      <div className="flex items-center mt-2">
+                        <div
+                          className="w-2 h-2 rounded-full mr-1.5"
+                          style={{
+                            backgroundColor:
+                              routine.blockType === "deep-work"
+                                ? "#9333ea" // purple-600
+                                : routine.blockType === "break"
+                                ? "#16a34a" // green-600
+                                : routine.blockType === "meeting"
+                                ? "#0284c7" // sky-600
+                                : routine.blockType === "health"
+                                ? "#0d9488" // teal-600
+                                : routine.blockType === "exercise"
+                                ? "#059669" // emerald-600
+                                : routine.blockType === "admin"
+                                ? "#4b5563" // gray-600
+                                : routine.blockType === "personal"
+                                ? "#c026d3" // fuchsia-600
+                                : "#9333ea", // Default (purple-600)
+                          }}
+                        ></div>
+                        <span className="text-xs text-gray-500 capitalize">
+                          {(routine.blockType || "deep-work").replace("-", " ")}
+                        </span>
+                      </div>
                       <ul className="mt-3 space-y-1.5">
                         {routine.tasks.map((task: Task) => (
                           <li
                             key={task._id}
                             className="flex items-start text-xs text-gray-600"
                           >
-                            <Circle className="h-2 w-2 mr-2 mt-1 text-gray-400" />
+                            <Circle className="h-3 w-3 mr-2 mt-0.5 text-blue-500 fill-blue-500" />
                             <span>{task.name}</span>
                           </li>
                         ))}
@@ -268,45 +333,88 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
           </ScrollArea>
         ) : (
           <div className="p-6 space-y-4">
-            <div className="space-y-1 pb-3 border-b">
-              <h3 className="text-sm font-medium">{selectedRoutine.name}</h3>
-              <ul className="mt-2 space-y-1.5">
+            <div className="space-y-2 pb-3 border-b">
+              <h3 className="text-sm font-medium text-gray-800">
+                {selectedRoutine.name}
+              </h3>
+              <p className="text-xs text-gray-500">
+                {selectedRoutine.description}
+              </p>
+
+              {/* Add type indicator */}
+              <div className="flex items-center mt-2">
+                <div
+                  className="w-2 h-2 rounded-full mr-1.5"
+                  style={{
+                    backgroundColor:
+                      selectedRoutine.blockType === "deep-work"
+                        ? "#9333ea" // purple-600
+                        : selectedRoutine.blockType === "break"
+                        ? "#16a34a" // green-600
+                        : selectedRoutine.blockType === "meeting"
+                        ? "#0284c7" // sky-600
+                        : selectedRoutine.blockType === "health"
+                        ? "#0d9488" // teal-600
+                        : selectedRoutine.blockType === "exercise"
+                        ? "#059669" // emerald-600
+                        : selectedRoutine.blockType === "admin"
+                        ? "#4b5563" // gray-600
+                        : selectedRoutine.blockType === "personal"
+                        ? "#c026d3" // fuchsia-600
+                        : "#9333ea", // Default (purple-600)
+                  }}
+                ></div>
+                <span className="text-xs text-gray-500 capitalize">
+                  Block Type:{" "}
+                  {(selectedRoutine.blockType || "deep-work").replace("-", " ")}
+                </span>
+              </div>
+
+              <ul className="mt-3 space-y-2 pb-2">
                 {selectedRoutine.tasks.map((task: Task) => (
                   <li
                     key={task._id}
-                    className="flex items-start text-xs text-gray-600"
+                    className="flex items-start text-xs bg-gray-50 p-2 rounded"
                   >
-                    <Circle className="h-2 w-2 mr-2 mt-1 text-gray-400" />
-                    <span>{task.name}</span>
+                    <Circle className="h-3 w-3 mr-2 mt-0.5 text-blue-500 fill-blue-500" />
+                    <span className="text-gray-700">{task.name}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Input
-                  id="startTime"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="h-8"
-                />
+            <div className="pt-2">
+              <div className="flex items-center mb-3 text-sm text-gray-700">
+                <Clock className="h-4 w-4 mr-2 text-blue-500" />
+                <span>Set time for this routine</span>
               </div>
-              <div className="space-y-2">
-                <Input
-                  id="endTime"
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="h-8"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500">Start</label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="h-8"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-500">End</label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="h-8"
+                  />
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        <div className="p-4 border-t flex justify-end gap-2">
+        <div className="p-4 border-t flex justify-end gap-2 bg-gray-50">
           {selectedRoutine ? (
             <>
               <Button
@@ -314,6 +422,7 @@ export const AddRoutineModal: React.FC<AddEventModalProps> = ({
                 onClick={() => setSelectedRoutine(null)}
                 className="h-8"
               >
+                <ArrowLeft className="h-4 w-4 mr-1.5" />
                 Back
               </Button>
               <Button

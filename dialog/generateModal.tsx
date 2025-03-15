@@ -863,7 +863,7 @@ import {
   DrawerClose,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import { Sparkles } from "lucide-react";
+import { Sparkles, RefreshCw, Edit } from "lucide-react";
 
 interface ScheduleGenerationDrawerProps {
   isOpen: boolean;
@@ -875,6 +875,7 @@ interface ScheduleGenerationDrawerProps {
   ) => void;
   isPreviewMode: boolean;
   initialPromptPoints?: string[];
+  hasExistingBlocks?: boolean; // New
 }
 
 export const ScheduleGenerationDialog: React.FC<
@@ -885,6 +886,7 @@ export const ScheduleGenerationDialog: React.FC<
   onGenerateSchedule,
   isPreviewMode,
   initialPromptPoints,
+  hasExistingBlocks = false,
 }) => {
   const [thoughts, setThoughts] = useState([""]);
   const [savedThoughts, setSavedThoughts] = useState<string[]>(() => {
@@ -926,6 +928,68 @@ export const ScheduleGenerationDialog: React.FC<
       }
     }
   }, [isOpen, initialPromptPoints, savedThoughts]);
+
+  const getTitle = () => {
+    if (isPreviewMode) {
+      return (
+        <>
+          <RefreshCw className="h-6 w-6 text-blue-600" />
+          Regenerate Schedule
+        </>
+      );
+    } else if (hasExistingBlocks) {
+      return (
+        <>
+          <Edit className="h-6 w-6 text-blue-600" />
+          AI Edit Schedule
+        </>
+      );
+    } else {
+      return (
+        <>
+          <Sparkles className="h-6 w-6 text-blue-600" />
+          Generate Schedule
+        </>
+      );
+    }
+  };
+
+  // Helper function to get the appropriate description based on the current state
+  const getDescription = () => {
+    if (isPreviewMode) {
+      return "Please let us know what you would like to change in your preview schedule.";
+    } else if (hasExistingBlocks) {
+      return "Tell us how you'd like to modify your current schedule. AI will adjust your existing blocks and tasks based on your input.";
+    } else {
+      return "Let AI help you plan your day. Enter your tasks and requirements below.";
+    }
+  };
+
+  // Helper function to get the appropriate placeholder based on the current state
+  const getPlaceholder = (index: number) => {
+    if (index === 0) {
+      if (isPreviewMode) {
+        return "What would you like to change in your schedule...";
+      } else if (hasExistingBlocks) {
+        return "E.g., Move my deep work blocks to the morning...";
+      } else {
+        return "Enter your schedule requirements...";
+      }
+    } else {
+      return "Add another item...";
+    }
+  };
+
+  // Helper function to get the appropriate button text based on the current state
+  const getButtonText = () => {
+    if (isPreviewMode) {
+      return "Regenerate";
+    } else if (hasExistingBlocks) {
+      return "Update";
+    } else {
+      return "Generate";
+    }
+  };
 
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
@@ -997,18 +1061,14 @@ export const ScheduleGenerationDialog: React.FC<
 
   return (
     <Drawer open={isOpen} onOpenChange={handleClose}>
-      <DrawerContent className="h-[95vh]">
+      <DrawerContent className="h-[95vh] pb-safe">
         <div className="container max-w-4xl mx-auto h-full flex flex-col">
           <div className="px-6">
             <DrawerHeader className="px-0 pt-8 pb-6 border-b">
               <DrawerTitle className="flex items-center gap-3 text-2xl font-semibold">
-                <Sparkles className="h-6 w-6 text-blue-600" />
-                Generate Schedule
+                {getTitle()}
               </DrawerTitle>
-              <DrawerDescription>
-                Let AI help you plan your day. Enter your tasks and requirements
-                below.
-              </DrawerDescription>
+              <DrawerDescription>{getDescription()}</DrawerDescription>
             </DrawerHeader>
           </div>
 
@@ -1025,11 +1085,7 @@ export const ScheduleGenerationDialog: React.FC<
                     value={thought}
                     onChange={(e) => handleChange(e, index)}
                     onKeyDown={(e) => handleKeyDown(e, index)}
-                    placeholder={
-                      index === 0
-                        ? "Enter your schedule requirements..."
-                        : "Add another item..."
-                    }
+                    placeholder={getPlaceholder(index)}
                     className="flex-1 py-2 px-3 bg-zinc-50/50 rounded-md text-base placeholder:text-zinc-400 
                              focus:outline-none focus:ring-1 focus:ring-blue-100 focus:bg-white 
                              border border-zinc-200 hover:border-zinc-300 transition-colors"
@@ -1051,7 +1107,7 @@ export const ScheduleGenerationDialog: React.FC<
                   className="flex-1 bg-blue-600 hover:bg-blue-700"
                   onClick={handleComplete}
                 >
-                  Generate (⌘/Ctrl+Enter)
+                  {getButtonText()} (⌘/Ctrl+Enter)
                 </Button>
               </div>
             </DrawerFooter>

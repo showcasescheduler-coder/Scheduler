@@ -160,6 +160,7 @@ export interface PreviewTask {
 }
 
 export interface PreviewBlock {
+  event: string;
   _id: string;
   name: string;
   startTime: string;

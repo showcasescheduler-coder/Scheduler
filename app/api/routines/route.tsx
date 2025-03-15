@@ -10,7 +10,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log("Received routine data:", body);
 
-    const { name, description, days, block, userId, startTime, endTime } = body;
+    const {
+      name,
+      description,
+      days,
+      block,
+      userId,
+      startTime,
+      endTime,
+      blockType,
+    } = body;
 
     if (!userId) {
       return NextResponse.json(
@@ -27,6 +36,7 @@ export async function POST(request: NextRequest) {
       userId,
       startTime,
       endTime,
+      blockType, // Add the blockType field here
     });
 
     await newRoutine.save();

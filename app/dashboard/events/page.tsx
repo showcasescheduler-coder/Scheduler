@@ -15,6 +15,7 @@ import {
   Video,
   Menu,
   ChevronDown,
+  LinkIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,6 +47,13 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import MobileNav from "@/app/components/MobileNav";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type EventType = "meeting" | "appointment";
 type EventStatus = "upcoming" | "completed" | "cancelled";
@@ -64,6 +72,7 @@ export interface Event {
   days: string[];
   meetingLink: string | null;
   status: string;
+  completed: boolean; // Add this field
 }
 
 interface NewEvent {
@@ -74,6 +83,8 @@ interface NewEvent {
   endTime: string;
   isRecurring: boolean;
   days: string[];
+  meetingLink: string;
+  eventType: "meeting" | "personal" | "health" | "exercise";
 }
 
 type GroupedEvents = {
@@ -81,7 +92,7 @@ type GroupedEvents = {
 };
 
 // Change the StatusFilter type
-type StatusFilter = "upcoming" | "past";
+type StatusFilter = "upcoming" | "past" | "completed";
 type FrequencyFilter = "all" | EventFrequency;
 
 export default function EventsPage() {
@@ -102,6 +113,14 @@ export default function EventsPage() {
     endTime: "",
     isRecurring: false,
     days: [],
+    meetingLink: "",
+    eventType: "meeting",
+  });
+  const [formErrors, setFormErrors] = useState({
+    name: "",
+    date: "",
+    time: "",
+    days: "",
   });
 
   useEffect(() => {
@@ -127,10 +146,38 @@ export default function EventsPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setNewEvent((prev) => ({ ...prev, [name]: value }));
+
+    // Clear error when user types
+    if (formErrors[name as keyof typeof formErrors]) {
+      setFormErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
+  };
+
+  const handleTimeChange = (field: "startTime" | "endTime", value: string) => {
+    setNewEvent((prev) => ({ ...prev, [field]: value }));
+
+    // Clear time errors when either time changes
+    if (formErrors.time) {
+      setFormErrors((prev) => ({
+        ...prev,
+        time: "",
+      }));
+    }
   };
 
   const handleRecurringChange = (value: string) => {
     setNewEvent((prev) => ({ ...prev, isRecurring: value === "recurring" }));
+
+    // Clear days error when switching between recurring/single
+    if (formErrors.days) {
+      setFormErrors((prev) => ({
+        ...prev,
+        days: "",
+      }));
+    }
   };
 
   const handleDayToggle = (day: string) => {
@@ -140,29 +187,95 @@ export default function EventsPage() {
         ? prev.days.filter((d) => d !== day)
         : [...prev.days, day],
     }));
+
+    // Clear days error when selecting days
+    if (formErrors.days) {
+      setFormErrors((prev) => ({
+        ...prev,
+        days: "",
+      }));
+    }
   };
-
   const handleAddEvent = async () => {
-    if (
-      !newEvent.name ||
-      !newEvent.description ||
-      !newEvent.startTime ||
-      !newEvent.endTime
-    ) {
-      toast.error("Please fill in all required fields.");
+    // Reset errors
+    setFormErrors({
+      name: "",
+      date: "",
+      time: "",
+      days: "",
+    });
+
+    // Validation flags
+    let isValid = true;
+    const newErrors = {
+      name: "",
+      date: "",
+      time: "",
+      days: "",
+    };
+
+    // Name is required
+    if (!newEvent.name.trim()) {
+      newErrors.name = "Event name is required";
+      isValid = false;
+    }
+
+    // Single event validations
+    if (!newEvent.isRecurring) {
+      // Date is required and cannot be in the past
+      if (!newEvent.date) {
+        newErrors.date = "Date is required";
+        isValid = false;
+      } else {
+        const selectedDate = new Date(newEvent.date);
+        selectedDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (selectedDate < today) {
+          newErrors.date = "Date cannot be in the past";
+          isValid = false;
+        }
+      }
+    } else {
+      // For recurring events, at least one day must be selected
+      if (newEvent.days.length === 0) {
+        newErrors.days = "Please select at least one day";
+        isValid = false;
+      }
+    }
+
+    // Time validations
+    if (!newEvent.startTime) {
+      newErrors.time = "Start time is required";
+      isValid = false;
+    } else if (!newEvent.endTime) {
+      newErrors.time = "End time is required";
+      isValid = false;
+    } else if (newEvent.startTime >= newEvent.endTime) {
+      newErrors.time = "End time must be after start time";
+      isValid = false;
+    }
+
+    // For single events, check if date+time is in the past
+    if (!newEvent.isRecurring && newEvent.date && newEvent.startTime) {
+      const eventDateTime = new Date(newEvent.date);
+      const [hours, minutes] = newEvent.startTime.split(":").map(Number);
+      eventDateTime.setHours(hours, minutes, 0, 0);
+
+      if (eventDateTime < new Date()) {
+        newErrors.time = "Event time cannot be in the past";
+        isValid = false;
+      }
+    }
+
+    // If validation fails, update errors and return
+    if (!isValid) {
+      setFormErrors(newErrors);
       return;
     }
 
-    if (newEvent.isRecurring && newEvent.days.length === 0) {
-      toast.error("Please select at least one day for recurring events.");
-      return;
-    }
-
-    if (!newEvent.isRecurring && !newEvent.date) {
-      toast.error("Please select a date for single events.");
-      return;
-    }
-
+    // Continue with form submission if validation passes
     try {
       const eventData = {
         name: newEvent.name,
@@ -171,6 +284,8 @@ export default function EventsPage() {
         endTime: newEvent.endTime,
         isRecurring: newEvent.isRecurring,
         status: "upcoming",
+        meetingLink: newEvent.meetingLink || null,
+        eventType: newEvent.eventType,
         ...(newEvent.isRecurring
           ? { days: newEvent.days }
           : { date: newEvent.date }),
@@ -196,6 +311,8 @@ export default function EventsPage() {
         endTime: "",
         isRecurring: false,
         days: [],
+        meetingLink: "",
+        eventType: "meeting",
       });
       toast.success("Event added successfully");
     } catch (error) {
@@ -222,36 +339,101 @@ export default function EventsPage() {
     }
   };
 
+  const handleSelectChange = (field: string) => (value: string) => {
+    setNewEvent((prev) => ({ ...prev, [field]: value }));
+  };
+
   // Modify the filtering logic
   const filteredEvents = events.filter((event) => {
-    const today = new Date();
-    const eventDate = event.isRecurring ? null : new Date(event.date);
+    const now = new Date();
 
-    // First check the frequency filter
+    // First check if the event matches the frequency filter
     const matchesFrequency =
       frequencyFilter === "all" ||
       (frequencyFilter === "recurring"
         ? event.isRecurring
         : !event.isRecurring);
 
-    // Then check the date status
-    const isPast = eventDate ? eventDate < today : false;
+    // If it doesn't match the frequency, filter it out immediately
+    if (!matchesFrequency) return false;
+
+    // Handle completed events tab
+    if (statusFilter === "completed") {
+      return event.completed === true;
+    }
+
+    // For upcoming and past tabs, we only want to show non-completed events
+    if (event.completed) {
+      return false;
+    }
+
+    if (event.isRecurring) {
+      // Recurring events should always show in upcoming tab (unless completed)
+      return statusFilter === "upcoming";
+    }
+
+    // // Handle recurring events
+    // if (event.isRecurring) {
+    //   // For recurring events, we need to check if it occurs today and its time
+    //   const today = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    //   const daysOfWeek = {
+    //     Sunday: 0,
+    //     Monday: 1,
+    //     Tuesday: 2,
+    //     Wednesday: 3,
+    //     Thursday: 4,
+    //     Friday: 5,
+    //     Saturday: 6,
+    //   };
+
+    //   // Check if this recurring event happens today
+    //   const happensTodayIndex = event.days.findIndex(
+    //     (day) => daysOfWeek[day as keyof typeof daysOfWeek] === today
+    //   );
+
+    //   if (happensTodayIndex !== -1) {
+    //     // Event happens today, check if time has passed
+    //     const [eventHours, eventMinutes] = event.endTime.split(":").map(Number);
+    //     const eventEndTimeToday = new Date();
+    //     eventEndTimeToday.setHours(eventHours, eventMinutes, 0, 0);
+
+    //     const isPast = now > eventEndTimeToday;
+    //     return statusFilter === "past" ? isPast : !isPast;
+    //   }
+
+    //   // If event doesn't happen today, it's not "past" for today
+    //   return statusFilter === "past" ? false : true;
+    // }
+
+    // For non-recurring events
+    // Create date objects that include both date and time
+    const eventDate = new Date(event.date);
+    const [eventHours, eventMinutes] = event.endTime.split(":").map(Number);
+    eventDate.setHours(eventHours, eventMinutes, 0, 0);
+
+    // Check if the date+time is in the past
+    const isPast = eventDate < now;
     const matchesStatus = statusFilter === "past" ? isPast : !isPast;
 
-    // Event must match both conditions
-    return matchesStatus && matchesFrequency;
+    return matchesStatus;
   });
-
   // The rest of your groupedEvents logic remains the same
   const groupedEvents = filteredEvents.reduce<GroupedEvents>((acc, event) => {
-    const date = event.isRecurring
-      ? "Recurring"
-      : format(parseISO(event.date), "MMM d, yyyy");
+    let date;
+    if (event.isRecurring) {
+      date = "Recurring";
+    } else if (event.date) {
+      // Check if date exists before trying to format it
+      date = format(parseISO(event.date), "MMM d, yyyy");
+    } else {
+      // Fallback for events missing a date
+      date = "No Date";
+    }
+
     if (!acc[date]) acc[date] = [];
     acc[date].push(event);
     return acc;
   }, {});
-
   if (isLoading)
     return (
       <div className="flex items-center justify-center h-screen">
@@ -315,15 +497,22 @@ export default function EventsPage() {
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="name" className="text-right">
-                      Name
+                      Name <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={newEvent.name}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                    />
+                    <div className="col-span-3">
+                      <Input
+                        id="name"
+                        name="name"
+                        value={newEvent.name}
+                        onChange={handleInputChange}
+                        className={`${formErrors.name ? "border-red-500" : ""}`}
+                      />
+                      {formErrors.name && (
+                        <p className="text-sm text-red-500 mt-1">
+                          {formErrors.name}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="description" className="text-right">
@@ -357,70 +546,142 @@ export default function EventsPage() {
 
                   {newEvent.isRecurring ? (
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label className="text-right">Days</Label>
-                      <div className="col-span-3 flex flex-wrap gap-2">
-                        {[
-                          "Monday",
-                          "Tuesday",
-                          "Wednesday",
-                          "Thursday",
-                          "Friday",
-                          "Saturday",
-                          "Sunday",
-                        ].map((day) => (
-                          <div key={day} className="flex items-center">
-                            <Checkbox
-                              id={day}
-                              checked={newEvent.days.includes(day)}
-                              onCheckedChange={() => handleDayToggle(day)}
-                            />
-                            <Label htmlFor={day} className="ml-2">
-                              {day}
-                            </Label>
-                          </div>
-                        ))}
+                      <Label className="text-right">
+                        Days <span className="text-red-500">*</span>
+                      </Label>
+                      <div className="col-span-3">
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            "Monday",
+                            "Tuesday",
+                            "Wednesday",
+                            "Thursday",
+                            "Friday",
+                            "Saturday",
+                            "Sunday",
+                          ].map((day) => (
+                            <div key={day} className="flex items-center">
+                              <Checkbox
+                                id={day}
+                                checked={newEvent.days.includes(day)}
+                                onCheckedChange={() => handleDayToggle(day)}
+                              />
+                              <Label htmlFor={day} className="ml-2">
+                                {day}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                        {formErrors.days && (
+                          <p className="text-sm text-red-500 mt-1">
+                            {formErrors.days}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="date" className="text-right">
-                        Date
+                        Date <span className="text-red-500">*</span>
                       </Label>
-                      <Input
-                        id="date"
-                        name="date"
-                        type="date"
-                        value={newEvent.date}
-                        onChange={handleInputChange}
-                        className="col-span-3"
-                      />
+                      <div className="col-span-3">
+                        <Input
+                          id="date"
+                          name="date"
+                          type="date"
+                          value={newEvent.date}
+                          onChange={handleInputChange}
+                          className={`${
+                            formErrors.date ? "border-red-500" : ""
+                          }`}
+                        />
+                        {formErrors.date && (
+                          <p className="text-sm text-red-500 mt-1">
+                            {formErrors.date}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
 
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="startTime" className="text-right">
-                      Start Time
+                      Start Time <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      id="startTime"
-                      name="startTime"
-                      type="time"
-                      value={newEvent.startTime}
-                      onChange={handleInputChange}
-                      className="col-span-3"
-                    />
+                    <div className="col-span-3">
+                      <Input
+                        id="startTime"
+                        name="startTime"
+                        type="time"
+                        value={newEvent.startTime}
+                        onChange={(e) =>
+                          handleTimeChange("startTime", e.target.value)
+                        }
+                        className={`${formErrors.time ? "border-red-500" : ""}`}
+                      />
+                    </div>
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="endTime" className="text-right">
-                      End Time
+                      End Time <span className="text-red-500">*</span>
                     </Label>
+                    <div className="col-span-3">
+                      <Input
+                        id="endTime"
+                        name="endTime"
+                        type="time"
+                        value={newEvent.endTime}
+                        onChange={(e) =>
+                          handleTimeChange("endTime", e.target.value)
+                        }
+                        className={`${formErrors.time ? "border-red-500" : ""}`}
+                      />
+                      {formErrors.time && (
+                        <p className="text-sm text-red-500 mt-1">
+                          {formErrors.time}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label className="text-right">Event Type</Label>
+                  <Select
+                    value={newEvent.eventType}
+                    onValueChange={handleSelectChange("eventType")}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select event type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="meeting">
+                        <span style={{ color: "#0284c7" }}>Meeting</span>
+                      </SelectItem>
+                      <SelectItem value="personal">
+                        <span style={{ color: "#c026d3" }}>Personal</span>
+                      </SelectItem>
+                      <SelectItem value="health">
+                        <span style={{ color: "#0d9488" }}>Health</span>
+                      </SelectItem>
+                      <SelectItem value="exercise">
+                        <span style={{ color: "#059669" }}>Exercise</span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="meetingLink" className="text-right">
+                    Meeting Link
+                  </Label>
+                  <div className="col-span-3 relative">
+                    <LinkIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
-                      id="endTime"
-                      name="endTime"
-                      type="time"
-                      value={newEvent.endTime}
+                      id="meetingLink"
+                      name="meetingLink"
+                      placeholder="https://..."
+                      value={newEvent.meetingLink}
                       onChange={handleInputChange}
-                      className="col-span-3"
+                      className="pl-9"
                     />
                   </div>
                 </div>
@@ -456,6 +717,12 @@ export default function EventsPage() {
                   className="flex-1 md:flex-none text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
                 >
                   Past
+                </TabsTrigger>
+                <TabsTrigger
+                  value="completed"
+                  className="flex-1 md:flex-none text-sm px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-md"
+                >
+                  Completed
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -514,6 +781,11 @@ export default function EventsPage() {
                                 {event.isRecurring && (
                                   <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
                                     {event.days?.join(", ")}
+                                  </span>
+                                )}
+                                {!event.isRecurring && event.completed && (
+                                  <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                    Completed
                                   </span>
                                 )}
                               </div>

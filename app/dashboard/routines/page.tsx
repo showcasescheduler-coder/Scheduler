@@ -55,6 +55,14 @@ export interface Routine {
   block: string;
   startTime: string;
   endTime: string;
+  blockType:
+    | "deep-work"
+    | "break"
+    | "meeting"
+    | "health"
+    | "exercise"
+    | "admin"
+    | "personal";
 }
 export interface RoutineTask extends Task {
   routineId: string;
@@ -82,6 +90,14 @@ interface NewRoutine {
   days: string[];
   startTime: string;
   endTime: string;
+  blockType:
+    | "deep-work"
+    | "break"
+    | "meeting"
+    | "health"
+    | "exercise"
+    | "admin"
+    | "personal";
 }
 
 export default function RoutinesPage() {
@@ -96,8 +112,14 @@ export default function RoutinesPage() {
     days: [],
     startTime: "",
     endTime: "",
+    blockType: "personal", // Default value
   });
   const [activeTab, setActiveTab] = useState("all");
+  const [formErrors, setFormErrors] = useState({
+    name: "",
+    time: "",
+    days: "",
+  });
 
   useEffect(() => {
     const fetchRoutines = async () => {
@@ -121,6 +143,22 @@ export default function RoutinesPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setNewRoutine((prev) => ({ ...prev, [name]: value }));
+
+    // Clear errors when field changes
+    if (formErrors[name as keyof typeof formErrors]) {
+      setFormErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
+
+    // Clear time error when either time input changes
+    if ((name === "startTime" || name === "endTime") && formErrors.time) {
+      setFormErrors((prev) => ({
+        ...prev,
+        time: "",
+      }));
+    }
   };
 
   const handleDayToggle = (day: string) => {
@@ -130,6 +168,14 @@ export default function RoutinesPage() {
         ? prev.days.filter((d) => d !== day)
         : [...prev.days, day],
     }));
+
+    // Clear days error when toggling days
+    if (formErrors.days) {
+      setFormErrors((prev) => ({
+        ...prev,
+        days: "",
+      }));
+    }
   };
 
   const getFilteredRoutines = () => {
@@ -148,6 +194,53 @@ export default function RoutinesPage() {
 
   const handleAddRoutine = async () => {
     if (!userId) return;
+
+    // Reset form errors
+    setFormErrors({
+      name: "",
+      time: "",
+      days: "",
+    });
+
+    // Validate form
+    let isValid = true;
+    const newErrors = {
+      name: "",
+      time: "",
+      days: "",
+    };
+
+    // Name is required
+    if (!newRoutine.name.trim()) {
+      newErrors.name = "Routine name is required";
+      isValid = false;
+    }
+
+    // Start time and end time validation
+    if (!newRoutine.startTime) {
+      newErrors.time = "Start time is required";
+      isValid = false;
+    } else if (!newRoutine.endTime) {
+      newErrors.time = "End time is required";
+      isValid = false;
+    } else if (newRoutine.startTime >= newRoutine.endTime) {
+      newErrors.time = "End time must be after start time";
+      isValid = false;
+    }
+
+    // At least one day must be selected
+    if (newRoutine.days.length === 0) {
+      newErrors.days = "Please select at least one day";
+      isValid = false;
+    }
+
+    // If validation fails, update errors and return
+    if (!isValid) {
+      setFormErrors(newErrors);
+      return;
+    }
+
+    // Continue with creating routine if validation passes
     try {
       const response = await fetch("/api/routines", {
         method: "POST",
@@ -166,6 +259,7 @@ export default function RoutinesPage() {
         days: [],
         startTime: "",
         endTime: "",
+        blockType: "personal", // Default value
       });
       toast.success("Routine created successfully");
     } catch (error) {
@@ -259,15 +353,24 @@ export default function RoutinesPage() {
                   <div className="grid gap-4 py-4">
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="name" className="text-right">
-                        Name
+                        Name <span className="text-red-500">*</span>
                       </Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        value={newRoutine.name}
-                        onChange={handleInputChange}
-                        className="col-span-3"
-                      />
+                      <div className="col-span-3">
+                        <Input
+                          id="name"
+                          name="name"
+                          value={newRoutine.name}
+                          onChange={handleInputChange}
+                          className={`${
+                            formErrors.name ? "border-red-500" : ""
+                          }`}
+                        />
+                        {formErrors.name && (
+                          <p className="text-sm text-red-500 mt-1">
+                            {formErrors.name}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="description" className="text-right">
@@ -283,53 +386,126 @@ export default function RoutinesPage() {
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="startTime" className="text-right">
-                        Start Time
+                        Start Time <span className="text-red-500">*</span>
                       </Label>
-                      <Input
-                        id="startTime"
-                        name="startTime"
-                        type="time"
-                        value={newRoutine.startTime}
-                        onChange={handleInputChange}
-                        className="col-span-3"
-                      />
+                      <div className="col-span-3">
+                        <Input
+                          id="startTime"
+                          name="startTime"
+                          type="time"
+                          value={newRoutine.startTime}
+                          onChange={handleInputChange}
+                          className={`${
+                            formErrors.time ? "border-red-500" : ""
+                          }`}
+                        />
+                      </div>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="endTime" className="text-right">
-                        End Time
+                        End Time <span className="text-red-500">*</span>
                       </Label>
-                      <Input
-                        id="endTime"
-                        name="endTime"
-                        type="time"
-                        value={newRoutine.endTime}
-                        onChange={handleInputChange}
-                        className="col-span-3"
-                      />
+                      <div className="col-span-3">
+                        <Input
+                          id="endTime"
+                          name="endTime"
+                          type="time"
+                          value={newRoutine.endTime}
+                          onChange={handleInputChange}
+                          className={`${
+                            formErrors.time ? "border-red-500" : ""
+                          }`}
+                        />
+                        {formErrors.time && (
+                          <p className="text-sm text-red-500 mt-1">
+                            {formErrors.time}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
-                      <Label className="text-right">Days</Label>
-                      <div className="col-span-3 flex flex-wrap gap-2">
-                        {[
-                          "Monday",
-                          "Tuesday",
-                          "Wednesday",
-                          "Thursday",
-                          "Friday",
-                          "Saturday",
-                          "Sunday",
-                        ].map((day) => (
-                          <div key={day} className="flex items-center">
-                            <Checkbox
-                              id={day}
-                              checked={newRoutine.days.includes(day)}
-                              onCheckedChange={() => handleDayToggle(day)}
-                            />
-                            <Label htmlFor={day} className="ml-2">
-                              {day}
-                            </Label>
-                          </div>
-                        ))}
+                      <Label className="text-right">
+                        Days <span className="text-red-500">*</span>
+                      </Label>
+                      <div className="col-span-3">
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            "Monday",
+                            "Tuesday",
+                            "Wednesday",
+                            "Thursday",
+                            "Friday",
+                            "Saturday",
+                            "Sunday",
+                          ].map((day) => (
+                            <div key={day} className="flex items-center">
+                              <Checkbox
+                                id={day}
+                                checked={newRoutine.days.includes(day)}
+                                onCheckedChange={() => handleDayToggle(day)}
+                              />
+                              <Label htmlFor={day} className="ml-2">
+                                {day}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                        {formErrors.days && (
+                          <p className="text-sm text-red-500 mt-1">
+                            {formErrors.days}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="blockType" className="text-right">
+                        Block Type
+                      </Label>
+                      <div className="col-span-3">
+                        <select
+                          id="blockType"
+                          name="blockType"
+                          value={newRoutine.blockType}
+                          onChange={(e) =>
+                            setNewRoutine((prev) => ({
+                              ...prev,
+                              blockType: e.target.value as
+                                | "deep-work"
+                                | "break"
+                                | "meeting"
+                                | "health"
+                                | "exercise"
+                                | "admin"
+                                | "personal",
+                            }))
+                          }
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <option
+                            value="deep-work"
+                            style={{ color: "#9333ea" }}
+                          >
+                            Deep Work
+                          </option>
+                          <option value="break" style={{ color: "#16a34a" }}>
+                            Break
+                          </option>
+                          <option value="meeting" style={{ color: "#0284c7" }}>
+                            Meeting
+                          </option>
+                          <option value="health" style={{ color: "#0d9488" }}>
+                            Health
+                          </option>
+                          <option value="exercise" style={{ color: "#059669" }}>
+                            Exercise
+                          </option>
+                          <option value="admin" style={{ color: "#4b5563" }}>
+                            Admin
+                          </option>
+                          <option value="personal" style={{ color: "#c026d3" }}>
+                            Personal
+                          </option>
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -347,7 +523,7 @@ export default function RoutinesPage() {
           </div>
 
           {/* Tabs */}
-          <div className="mb-6">
+          {/* <div className="mb-6">
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}
@@ -376,7 +552,7 @@ export default function RoutinesPage() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-          </div>
+          </div> */}
 
           {/* Routines Grid */}
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -390,9 +566,9 @@ export default function RoutinesPage() {
                     {routine.name}
                   </CardTitle>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    {/* <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                       <PlayCircle className="h-5 w-5 text-blue-600" />
-                    </Button>
+                    </Button> */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -434,6 +610,33 @@ export default function RoutinesPage() {
                       <Clock className="h-4 w-4" />
                       {routine.startTime} - {routine.endTime}
                     </div>
+                  </div>
+                  {/* Add the block type display right here, after the time display */}
+                  <div className="flex items-center gap-2 mt-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{
+                        backgroundColor:
+                          routine.blockType === "deep-work"
+                            ? "#9333ea" // purple-600
+                            : routine.blockType === "break"
+                            ? "#16a34a" // green-600
+                            : routine.blockType === "meeting"
+                            ? "#0284c7" // sky-600
+                            : routine.blockType === "health"
+                            ? "#0d9488" // teal-600
+                            : routine.blockType === "exercise"
+                            ? "#059669" // emerald-600
+                            : routine.blockType === "admin"
+                            ? "#4b5563" // gray-600
+                            : routine.blockType === "personal"
+                            ? "#c026d3" // fuchsia-600
+                            : "#9333ea", // Default (purple-600)
+                      }}
+                    ></div>
+                    <span className="text-xs text-gray-500 capitalize">
+                      {(routine.blockType || "deep-work").replace("-", " ")}
+                    </span>
                   </div>
 
                   <div className="flex-1 overflow-y-auto mt-4">

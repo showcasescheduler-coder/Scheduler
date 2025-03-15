@@ -106,6 +106,11 @@ export default function Component() {
     // Set the new prompt text (this indicates a new schedule should be generated).
     setPromptText(cleanThoughts);
     // (Optional) If you use a flag like generationStartedRef in a shared context, you might also reset it here.
+    localStorage.setItem(
+      "scheduleDayType",
+      selectedDate === today ? "today" : "tomorrow"
+    );
+
     router.push("/dashboard");
   };
 

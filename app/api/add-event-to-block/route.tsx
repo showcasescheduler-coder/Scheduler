@@ -1,65 +1,3 @@
-// import { NextResponse } from "next/server";
-// import dbConnect from "@/lib/mongo";
-// import Block from "@/models/Block";
-// import Event from "@/models/Event";
-// import Day from "@/models/Day";
-
-// export async function POST(request: Request) {
-//   try {
-//     await dbConnect();
-
-//     const body = await request.json();
-//     const { eventId, dayId, date } = body;
-
-//     if (!eventId || !dayId || !date) {
-//       return NextResponse.json(
-//         { success: false, error: "Missing required fields" },
-//         { status: 400 }
-//       );
-//     }
-
-//     // Fetch the event
-//     const event = await Event.findById(eventId);
-//     if (!event) {
-//       return NextResponse.json(
-//         { success: false, error: "Event not found" },
-//         { status: 404 }
-//       );
-//     }
-
-//     // Create the block
-//     const block = new Block({
-//       dayId,
-//       name: event.name,
-//       startTime: event.startTime,
-//       endTime: event.endTime,
-//       status: "pending",
-//       event: eventId,
-//     });
-//     await block.save();
-
-//     // Add the block to the day
-//     await Day.findByIdAndUpdate(dayId, { $push: { blocks: block._id } });
-
-//     // Update the event with the block ID
-//     await Event.findByIdAndUpdate(eventId, { block: block._id });
-
-//     return NextResponse.json(
-//       { success: true, block: block, event: event },
-//       { status: 201 }
-//     );
-//   } catch (error) {
-//     console.error("Error creating block for event:", error);
-//     return NextResponse.json(
-//       {
-//         success: false,
-//         error: "Error creating block for event",
-//         details: error instanceof Error ? error.message : String(error),
-//       },
-//       { status: 500 }
-//     );
-//   }
-// }
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/mongo";
 import Block from "@/models/Block";
@@ -71,6 +9,8 @@ interface AddEventToBlockRequestBody {
   eventId: string;
   dayId: string;
   date: string;
+  isRecurringInstance: boolean;
+  meetingLink?: string;
 }
 
 export async function POST(request: Request) {
@@ -78,7 +18,7 @@ export async function POST(request: Request) {
 
   try {
     const body: AddEventToBlockRequestBody = await request.json();
-    const { eventId, dayId, date } = body;
+    const { eventId, dayId, date, isRecurringInstance } = body;
 
     if (!eventId || !dayId || !date) {
       return NextResponse.json(
@@ -96,14 +36,34 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log("this is the event.", event);
+
+    // Format the date for display (MM/DD/YY format)
+    const formattedDate = new Date(date).toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "2-digit",
+    });
+
+    // Create a name for the block based on whether it's a recurring instance
+    let blockName = event.name;
+    if (isRecurringInstance) {
+      blockName = `${event.name} • ${formattedDate}`;
+    }
+
     // Create the new block for the event
     const block = new Block({
       dayId,
-      name: event.name,
+      name: blockName,
+      description: event.description,
       startTime: event.startTime,
       endTime: event.endTime,
       status: "pending",
       event: eventId,
+      blockType: event.eventType || "meeting", // Use eventType from event or default to meeting
+      meetingLink: body.meetingLink || event.meetingLink,
+      isRecurringInstance: isRecurringInstance || false,
+      originalEventName: event.name, // Store original name for reference
     });
     await block.save();
 
@@ -129,8 +89,10 @@ export async function POST(request: Request) {
     // Update the Day document to include the new block
     await Day.findByIdAndUpdate(dayId, { $push: { blocks: block._id } });
 
-    // Optionally, update the Event with the block reference
-    await Event.findByIdAndUpdate(eventId, { block: block._id });
+    // Only update the Event with the block reference if it's not a recurring instance
+    if (!isRecurringInstance) {
+      await Event.findByIdAndUpdate(eventId, { block: block._id });
+    }
 
     return NextResponse.json(
       { success: true, block, tasks: createdTasks },
