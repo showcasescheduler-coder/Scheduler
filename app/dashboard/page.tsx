@@ -155,6 +155,26 @@ interface ScheduleTemplate {
   shortcut?: string;
 }
 
+type SchedulePayloadType = {
+  type: string;
+  dayId: any; // Consider making this more specific like string
+  userInput: string;
+  startTime: string;
+  endTime: string;
+  currentSchedule: any; // Consider making this more specific
+  eventBlocks: {
+    id: string;
+    name: string;
+    description: string;
+    startTime: string;
+    endTime: string;
+    eventType: string;
+  }[];
+  routineBlocks: any[]; // Replace with a more specific type
+  tasks: any[]; // Replace with a more specific type
+  projects: any[]; // Replace with a more specific type
+};
+
 // Define interface for streaming schedule block
 interface StreamingBlock {
   _id?: string; // now optional
@@ -256,7 +276,9 @@ export default function Component() {
   );
   const [rationaleText, setRationaleText] = useState("");
   const [sortedPreviewBlocks, setSortedPreviewBlocks] = useState<Block[]>([]);
-  const [scheduleInputData, setScheduleInputData] = useState(null);
+  const [scheduleInputData, setScheduleInputData] =
+    useState<SchedulePayloadType | null>(null);
+
   const [scheduleOutputData, setScheduleOutputData] = useState(null);
   const [showTestingPanel, setShowTestingPanel] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);

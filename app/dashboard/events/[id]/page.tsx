@@ -87,9 +87,14 @@ interface EventData {
   status: string;
   completed: boolean;
   tasks: Task[];
-  eventType?: "meeting" | "personal" | "health" | "exercise"; //
+  eventType?: "meeting" | "personal" | "health" | "exercise";
+  instanceHistory?: Array<{
+    date: string;
+    blockId: string;
+    status: "pending" | "complete" | "incomplete" | "missed";
+    completedAt?: string;
+  }>;
 }
-
 interface EventDetailsProps {
   params: { id: string };
 }
@@ -117,7 +122,7 @@ export default function EventDetails({ params: { id } }: EventDetailsProps) {
     meetingLink: "",
   });
 
-  const checkIfEventIsScheduled = async (eventId) => {
+  const checkIfEventIsScheduled = async (eventId: string) => {
     try {
       const response = await fetch(`/api/check-event-scheduled`, {
         method: "POST",
@@ -176,7 +181,7 @@ export default function EventDetails({ params: { id } }: EventDetailsProps) {
     fetchEvent();
   }, [id]);
 
-  const isEventInPast = (eventDate) => {
+  const isEventInPast = (eventDate: string | number | Date) => {
     if (!eventDate) return false;
 
     const today = new Date();

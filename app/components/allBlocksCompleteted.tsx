@@ -496,8 +496,9 @@ const AllBlocksCompleted: React.FC<AllBlocksCompletedProps> = ({
             All Blocks Completed!
           </h2>
           <p className="text-gray-600 leading-relaxed text-lg font-normal">
-            Great work! You've completed all your scheduled blocks for today.
-            Would you like to end your day or add more blocks?
+            {
+              "Great work! You've completed all your scheduled blocks for today. Would you like to end your day or add more blocks?"
+            }
           </p>
         </div>
 

@@ -3,7 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ClipboardCopy, ChevronDown, ChevronUp } from "lucide-react";
 
-const DataDisplay = ({ title, data }) => {
+// Define an interface for the component props
+interface DataDisplayProps {
+  title: string;
+  data: unknown; // Use 'unknown' instead of 'any' for better type safety
+}
+
+const DataDisplay: React.FC<DataDisplayProps> = ({ title, data }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const jsonString = JSON.stringify(data, null, 2);
 

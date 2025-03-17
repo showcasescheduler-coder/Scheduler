@@ -24,49 +24,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import CompletedBlock from "./CompletedBlocks";
-
-// Types remain the same
-export interface Task {
-  _id: string;
-  blockId: string;
-  dayId: string;
-  name: string;
-  description: string;
-  duration: string;
-  priority: "High" | "Medium" | "Low";
-  status: "pending" | "in_progress" | "completed";
-  type: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-  isRoutineTask: boolean;
-  completed: boolean;
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-}
-
-export interface Block {
-  _id: string;
-  dayId: string;
-  name: string;
-  description: string;
-  startTime: string;
-  endTime: string;
-  status: "pending" | "complete" | "incomplete";
-  blockType: "deep-work" | "planning" | "break" | "admin" | "collaboration";
-  event: string | null;
-  tasks: Task[];
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-  isStandaloneBlock?: boolean;
-  meetingLink: string;
-}
+import { Block, Task } from "@/app/context/models";
 
 interface CompletedDayViewProps {
   completedBlocks: Block[];
   taskCompletionRate: number;
   blockCompletionRate: number;
   onReactivateDay: () => void;
-  onReactivateBlock: () => void;
+  onReactivateBlock: (blockId: string) => void; // Updated to accept blockId parameter
 }
 
 const CompletedDayView: React.FC<CompletedDayViewProps> = ({
@@ -118,8 +83,9 @@ const CompletedDayView: React.FC<CompletedDayViewProps> = ({
                     Day Complete
                   </h1>
                   <p className="text-sm text-gray-600">
-                    Great job! You've finished your scheduled activities for
-                    today.
+                    {
+                      "Great job! You've finished your scheduled activities for today."
+                    }
                   </p>
                 </div>
                 <Button

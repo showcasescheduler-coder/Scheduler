@@ -8,7 +8,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-const CollapsibleRationale = ({ rationale }) => {
+interface CollapsibleRationaleProps {
+  rationale: string;
+}
+
+const CollapsibleRationale: React.FC<CollapsibleRationaleProps> = ({
+  rationale,
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Get first 100 characters for preview (about 2 lines)

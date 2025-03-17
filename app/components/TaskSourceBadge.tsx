@@ -6,8 +6,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Task } from "@/app/context/models"; // Adjust import path as needed
 
-const TaskSourceBadge = ({ task }) => {
+interface TaskSourceBadgeProps {
+  task: Task;
+}
+
+const TaskSourceBadge: React.FC<TaskSourceBadgeProps> = ({ task }) => {
   // Project Task
   if (task.projectId) {
     return (

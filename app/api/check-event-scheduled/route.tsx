@@ -53,7 +53,10 @@ export async function POST(request: NextRequest) {
     // Find which day the block belongs to
     const block = blocks[0]; // Use the first matching block
     const day = days.find((day) =>
-      day.blocks.some((blockId) => blockId.toString() === block._id.toString())
+      day.blocks.some(
+        (blockId: { toString: () => any }) =>
+          blockId.toString() === block._id.toString()
+      )
     );
 
     return NextResponse.json({

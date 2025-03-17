@@ -47,7 +47,7 @@ interface EventData {
   description: string;
   startTime: string;
   endTime: string;
-  meetingLink?: string;
+  meetingLink?: string | null; // Update this to accept null
   eventType?: string;
   isRecurring: boolean;
 }

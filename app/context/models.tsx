@@ -38,6 +38,7 @@ export interface Event {
   days: string[];
   meetingLink: string | null;
   tasks: EventTask[];
+  eventType: string;
 }
 
 export interface Project {
@@ -65,6 +66,7 @@ export interface Routine {
   block: string;
   startTime: string;
   endTime: string;
+  blockType: string;
 }
 
 // New UserData interface
@@ -99,6 +101,8 @@ export interface Block {
   isStandaloneBlock?: boolean;
   meetingLink: string;
   routineId: string;
+  eventId: string;
+  _eventData: string;
 }
 
 export interface Day {
@@ -169,6 +173,7 @@ export interface PreviewBlock {
   isEvent: boolean;
   isRoutine: boolean;
   isStandaloneBlock: boolean;
+  eventId: string | null; // Add this line
   blockType:
     | "deep-work"
     | "break"

@@ -145,7 +145,7 @@ export function TaskCard({
                 checked={task.completed}
                 onCheckedChange={(checked) => {
                   if (checked === task.completed) return;
-                  onTaskCompletion(task._id, Boolean(checked), block.event);
+                  onTaskCompletion(task._id, Boolean(checked));
                 }}
                 className="flex-shrink-0 mt-0.5"
               />
