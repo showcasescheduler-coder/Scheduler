@@ -14,7 +14,7 @@ interface TaskSourceBadgeProps {
 
 const TaskSourceBadge: React.FC<TaskSourceBadgeProps> = ({ task }) => {
   // Project Task
-  if (task.projectId) {
+  if (task.projectId || task.project) {
     return (
       <TooltipProvider>
         <Tooltip>

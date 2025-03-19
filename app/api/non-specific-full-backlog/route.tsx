@@ -254,6 +254,8 @@ CRITICAL RULES:
      * Place cognitively demanding tasks earlier in the day when possible.
      * Gradually decrease task intensity as the day progresses.
      * Limit deep work sessions to 2-3 per day at appropriate durations.
+     * Unless explicitly requested otherwise, schedule cognitively demanding work before 7:00 PM.
+     * Reserve evening hours (after 7:00 PM) for lighter activities (admin, personal, wind-down).
    
    - Strategic Breaks:
      * Insert short breaks after focused work periods.

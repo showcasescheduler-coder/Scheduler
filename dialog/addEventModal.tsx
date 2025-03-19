@@ -422,31 +422,90 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
     }
   };
 
-  // Check if an event is already scheduled for today
   const isEventScheduledForToday = (event: Event) => {
-    if (!event.isRecurring) {
-      // For non-recurring events, check if it has a block and that block exists in the day's blocks
-      if (!event.block) return false;
+    // For preview mode, get the schedule from localStorage
+    if (isPreviewMode) {
+      try {
+        const previewScheduleFromStorage = JSON.parse(
+          localStorage.getItem("schedule") ||
+            JSON.stringify({
+              currentTime: new Date().toLocaleTimeString(),
+              scheduleRationale: "",
+              userStartTime: "",
+              userEndTime: "",
+              blocks: [],
+            })
+        );
 
-      // Check if the block still exists in the current day's blocks
-      const blockExists = isPreviewMode
-        ? (previewSchedule?.blocks || []).some(
-            (block) => block._id === event.block
-          )
-        : day.blocks.some((block) => block._id === event.block);
+        if (!event.isRecurring) {
+          // For regular events, check if this event already has a block in the preview schedule
+          const blockExists = previewScheduleFromStorage.blocks.some(
+            (block: any) => block.event === event._id
+          );
 
-      return blockExists;
+          return blockExists;
+        } else {
+          // For recurring events, check if there's already a block for this recurring event
+          const hasBlockForRecurringEvent =
+            previewScheduleFromStorage.blocks.some(
+              (block: any) =>
+                block.event === event._id && block.isRecurringInstance === true
+            );
+
+          return hasBlockForRecurringEvent;
+        }
+      } catch (error) {
+        console.error("Error checking event in preview schedule:", error);
+        return false;
+      }
+    } else {
+      // Original non-preview mode logic
+      if (!event.isRecurring) {
+        // For non-recurring events, check if it has a block and that block exists in the day's blocks
+        if (!event.block) return false;
+
+        // Check if the block still exists in the current day's blocks
+        const blockExists = day.blocks.some(
+          (block) => block._id === event.block
+        );
+
+        return blockExists;
+      }
+
+      // For recurring events, check if there's a block with this event's ID in the current day
+      const hasBlockForRecurringEvent = day.blocks.some(
+        (block) => block.event === event._id
+      );
+
+      return hasBlockForRecurringEvent;
     }
-
-    // For recurring events, check if there's a block with this event's ID in the current day
-    const hasBlockForRecurringEvent = isPreviewMode
-      ? (previewSchedule?.blocks || []).some(
-          (block) => block.event === event._id
-        )
-      : day.blocks.some((block) => block.event === event._id);
-
-    return hasBlockForRecurringEvent;
   };
+
+  // // Check if an event is already scheduled for today
+  // const isEventScheduledForToday = (event: Event) => {
+  //   if (!event.isRecurring) {
+  //     // For non-recurring events, check if it has a block and that block exists in the day's blocks
+  //     if (!event.block) return false;
+
+  //     // Check if the block still exists in the current day's blocks
+  //     const blockExists = isPreviewMode
+  //       ? (previewSchedule?.blocks || []).some(
+  //           (block) => block._id === event.block
+  //         )
+  //       : day.blocks.some((block) => block._id === event.block);
+
+  //     return blockExists;
+  //   }
+
+  //   // For recurring events, check if there's a block with this event's ID in the current day
+  //   const hasBlockForRecurringEvent = isPreviewMode
+  //     ? (previewSchedule?.blocks || []).some(
+  //         (block) => block.event === event._id
+  //       )
+  //     : day.blocks.some((block) => block.event === event._id);
+
+  //   return hasBlockForRecurringEvent;
+  // };
 
   const handleSelectChange = (field: string) => (value: string) => {
     setNewEvent((prev) => ({ ...prev, [field]: value }));

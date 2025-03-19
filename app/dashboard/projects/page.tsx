@@ -92,6 +92,7 @@ export default function ProjectsPage() {
   const [formErrors, setFormErrors] = useState({
     name: "",
     deadline: "",
+    description: "", // Add description to track its error state
   });
 
   // DnDKit sensors
@@ -145,6 +146,7 @@ export default function ProjectsPage() {
     setFormErrors({
       name: "",
       deadline: "",
+      description: "", // Clear description errors too
     });
 
     // Validate name
@@ -152,10 +154,17 @@ export default function ProjectsPage() {
     const newErrors = {
       name: "",
       deadline: "",
+      description: "", // Include description in errors object
     };
 
     if (!newProject.name.trim()) {
       newErrors.name = "Project name is required";
+      isValid = false;
+    }
+
+    // Add description validation
+    if (!newProject.description.trim()) {
+      newErrors.description = "Project description is required";
       isValid = false;
     }
 
@@ -370,16 +379,25 @@ export default function ProjectsPage() {
                         htmlFor="description"
                         className="md:text-right text-gray-600 pt-0 md:pt-2"
                       >
-                        Description
+                        Description <span className="text-red-500">*</span>
                       </Label>
-                      <Textarea
-                        id="description"
-                        name="description"
-                        value={newProject.description}
-                        onChange={handleInputChange}
-                        className="md:col-span-3 border-gray-200 focus:ring-blue-600 focus:border-blue-600 min-h-[80px] md:min-h-[100px]"
-                        placeholder="Enter project description..."
-                      />
+                      <div className="md:col-span-3">
+                        <Textarea
+                          id="description"
+                          name="description"
+                          value={newProject.description}
+                          onChange={handleInputChange}
+                          className={`border-gray-200 focus:ring-blue-600 focus:border-blue-600 min-h-[80px] md:min-h-[100px] ${
+                            formErrors.description ? "border-red-500" : ""
+                          }`}
+                          placeholder="Enter project description..."
+                        />
+                        {formErrors.description && (
+                          <p className="mt-1 text-sm text-red-500">
+                            {formErrors.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-4 items-start md:items-center gap-2 md:gap-4">
                       <Label

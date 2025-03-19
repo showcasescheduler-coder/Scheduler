@@ -84,8 +84,6 @@ export function PreviewTimeBlock({
   const [isLoadingEvent, setIsLoadingEvent] = useState<boolean>(false);
   const isEventBlock = !!block.event || !!block.eventId; // Check both properties
 
-  console.log("is this and event", isEventBlock, eventData);
-
   // Add the useEffect to fetch event data
   useEffect(() => {
     const fetchEventData = async () => {

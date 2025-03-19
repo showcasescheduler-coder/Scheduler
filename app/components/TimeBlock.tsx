@@ -105,17 +105,17 @@ export function TimeBlock({
     blockRef.current = block;
   }, [block]);
 
-  useEffect(() => {
-    if (isEventBlock) {
-      console.log("Event block detected:", {
-        blockId: block._id,
-        blockName: block.name,
-        eventId: block.event,
-        eventData,
-        isRecurring: eventData?.isRecurring,
-      });
-    }
-  }, [block, eventData, isEventBlock]);
+  // useEffect(() => {
+  //   if (isEventBlock) {
+  //     console.log("Event block detected:", {
+  //       blockId: block._id,
+  //       blockName: block.name,
+  //       eventId: block.event,
+  //       eventData,
+  //       isRecurring: eventData?.isRecurring,
+  //     });
+  //   }
+  // }, [block, eventData, isEventBlock]);
 
   const { setNodeRef } = useDroppable({
     id: block._id,
@@ -201,6 +201,10 @@ export function TimeBlock({
       onEditBlock(block);
     }
   };
+
+  // console.log("This is the block meeting", block.meetingLink);
+  // console.log("this is the meetingLink for tomorow", eventData?.meetingLink);
+  // console.log("This is the event data", eventData);
 
   return (
     <Card ref={setNodeRef} className="border-gray-200 shadow-sm">

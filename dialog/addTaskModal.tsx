@@ -391,8 +391,44 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   const isTaskAssigned = (task: Task) => {
     if (isPreviewMode) {
-      // Preview mode logic remains the same
-      // ...
+      try {
+        // Get current preview schedule from localStorage
+        const previewSchedule = JSON.parse(
+          localStorage.getItem("schedule") ||
+            JSON.stringify({
+              currentTime: new Date().toLocaleTimeString(),
+              scheduleRationale: "",
+              userStartTime: "",
+              userEndTime: "",
+              blocks: [],
+            })
+        );
+
+        // Check if task is assigned in preview schedule
+        const isAssignedInPreview = previewSchedule.blocks.some((block: any) =>
+          block.tasks?.some((t: any) => t._id === task._id)
+        );
+
+        // Now also check if it's assigned in the alternate day
+        if (isTomorrow && todaySchedule) {
+          // If we're in tomorrow's preview, check today's schedule
+          const isAssignedToday = todaySchedule.blocks.some((block: any) =>
+            block.tasks?.some((t: any) => t._id === task._id)
+          );
+          return isAssignedInPreview || isAssignedToday;
+        } else if (!isTomorrow && tomorrowSchedule) {
+          // If we're in today's preview, check tomorrow's schedule
+          const isAssignedTomorrow = tomorrowSchedule.blocks.some(
+            (block: any) => block.tasks?.some((t: any) => t._id === task._id)
+          );
+          return isAssignedInPreview || isAssignedTomorrow;
+        }
+
+        return isAssignedInPreview;
+      } catch (error) {
+        console.error("Error checking task assignment in preview mode:", error);
+        return false;
+      }
     } else {
       // First check if the task has a block assigned
       if (!task.block) return false;

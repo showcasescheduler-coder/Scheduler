@@ -645,11 +645,7 @@ export default function RoutinesPage() {
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm font-medium">Tasks</span>
                           <span className="text-xs text-gray-500">
-                            {
-                              routine.tasks.filter((task) => task.completed)
-                                .length
-                            }
-                            /{routine.tasks.length} completed
+                            {routine.tasks.length} tasks
                           </span>
                         </div>
                         <div className="space-y-2">

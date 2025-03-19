@@ -55,14 +55,27 @@ export async function POST(request: NextRequest) {
         status: "pending",
         blockType: aiBlock.blockType,
         description: aiBlock.description,
+        meetingLink: aiBlock.meetingLink, // ADD THIS LINE
       });
 
-      if (aiBlock.isEvent && aiBlock.eventId) {
+      // if (aiBlock.isEvent && aiBlock.eventId) {
+      //   // Update the associated event with the new block ID
+      //   await Event.findByIdAndUpdate(aiBlock.eventId, {
+      //     block: block._id,
+      //   }).session(session);
+      //   block.event = aiBlock.eventId;
+      // }
+      if (aiBlock.eventId) {
         // Update the associated event with the new block ID
-        await Event.findByIdAndUpdate(aiBlock.eventId, {
-          block: block._id,
-        }).session(session);
-        block.event = aiBlock.eventId;
+        const event = await Event.findById(aiBlock.eventId).session(session);
+        if (event) {
+          block.event = aiBlock.eventId;
+          // If the event has a meeting link but the block doesn't, use the event's meeting link
+          if (event.meetingLink && !block.meetingLink) {
+            block.meetingLink = event.meetingLink;
+          }
+          await event.updateOne({ block: block._id }).session(session);
+        }
       }
 
       if (aiBlock.isRoutine && aiBlock.routineId) {

@@ -2581,6 +2581,8 @@ export default function Component() {
     }
   };
 
+  console.log("This is the day", day);
+
   return (
     <div className="flex h-screen bg-white font-sans text-gray-900">
       {/* Desktop Sidebar */}
