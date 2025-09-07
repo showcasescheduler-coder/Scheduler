@@ -12,6 +12,7 @@ import {
   X,
   BookOpen,
   Building,
+  Eye,
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export default function Dashboard() {
   const [dataLoading, setDataLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedModel, setSelectedModel] = useState("claude-3-7-sonnet-20250219");
+  const [hasExistingSchedule, setHasExistingSchedule] = useState(false);
 
   const router = useRouter();
 
@@ -83,6 +85,16 @@ export default function Dashboard() {
 
     fetchData();
   }, []);
+
+  // Check for existing schedule when site selection changes
+  useEffect(() => {
+    if (selectedSite && typeof window !== 'undefined') {
+      const existingSchedule = localStorage.getItem(`schedule_${selectedSite}`);
+      setHasExistingSchedule(!!existingSchedule);
+    } else {
+      setHasExistingSchedule(false);
+    }
+  }, [selectedSite]);
 
   // const sites = [
   //   { id: "site1", name: "Downtown Cinema" },
@@ -180,6 +192,17 @@ export default function Dashboard() {
     if (!siteData) {
       toast.error("Please select a site");
       return;
+    }
+
+    // Check if there's already a saved schedule for this site
+    const existingSchedule = localStorage.getItem(`schedule_${selectedSite}`);
+    if (existingSchedule) {
+      const confirmGenerate = confirm("You already have a saved schedule for this site. Generating a new one will replace it. Continue?");
+      if (!confirmGenerate) {
+        // Just navigate to the existing schedule
+        router.push(`/dashboard/schedule-chat?site=${selectedSite}&name=${encodeURIComponent(siteData.name)}`);
+        return;
+      }
     }
 
     // Set loading state
@@ -574,7 +597,7 @@ export default function Dashboard() {
               </div>
 
               {/* Generate Button */}
-              <div className="pt-4">
+              <div className="pt-4 space-y-2">
                 <Button
                   size="lg"
                   className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-purple-500/25 transition-all duration-200"
@@ -596,6 +619,24 @@ export default function Dashboard() {
                     </>
                   )}
                 </Button>
+                
+                {/* View Existing Schedule Button */}
+                {hasExistingSchedule && (
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full border-purple-500/30 text-purple-300 hover:bg-purple-800/20"
+                    onClick={() => {
+                      const siteData = sites.find(site => site._id === selectedSite);
+                      if (siteData) {
+                        router.push(`/dashboard/schedule-chat?site=${selectedSite}&name=${encodeURIComponent(siteData.name)}`);
+                      }
+                    }}
+                  >
+                    <Eye className="mr-2 h-5 w-5" />
+                    View Existing Schedule
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

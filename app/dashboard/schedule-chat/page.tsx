@@ -85,35 +85,70 @@ function ScheduleChatPageContent() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
 
+  // Helper function to get relative time
+  const getTimeAgo = (date: Date): string => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days !== 1 ? 's' : ''} ago`;
+  };
+
   // Initial load
   useEffect(() => {
     const loadInitialSchedule = async () => {
       setLoading(true);
       
-      // Try to get the generated schedule from sessionStorage
-      const storedSchedule = sessionStorage.getItem("generatedSchedule");
-      console.log("Stored schedule found:", !!storedSchedule);
+      // First check for newly generated schedule from sessionStorage
+      const sessionSchedule = sessionStorage.getItem("generatedSchedule");
+      // Then check localStorage for persistent schedule
+      const localSchedule = localStorage.getItem(`schedule_${siteId}`);
+      
+      console.log("Checking for stored schedule...");
+      console.log("Session storage:", !!sessionSchedule);
+      console.log("Local storage:", !!localSchedule);
       
       let initialSchedule;
-      if (storedSchedule) {
-        // Use the AI-generated schedule
-        console.log("Using AI-generated schedule");
-        initialSchedule = JSON.parse(storedSchedule);
-        console.log("Schedule site:", initialSchedule.site);
-        console.log("Number of screens:", initialSchedule.screens?.length);
-        // Don't remove immediately - wait a bit to avoid re-render issues
-        setTimeout(() => {
-          sessionStorage.removeItem("generatedSchedule");
-        }, 1000);
+      
+      if (sessionSchedule) {
+        // New schedule was just generated
+        console.log("Found newly generated schedule in sessionStorage");
+        initialSchedule = JSON.parse(sessionSchedule);
+        
+        // Save to localStorage for persistence
+        localStorage.setItem(`schedule_${siteId}`, sessionSchedule);
+        localStorage.setItem(`schedule_${siteId}_timestamp`, new Date().toISOString());
+        
+        // Clear sessionStorage
+        sessionStorage.removeItem("generatedSchedule");
+        
+        console.log("Schedule saved to localStorage for site:", siteId);
+        toast.success("New schedule generated and saved");
+      } else if (localSchedule) {
+        // Load previously saved schedule from localStorage
+        console.log("Loading saved schedule from localStorage");
+        initialSchedule = JSON.parse(localSchedule);
+        
+        // Show when it was saved
+        const savedTimestamp = localStorage.getItem(`schedule_${siteId}_timestamp`);
+        if (savedTimestamp) {
+          const savedDate = new Date(savedTimestamp);
+          const timeAgo = getTimeAgo(savedDate);
+          toast.success(`Loaded schedule from ${timeAgo}`);
+        }
       } else if (!schedule) {
-        // Only redirect if we don't already have a schedule loaded
-        console.log("No stored schedule and no existing schedule, redirecting to dashboard");
+        // No schedule found anywhere
+        console.log("No stored schedule found, redirecting to dashboard");
         toast.error("No schedule data found. Please generate a schedule first.");
         router.push('/dashboard');
         return;
       } else {
-        // We already have a schedule loaded, just return
-        console.log("Using existing schedule");
+        // We already have a schedule loaded in state
+        console.log("Using existing schedule from state");
         return;
       }
       
@@ -131,7 +166,7 @@ function ScheduleChatPageContent() {
     };
 
     loadInitialSchedule();
-  }, [siteName]);
+  }, [siteName, siteId, router]);
 
   // Handle applying changes
   const handleApplyChanges = async () => {
@@ -170,6 +205,10 @@ function ScheduleChatPageContent() {
         // Update the schedule
         const updatedSchedule = data.schedule;
         setSchedule(updatedSchedule);
+        
+        // Save updated schedule to localStorage
+        localStorage.setItem(`schedule_${siteId}`, JSON.stringify(updatedSchedule));
+        localStorage.setItem(`schedule_${siteId}_timestamp`, new Date().toISOString());
 
         // Add assistant response
         const assistantMessage: Message = {
@@ -474,10 +513,28 @@ function ScheduleChatPageContent() {
 
             <div className="flex items-center gap-2">
               <Button
+                onClick={() => {
+                  if (confirm("Are you sure you want to clear the saved schedule? You'll need to generate a new one.")) {
+                    localStorage.removeItem(`schedule_${siteId}`);
+                    localStorage.removeItem(`schedule_${siteId}_timestamp`);
+                    toast.success("Schedule cleared. Redirecting to generator...");
+                    setTimeout(() => router.push('/dashboard'), 1000);
+                  }
+                }}
+                variant="outline"
+                size="sm"
+                className="bg-slate-800/50 text-red-400 border-red-500/30 hover:bg-red-800/20"
+                disabled={loading}
+                title="Clear saved schedule"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Clear
+              </Button>
+              <Button
                 onClick={handleCopySchedule}
                 variant="outline"
                 size="sm"
-                className="text-white border-purple-500/30 hover:bg-purple-800/20"
+                className="bg-slate-800/50 text-white border-purple-500/30 hover:bg-purple-800/20"
                 disabled={loading}
               >
                 <Copy className="h-4 w-4 mr-2" />
@@ -488,7 +545,7 @@ function ScheduleChatPageContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-white border-purple-500/30 hover:bg-purple-800/20"
+                    className="bg-slate-800/50 text-white border-purple-500/30 hover:bg-purple-800/20"
                     disabled={loading}
                   >
                     <Download className="h-4 w-4 mr-2" />
