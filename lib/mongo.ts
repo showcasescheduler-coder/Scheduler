@@ -1,9 +1,4 @@
 import mongoose from "mongoose";
-import Block from "@/models/Block"; // Import your models
-import Day from "@/models/Day";
-import Task from "@/models/Task";
-import User from "@/models/User";
-import Event from "@/models/Event";
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Invalid/Missing environment variable: "MONGODB_URI"');
@@ -32,16 +27,7 @@ async function dbConnect() {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(uri, opts).then((mongoose) => {
-      // Explicitly compile models
-      mongoose.model("Block", Block.schema);
-      mongoose.model("Day", Day.schema);
-      mongoose.model("Task", Task.schema);
-      mongoose.model("User", User.schema);
-      mongoose.model("Event", Event.schema);
-
-      return mongoose;
-    });
+    cached.promise = mongoose.connect(uri, opts);
   }
 
   try {
