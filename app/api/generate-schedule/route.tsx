@@ -189,12 +189,18 @@ IMPORTANT: Return ONLY the JSON schedule, no explanations or questions. Generate
 
   } catch (error) {
     console.error("Error generating schedule:", error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Failed to generate schedule" 
-      },
-      { status: 500 }
-    );
+    // More detailed error for debugging
+    const errorMessage = error instanceof Error ? error.message : "Failed to generate schedule";
+    const errorDetails = {
+      success: false,
+      error: errorMessage,
+      // Include more context in development/logs
+      ...(process.env.NODE_ENV === 'development' && {
+        stack: error instanceof Error ? error.stack : undefined,
+        details: error
+      })
+    };
+    
+    return NextResponse.json(errorDetails, { status: 500 });
   }
 }

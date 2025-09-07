@@ -254,7 +254,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
           }
         });
 
-        setSite((prev) => ({
+        setSite((prev: any) => ({
           ...prev,
           operatingHours: updatedHours,
         }));
@@ -310,7 +310,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
     if (screen.features && screen.features.includes(trimmedFeature)) return;
 
     // Update local state
-    setSite((prev) => ({
+    setSite((prev: any) => ({
       ...prev,
       screens: prev.screens.map((screen: any) => {
         if (screen._id === screenId) {
@@ -328,7 +328,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
     }));
 
     // Clear the input for this screen
-    setNewFeatureInput((prev) => ({
+    setNewFeatureInput((prev: any) => ({
       ...prev,
       [screenId]: "",
     }));
@@ -351,7 +351,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
   const handleAddAmenityToSite = (amenityName: string) => {
     if (!isEditing) return;
 
-    setSite((prev) => ({
+    setSite((prev: any) => ({
       ...prev,
       amenities: prev.amenities?.includes(amenityName)
         ? prev.amenities
@@ -362,7 +362,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
   const handleRemoveAmenityFromSite = (amenityName: string) => {
     if (!isEditing) return;
 
-    setSite((prev) => ({
+    setSite((prev: any) => ({
       ...prev,
       amenities: prev.amenities?.filter((a: string) => a !== amenityName) || [],
     }));
@@ -396,7 +396,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
     if (
       JSON.stringify(updatedHours) !== JSON.stringify(siteData.operatingHours)
     ) {
-      setSite((prev) => ({
+      setSite((prev: any) => ({
         ...prev,
         operatingHours: updatedHours,
       }));
@@ -450,7 +450,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setSite((prev) => ({ ...prev, [field]: value }));
+    setSite((prev: any) => ({ ...prev, [field]: value }));
     // Debug logging for customPrompt changes
     if (field === 'customPrompt') {
       console.log('CustomPrompt updated to:', value);
@@ -458,14 +458,14 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
   };
 
   const handleAddressChange = (field: string, value: string) => {
-    setSite((prev) => ({
+    setSite((prev: any) => ({
       ...prev,
       address: { ...prev.address, [field]: value },
     }));
   };
 
   const handleOperatingHoursChange = (day: string, timeType: string, value: string) => {
-    setSite((prev) => ({
+    setSite((prev: any) => ({
       ...prev,
       operatingHours: {
         ...prev.operatingHours,
@@ -497,7 +497,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
   };
 
   const handleStatusToggle = (checked: boolean) => {
-    setSite((prev) => ({
+    setSite((prev: any) => ({
       ...prev,
       status: checked ? "active" : "inactive",
     }));
@@ -506,7 +506,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
   const handleAddFeature = (screenId: string, feature: string) => {
     if (!isEditing || !feature) return;
 
-    setSite((prev) => ({
+    setSite((prev: any) => ({
       ...prev,
       screens: prev.screens.map((screen: any) => {
         if (screen._id === screenId && !screen.features.includes(feature)) {
@@ -525,7 +525,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
     if (!isEditing) return;
 
     // Update local state
-    setSite((prev) => ({
+    setSite((prev: any) => ({
       ...prev,
       screens: prev.screens.map((screen: any) => {
         if (screen._id === screenId) {
@@ -543,7 +543,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
   };
 
   const resetDayToDefault = (day: string) => {
-    setSite((prev) => ({
+    setSite((prev: any) => ({
       ...prev,
       operatingHours: {
         ...prev.operatingHours,
@@ -560,7 +560,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
       updatedHours[day.id as keyof typeof updatedHours] = { ...sourceHours };
     });
 
-    setSite((prev) => ({
+    setSite((prev: any) => ({
       ...prev,
       operatingHours: updatedHours,
     }));
@@ -631,13 +631,13 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
         toast.success(`Screen "${newScreen.name}" added successfully!`);
 
         // Add the new screen to local state
-        setSite((prev) => ({
+        setSite((prev: any) => ({
           ...prev,
           screens: [...(prev.screens || []), data.screen],
         }));
 
         // Also update originalSite to keep edit state consistent
-        setOriginalSite((prev) => ({
+        setOriginalSite((prev: any) => ({
           ...prev,
           screens: [...(prev.screens || []), data.screen],
         }));
@@ -665,13 +665,13 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
         toast.success(`Screen "${screenName}" deleted successfully!`);
 
         // Remove the screen from local state
-        setSite((prev) => ({
+        setSite((prev: any) => ({
           ...prev,
           screens: prev.screens.filter((screen: any) => screen._id !== screenId),
         }));
 
         // Also update originalSite to keep edit state consistent
-        setOriginalSite((prev) => ({
+        setOriginalSite((prev: any) => ({
           ...prev,
           screens: prev.screens.filter((screen: any) => screen._id !== screenId),
         }));
@@ -689,7 +689,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
     if (!isEditing) return;
 
     // Update local state immediately for better UX
-    setSite((prev) => ({
+    setSite((prev: any) => ({
       ...prev,
       screens: prev.screens.map((s: any) =>
         s._id === screenId ? { ...s, [field]: value } : s
@@ -1496,7 +1496,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
                                             newFeatureInput[screen._id] || ""
                                           }
                                           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                                            setNewFeatureInput((prev) => ({
+                                            setNewFeatureInput((prev: any) => ({
                                               ...prev,
                                               [screen._id]: e.target.value,
                                             }))

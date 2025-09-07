@@ -441,7 +441,7 @@ export default function SchedulePage() {
             <div className="flex flex-col items-center justify-center h-full">
               <RefreshCw className="h-8 w-8 text-purple-400 animate-spin mb-4" />
               <p className="text-slate-300">Generating optimal schedule...</p>
-              <p className="text-sm text-slate-500 mt-2">Analyzing last week's data and applying best practices</p>
+              <p className="text-sm text-slate-500 mt-2">Analyzing last week&apos;s data and applying best practices</p>
             </div>
           ) : schedule ? (
             <div className="space-y-6 max-w-7xl mx-auto">
