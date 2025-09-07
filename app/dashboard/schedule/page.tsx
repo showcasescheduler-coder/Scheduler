@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Card,
@@ -61,7 +61,7 @@ interface GeneratedSchedule {
   utilization_rate?: string;
 }
 
-export default function SchedulePage() {
+function SchedulePageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const siteId = searchParams.get("site");
@@ -617,5 +617,13 @@ export default function SchedulePage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function SchedulePage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+      <SchedulePageContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Card,
@@ -62,7 +62,7 @@ interface Message {
   scheduleUpdate?: GeneratedSchedule;
 }
 
-export default function ScheduleChatPage() {
+function ScheduleChatPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const siteId = searchParams.get("site");
@@ -496,5 +496,13 @@ export default function ScheduleChatPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ScheduleChatPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading...</div>}>
+      <ScheduleChatPageContent />
+    </Suspense>
   );
 }
