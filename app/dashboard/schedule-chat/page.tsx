@@ -15,6 +15,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   AlertCircle,
   CheckCircle,
   Send,
@@ -24,8 +30,11 @@ import {
   Bot,
   User,
   RefreshCw,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import * as XLSX from "xlsx";
 
 interface ShowTime {
   film: string;
@@ -207,9 +216,208 @@ function ScheduleChatPageContent() {
     toast.success("Schedule copied to clipboard!");
   };
 
-  // Export schedule (mock)
-  const handleExportSchedule = () => {
-    toast.success("Schedule exported! (Mock - would download file)");
+  // Export schedule to Excel
+  const handleExportExcel = () => {
+    if (!schedule) return;
+
+    try {
+      // Create a new workbook
+      const wb = XLSX.utils.book_new();
+
+      // Create data for the summary sheet
+      const summaryData = [
+        ["Schedule Summary"],
+        [""],
+        ["Site:", schedule.site],
+        ["Week Range:", schedule.weekRange],
+        ["Revenue Projection:", schedule.revenue_projection || "N/A"],
+        ["Utilization Rate:", schedule.utilization_rate || "N/A"],
+        [""],
+        ["Reasoning:"],
+        [schedule.reasoning],
+      ];
+
+      if (schedule.warnings && schedule.warnings.length > 0) {
+        summaryData.push([""]);
+        summaryData.push(["Warnings:"]);
+        schedule.warnings.forEach(warning => {
+          summaryData.push([warning]);
+        });
+      }
+
+      // Add summary sheet
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
+
+      // Create a sheet for each screen
+      schedule.screens.forEach((screen, index) => {
+        const screenData: any[][] = [
+          [`${screen.name}`],
+          [`Capacity: ${screen.capacity}`],
+          [`Features: ${screen.features.join(", ")}`],
+          [""],
+          ["Day", "Film", "Show Times", "Rating", "Runtime"],
+        ];
+
+        const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+        
+        days.forEach(day => {
+          const daySchedule = screen.schedule[day];
+          if (daySchedule && daySchedule.length > 0) {
+            daySchedule.forEach((show, showIndex) => {
+              screenData.push([
+                showIndex === 0 ? day.charAt(0).toUpperCase() + day.slice(1) : "",
+                show.film,
+                show.times.join(", "),
+                show.rating || "",
+                show.runtime || ""
+              ]);
+            });
+          } else {
+            screenData.push([day.charAt(0).toUpperCase() + day.slice(1), "No shows scheduled", "", "", ""]);
+          }
+        });
+
+        const screenSheet = XLSX.utils.aoa_to_sheet(screenData);
+        // Set column widths
+        const wscols = [
+          {wch: 12}, // Day
+          {wch: 30}, // Film
+          {wch: 40}, // Show Times
+          {wch: 10}, // Rating
+          {wch: 12}  // Runtime
+        ];
+        screenSheet['!cols'] = wscols;
+        
+        XLSX.utils.book_append_sheet(wb, screenSheet, `Screen ${index + 1}`);
+      });
+
+      // Generate and download the Excel file
+      const fileName = `${schedule.site.replace(/[^a-z0-9]/gi, '_')}_Schedule_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      
+      toast.success("Schedule exported to Excel successfully!");
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export schedule to Excel");
+    }
+  };
+
+  // Export schedule to PDF (using browser print)
+  const handleExportPDF = () => {
+    if (!schedule) return;
+    
+    // Create a new window with the schedule formatted for printing
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error("Please allow pop-ups to export as PDF");
+      return;
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${schedule.site} - Weekly Schedule</title>
+          <style>
+            @page { size: landscape; margin: 0.5in; }
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { color: #333; border-bottom: 2px solid #8b5cf6; padding-bottom: 10px; }
+            h2 { color: #555; margin-top: 30px; }
+            h3 { color: #666; margin-top: 20px; }
+            .header { margin-bottom: 30px; }
+            .info-grid { display: grid; grid-template-columns: 200px 1fr; gap: 10px; margin-bottom: 20px; }
+            .info-label { font-weight: bold; color: #666; }
+            .screen { page-break-inside: avoid; margin-bottom: 40px; border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+            .screen-header { background: #f5f5f5; padding: 10px; margin: -20px -20px 20px -20px; border-radius: 8px 8px 0 0; }
+            .schedule-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            .schedule-table th { background: #8b5cf6; color: white; padding: 10px; text-align: left; }
+            .schedule-table td { border: 1px solid #ddd; padding: 8px; }
+            .schedule-table tr:nth-child(even) { background: #f9f9f9; }
+            .warning { background: #fff3cd; border: 1px solid #ffc107; padding: 10px; margin-top: 20px; border-radius: 5px; }
+            .no-print { display: none; }
+            @media print {
+              .screen { page-break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${schedule.site} - Weekly Schedule</h1>
+            <div class="info-grid">
+              <span class="info-label">Week Range:</span>
+              <span>${schedule.weekRange}</span>
+              <span class="info-label">Revenue Projection:</span>
+              <span>${schedule.revenue_projection || 'N/A'}</span>
+              <span class="info-label">Utilization Rate:</span>
+              <span>${schedule.utilization_rate || 'N/A'}</span>
+            </div>
+            <p><strong>Strategy:</strong> ${schedule.reasoning}</p>
+          </div>
+          
+          ${schedule.screens.map(screen => `
+            <div class="screen">
+              <div class="screen-header">
+                <h2>${screen.name}</h2>
+                <p>Capacity: ${screen.capacity} | Features: ${screen.features.join(', ')}</p>
+              </div>
+              <table class="schedule-table">
+                <thead>
+                  <tr>
+                    <th>Day</th>
+                    <th>Film</th>
+                    <th>Show Times</th>
+                    <th>Rating</th>
+                    <th>Runtime</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => {
+                    const daySchedule = screen.schedule[day];
+                    if (daySchedule && daySchedule.length > 0) {
+                      return daySchedule.map((show, index) => `
+                        <tr>
+                          <td>${index === 0 ? day.charAt(0).toUpperCase() + day.slice(1) : ''}</td>
+                          <td>${show.film}</td>
+                          <td>${show.times.join(', ')}</td>
+                          <td>${show.rating || ''}</td>
+                          <td>${show.runtime || ''}</td>
+                        </tr>
+                      `).join('');
+                    } else {
+                      return `
+                        <tr>
+                          <td>${day.charAt(0).toUpperCase() + day.slice(1)}</td>
+                          <td colspan="4">No shows scheduled</td>
+                        </tr>
+                      `;
+                    }
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `).join('')}
+          
+          ${schedule.warnings && schedule.warnings.length > 0 ? `
+            <div class="warning">
+              <h3>Warnings:</h3>
+              <ul>
+                ${schedule.warnings.map(warning => `<li>${warning}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    
+    // Wait for content to load then trigger print
+    printWindow.onload = () => {
+      printWindow.print();
+      toast.success("Use the print dialog to save as PDF");
+    };
   };
 
   const daysOfWeek = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -275,16 +483,35 @@ function ScheduleChatPageContent() {
                 <Copy className="h-4 w-4 mr-2" />
                 Copy
               </Button>
-              <Button
-                onClick={handleExportSchedule}
-                variant="outline"
-                size="sm"
-                className="text-white border-purple-500/30 hover:bg-purple-800/20"
-                disabled={loading}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-white border-purple-500/30 hover:bg-purple-800/20"
+                    disabled={loading}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-gray-900 border-purple-500/30">
+                  <DropdownMenuItem 
+                    onClick={handleExportExcel}
+                    className="text-white hover:bg-purple-800/20 cursor-pointer"
+                  >
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export as Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={handleExportPDF}
+                    className="text-white hover:bg-purple-800/20 cursor-pointer"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
