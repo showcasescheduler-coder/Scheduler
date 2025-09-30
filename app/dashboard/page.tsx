@@ -490,10 +490,10 @@ export default function Dashboard() {
                       Claude 3.7 Sonnet (Better quality, slower ~45s)
                     </SelectItem>
                     <SelectItem
-                      value="claude-sonnet-4-20250514"
+                      value="claude-sonnet-4-5-20250929"
                       className="text-white hover:bg-purple-800/50"
                     >
-                      Claude Sonnet 4 (Fastest, good quality ~15s)
+                      Claude Sonnet 4.5 (Premium - Fastest, highest quality ~15s)
                     </SelectItem>
                   </SelectContent>
                 </Select>
