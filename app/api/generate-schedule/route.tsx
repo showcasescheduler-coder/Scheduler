@@ -69,37 +69,39 @@ export async function POST(request: NextRequest) {
 YOUR TASK:
 Create a schedule that maximizes revenue by intelligently balancing films from last week (holdovers) with new releases. Analyze last week's performance to decide which films to keep, which to reduce/move, and which to replace with new releases.
 
-SITE INFORMATION:
+SITE INFORMATION (includes screens, operating hours, amenities, address, and all site details):
 ${JSON.stringify(siteData, null, 2)}
 
-${siteData.customPrompt ? `SITE-SPECIFIC INSTRUCTIONS:
-${siteData.customPrompt}` : ''}
+${siteData.customPrompt ? `SITE-SPECIFIC CUSTOM INSTRUCTIONS (These are specific requirements for this cinema - MUST follow these):
+${siteData.customPrompt}
 
-BEST PRACTICES TO FOLLOW:
+` : ''}BEST PRACTICES TO FOLLOW (Apply these scheduling guidelines):
 ${formattedBestPractices}
 
 ${lastWeekData ? `LAST WEEK'S PERFORMANCE DATA (Current films - evaluate which to keep/reduce/remove):
-${JSON.stringify(lastWeekData, null, 2)}` : ''}
+${JSON.stringify(lastWeekData, null, 2)}
 
-${newFilmsData ? `NEW FILM RELEASES (New films available to schedule):
-${JSON.stringify(newFilmsData, null, 2)}` : ''}
+` : ''}${newFilmsData ? `NEW FILM RELEASES (New films available to schedule):
+${JSON.stringify(newFilmsData, null, 2)}
 
-${additionalInstructions ? `ADDITIONAL INSTRUCTIONS FROM USER:
-${additionalInstructions}` : ''}
+` : ''}${additionalInstructions ? `ADDITIONAL INSTRUCTIONS FROM USER (Priority instructions for this specific schedule):
+${additionalInstructions}
 
-CRITICAL OBJECTIVE: Maximize total revenue by utilizing ALL cinema resources effectively.
+` : ''}CRITICAL OBJECTIVE: Maximize total revenue by utilizing ALL cinema resources effectively.
 
-Generate a schedule that:
-- MUST use ALL ${siteData.screens?.length || 5} screens available at the cinema - no screen should be left unused
-- Balances films from last week (holdovers) with new releases based on their performance data
-- Analyzes ALL data provided above - every field, metric, and detail matters for optimal decisions
-- Evaluates each film from last week using ALL performance metrics (revenue, attendance, occupancy %, screen type, day-by-day patterns, and any other data provided)
-- Integrates new releases considering ALL their attributes (projections, studio notes, market commentary, distributor priorities, format requirements, target demographics, runtime, rating, and any other information provided)
-- Utilizes the complete site information (all screens, amenities, operating hours, location specifics)
-- Follows all best practices listed above
-- Adheres to the site-specific instructions
-- Makes data-driven decisions using every piece of information available
-- Maximizes overall revenue potential by fully utilizing all cinema capacity
+REQUIREMENTS - Your schedule MUST:
+- Use ALL ${siteData.screens?.length || 5} screens available at the cinema - no screen should be left unused
+- Follow ALL site-specific custom instructions provided above (if any)
+- Apply ALL best practices guidelines listed above
+- Respect the operating hours: ${siteData.operatingHours ? JSON.stringify(siteData.operatingHours) : 'standard hours'}
+- Balance films from last week (holdovers) with new releases based on their performance data
+- Analyze EVERY field, metric, and detail in all data sections above - nothing should be ignored
+- Evaluate each film from last week using ALL performance metrics (revenue, attendance, occupancy %, screen type, day-by-day patterns, and any other data provided)
+- Integrate new releases considering ALL their attributes (projections, studio notes, market commentary, distributor priorities, format requirements, target demographics, runtime, rating, and any other information provided)
+- Utilize the complete site information (all screens with their specific capacities and features, amenities, location specifics)
+- Strictly follow any additional instructions from the user
+- Make data-driven decisions using every piece of information available
+- Maximize overall revenue potential by fully utilizing all cinema capacity
 
 IMPORTANT: Return ONLY the JSON schedule, no explanations or questions. Generate the complete schedule immediately as a single valid JSON object with the following structure:
 {

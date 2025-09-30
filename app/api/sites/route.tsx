@@ -12,21 +12,23 @@ export async function GET() {
     // Get all sites first
     const sites = await Site.find().sort({ name: 1 });
 
-    // For each site, count screens using the existing siteId relationship
-    const sitesWithCounts = await Promise.all(
+    // For each site, get screens using the existing siteId relationship
+    const sitesWithScreens = await Promise.all(
       sites.map(async (site) => {
         try {
-          // Count screens using the siteId field (current structure)
-          const screenCount = await Screen.countDocuments({ siteId: site._id });
+          // Get all screens for this site using the siteId field
+          const screens = await Screen.find({ siteId: site._id }).sort({ name: 1 });
 
           return {
             ...site.toObject(),
-            screenCount,
+            screens: screens,
+            screenCount: screens.length,
           };
         } catch (error) {
-          console.error(`Error counting screens for site ${site._id}:`, error);
+          console.error(`Error fetching screens for site ${site._id}:`, error);
           return {
             ...site.toObject(),
+            screens: [],
             screenCount: 0,
           };
         }
@@ -35,7 +37,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      sites: sitesWithCounts,
+      sites: sitesWithScreens,
     });
   } catch (error) {
     console.error("Error fetching sites:", error);
