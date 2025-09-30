@@ -190,7 +190,10 @@ export default function Dashboard() {
     // Find the selected site data
     const siteData = sites.find(site => site._id === selectedSite);
     if (!siteData) {
-      toast.error("Please select a site");
+      toast.error("Please select a site first", {
+        duration: 4000,
+        icon: "⚠️",
+      });
       return;
     }
 
@@ -207,7 +210,15 @@ export default function Dashboard() {
 
     // Set loading state
     setIsGenerating(true);
-    const loadingToast = toast.loading("Generating optimized schedule with AI... This may take 20-30 seconds.");
+
+    // Show detailed progress messages
+    const screenCount = siteData.screens?.length || 0;
+    const estimatedTime = Math.max(30, Math.ceil(screenCount * 1.8));
+
+    const loadingToast = toast.loading(
+      `🎬 Analyzing ${screenCount} screens...\n⏱️ Estimated time: ${estimatedTime} seconds`,
+      { duration: Infinity }
+    );
 
     try {
       // Create FormData to send files and data
@@ -218,14 +229,33 @@ export default function Dashboard() {
       formData.append("bestPractices", JSON.stringify(bestPractices));
       formData.append("additionalInstructions", additionalInstructions);
       formData.append("modelName", selectedModel);
-      
+
       if (lastWeekFile) {
         formData.append("lastWeekFile", lastWeekFile);
       }
-      
+
       if (newFilmsFile) {
         formData.append("newFilmsFile", newFilmsFile);
       }
+
+      // Update progress message
+      setTimeout(() => {
+        if (isGenerating) {
+          toast.loading(
+            `📊 Processing performance data...\n🎯 Optimizing for maximum revenue`,
+            { id: loadingToast }
+          );
+        }
+      }, 5000);
+
+      setTimeout(() => {
+        if (isGenerating) {
+          toast.loading(
+            `🤖 AI is building your schedule...\n✨ Almost there!`,
+            { id: loadingToast }
+          );
+        }
+      }, Math.max(10000, estimatedTime * 500));
 
       // Call the API endpoint
       const response = await fetch("/api/generate-schedule", {
@@ -237,11 +267,14 @@ export default function Dashboard() {
 
       if (data.success) {
         toast.dismiss(loadingToast);
-        toast.success("Schedule generated successfully!");
-        
+        toast.success(`✅ Schedule generated successfully!\n${screenCount} screens optimized`, {
+          duration: 5000,
+          icon: "🎉",
+        });
+
         // Store the schedule in sessionStorage to pass to the next page
         sessionStorage.setItem("generatedSchedule", JSON.stringify(data.schedule));
-        
+
         // Navigate to schedule-chat page with site data
         router.push(`/dashboard/schedule-chat?site=${selectedSite}&name=${encodeURIComponent(siteData.name)}`);
       } else {
@@ -249,7 +282,32 @@ export default function Dashboard() {
       }
     } catch (error) {
       toast.dismiss(loadingToast);
-      toast.error(error instanceof Error ? error.message : "Failed to generate schedule");
+
+      // Enhanced error messages
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate schedule";
+
+      if (errorMessage.includes("truncated")) {
+        toast.error(
+          `❌ Schedule too large\n\nYour cinema has ${screenCount} screens. Please contact support for assistance with large venues.`,
+          { duration: 8000 }
+        );
+      } else if (errorMessage.includes("JSON")) {
+        toast.error(
+          `❌ Processing Error\n\nThere was an issue formatting the schedule. Please try again.`,
+          { duration: 6000 }
+        );
+      } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
+        toast.error(
+          `❌ Connection Error\n\nPlease check your internet connection and try again.`,
+          { duration: 6000 }
+        );
+      } else {
+        toast.error(
+          `❌ Generation Failed\n\n${errorMessage}`,
+          { duration: 6000 }
+        );
+      }
+
       console.error("Error generating schedule:", error);
     } finally {
       setIsGenerating(false);

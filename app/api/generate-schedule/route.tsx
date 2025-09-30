@@ -148,7 +148,8 @@ IMPORTANT: Return ONLY the JSON schedule, no explanations or questions. Generate
 
     console.log(`Using max_tokens: ${calculatedMaxTokens} for ${screensCount} screens`);
 
-    const response = await anthropic.messages.create({
+    // Use streaming to provide progress updates
+    const stream = await anthropic.messages.stream({
       model: modelName,
       max_tokens: calculatedMaxTokens,
       temperature: 0.5,
@@ -160,8 +161,19 @@ IMPORTANT: Return ONLY the JSON schedule, no explanations or questions. Generate
       ]
     });
 
-    // Extract the JSON from Claude's response
-    const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
+    let responseText = '';
+    let stopReason = '';
+
+    // Stream the response
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+        responseText += chunk.delta.text;
+      }
+      if (chunk.type === 'message_stop') {
+        stopReason = stream.finalMessage?.stop_reason || '';
+      }
+    }
+
     const endTime = Date.now();
     const responseTime = (endTime - startTime) / 1000; // Convert to seconds
 
@@ -169,15 +181,15 @@ IMPORTANT: Return ONLY the JSON schedule, no explanations or questions. Generate
     console.log("Model Used:", modelName);
     console.log("Response Time:", `${responseTime.toFixed(2)} seconds`);
     console.log("Response length:", responseText.length);
-    console.log("Stop reason:", response.stop_reason);
+    console.log("Stop reason:", stopReason);
     console.log("Full AI Response:");
     console.log(responseText);
     console.log("===================");
 
     // Check if response was truncated
-    if (response.stop_reason === 'max_tokens') {
+    if (stopReason === 'max_tokens') {
       console.error("Response was truncated due to max_tokens limit");
-      throw new Error(`Response was truncated. The schedule is too large for the current token limit. Please try again or contact support.`);
+      throw new Error(`The schedule generation was truncated. This cinema has ${screensCount} screens which requires more processing capacity. Please contact support.`);
     }
 
     // Try to find JSON in the response
@@ -212,8 +224,32 @@ IMPORTANT: Return ONLY the JSON schedule, no explanations or questions. Generate
 
   } catch (error) {
     console.error("Error generating schedule:", error);
-    // More detailed error for debugging
-    const errorMessage = error instanceof Error ? error.message : "Failed to generate schedule";
+
+    // More detailed error messages for better user experience
+    let errorMessage = "Failed to generate schedule";
+    let statusCode = 500;
+
+    if (error instanceof Error) {
+      if (error.message.includes("truncated")) {
+        errorMessage = error.message;
+        statusCode = 413; // Payload Too Large
+      } else if (error.message.includes("JSON")) {
+        errorMessage = error.message;
+        statusCode = 422; // Unprocessable Entity
+      } else if (error.message.includes("API key")) {
+        errorMessage = "Configuration error. Please contact support.";
+        statusCode = 503; // Service Unavailable
+      } else if (error.message.includes("rate limit")) {
+        errorMessage = "Too many requests. Please wait a moment and try again.";
+        statusCode = 429; // Too Many Requests
+      } else if (error.message.includes("timeout")) {
+        errorMessage = "Request timed out. Please try again.";
+        statusCode = 504; // Gateway Timeout
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
     const errorDetails = {
       success: false,
       error: errorMessage,
@@ -223,7 +259,7 @@ IMPORTANT: Return ONLY the JSON schedule, no explanations or questions. Generate
         details: error
       })
     };
-    
-    return NextResponse.json(errorDetails, { status: 500 });
+
+    return NextResponse.json(errorDetails, { status: statusCode });
   }
 }
