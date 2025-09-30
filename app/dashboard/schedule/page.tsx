@@ -293,9 +293,17 @@ function SchedulePageContent() {
           [`${screen.name}`],
           [`Capacity: ${screen.capacity}`],
           [`Features: ${screen.features.join(", ")}`],
-          [""],
-          ["Day", "Film", "Show Times", "Rating", "Runtime"],
         ];
+
+        // Add strategy if available
+        if (screen.strategy) {
+          screenData.push([`Strategy: ${screen.strategy}`]);
+        }
+
+        screenData.push(
+          [""],
+          ["Day", "Film", "Show Times", "Rating", "Runtime"]
+        );
 
         const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
         
@@ -398,6 +406,7 @@ function SchedulePageContent() {
               <div class="screen-header">
                 <h2>${screen.name}</h2>
                 <p>Capacity: ${screen.capacity} | Features: ${screen.features.join(', ')}</p>
+                ${screen.strategy ? `<p style="margin-top: 8px; padding: 8px; background-color: #f0f0f0; border-left: 3px solid #8b5cf6;"><strong>Strategy:</strong> ${screen.strategy}</p>` : ''}
               </div>
               <table class="schedule-table">
                 <thead>
@@ -729,6 +738,13 @@ function SchedulePageContent() {
                             ))}
                           </div>
                         </div>
+                        {screen.strategy && (
+                          <div className="mt-3 p-3 bg-purple-900/20 rounded-md border border-purple-600/30">
+                            <p className="text-sm text-purple-200 leading-relaxed">
+                              <span className="font-semibold text-purple-300">Strategy:</span> {screen.strategy}
+                            </p>
+                          </div>
+                        )}
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-7 gap-4">

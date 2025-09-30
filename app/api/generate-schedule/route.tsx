@@ -102,6 +102,11 @@ REQUIREMENTS - Your schedule MUST:
 - Strictly follow any additional instructions from the user
 - Make data-driven decisions using every piece of information available
 - Maximize overall revenue potential by fully utilizing all cinema capacity
+- Provide a SPECIFIC STRATEGY for each screen explaining:
+  * Why this screen was assigned these specific films
+  * How the screen's capacity and features influenced the decision
+  * What revenue/audience optimization was considered
+  * How it fits into the overall cinema strategy
 
 IMPORTANT: Return ONLY the JSON schedule, no explanations or questions. Generate the complete schedule immediately as a single valid JSON object with the following structure:
 {
@@ -112,6 +117,7 @@ IMPORTANT: Return ONLY the JSON schedule, no explanations or questions. Generate
       "name": "Screen Name",
       "capacity": 200,
       "features": ["IMAX", "Dolby Atmos"],
+      "strategy": "Explanation of why this specific screen was scheduled this way (e.g., 'Premium large screen assigned to highest-grossing blockbuster with 4 daily shows to maximize revenue' or 'Small capacity screen used for niche indie films with lower but consistent attendance')",
       "schedule": {
         "monday": [
           {
@@ -130,7 +136,7 @@ IMPORTANT: Return ONLY the JSON schedule, no explanations or questions. Generate
       }
     }
   ],
-  "reasoning": "Brief explanation of optimization strategy",
+  "reasoning": "Brief explanation of overall optimization strategy across all screens",
   "warnings": ["Any considerations or warnings"],
   "revenue_projection": "$XXX,XXX - $XXX,XXX",
   "utilization_rate": "XX%"
