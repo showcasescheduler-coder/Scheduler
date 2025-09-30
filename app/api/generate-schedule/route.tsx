@@ -139,9 +139,18 @@ IMPORTANT: Return ONLY the JSON schedule, no explanations or questions. Generate
     // Call Claude API
     console.log(`Calling Claude API with model: ${modelName}`);
     const startTime = Date.now();
+
+    // Calculate appropriate max_tokens based on number of screens
+    // Each screen needs ~2000 tokens for full weekly schedule
+    // Add buffer for reasoning, warnings, and structure
+    const screensCount = siteData.screens?.length || 5;
+    const calculatedMaxTokens = Math.max(16000, screensCount * 1000 + 4000);
+
+    console.log(`Using max_tokens: ${calculatedMaxTokens} for ${screensCount} screens`);
+
     const response = await anthropic.messages.create({
       model: modelName,
-      max_tokens: 8000,
+      max_tokens: calculatedMaxTokens,
       temperature: 0.5,
       messages: [
         {
@@ -155,28 +164,40 @@ IMPORTANT: Return ONLY the JSON schedule, no explanations or questions. Generate
     const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
     const endTime = Date.now();
     const responseTime = (endTime - startTime) / 1000; // Convert to seconds
-    
+
     console.log("=== AI RESPONSE ===");
     console.log("Model Used:", modelName);
     console.log("Response Time:", `${responseTime.toFixed(2)} seconds`);
     console.log("Response length:", responseText.length);
+    console.log("Stop reason:", response.stop_reason);
     console.log("Full AI Response:");
     console.log(responseText);
     console.log("===================");
-    
+
+    // Check if response was truncated
+    if (response.stop_reason === 'max_tokens') {
+      console.error("Response was truncated due to max_tokens limit");
+      throw new Error(`Response was truncated. The schedule is too large for the current token limit. Please try again or contact support.`);
+    }
+
     // Try to find JSON in the response
     let scheduleData;
     try {
       // First try to parse the entire response as JSON
       scheduleData = JSON.parse(responseText);
-    } catch {
+    } catch (parseError) {
       // If that fails, try to find JSON within the response
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        scheduleData = JSON.parse(jsonMatch[0]);
+        try {
+          scheduleData = JSON.parse(jsonMatch[0]);
+        } catch (innerError) {
+          console.error("Could not parse extracted JSON:", innerError);
+          throw new Error("The AI response contains invalid JSON. Please try generating the schedule again.");
+        }
       } else {
         console.error("Could not find JSON in response:", responseText);
-        throw new Error("Could not parse schedule from AI response");
+        throw new Error("Could not find valid JSON in AI response. Please try generating the schedule again.");
       }
     }
 
