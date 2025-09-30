@@ -1011,18 +1011,29 @@ export default function BestPracticesPage() {
 
   const handleSaveItem = async (itemId: string, name: string, description: string) => {
     try {
-      // Simulate API call with placeholder behavior
-      toast.success("Item updated successfully!");
+      const response = await fetch(`/api/best-practices/items/${itemId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, description }),
+      });
 
-      // Update local state
-      setSections((prevSections: Section[]) =>
-        prevSections.map((section) => ({
-          ...section,
-          items: section.items.map((item) =>
-            item._id === itemId ? { ...item, name, description } : item
-          ),
-        }))
-      );
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Item updated successfully!");
+        // Update local state
+        setSections((prevSections: Section[]) =>
+          prevSections.map((section) => ({
+            ...section,
+            items: section.items.map((item) =>
+              item._id === itemId ? { ...item, name, description } : item
+            ),
+          }))
+        );
+      } else {
+        toast.error(data.error || "Failed to update item");
+      }
     } catch (error) {
       console.error("Error updating item:", error);
       toast.error("Failed to update item");
@@ -1096,19 +1107,29 @@ export default function BestPracticesPage() {
     }
 
     try {
-      // Simulate API call
-      const newSection = {
-        _id: Date.now().toString(),
-        name: newSectionName,
-        items: [],
-      };
+      const response = await fetch("/api/best-practices/sections", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: newSectionName }),
+      });
 
-      toast.success(`New section "${newSectionName}" added!`);
-      setNewSectionName("");
-      setIsAddSectionOpen(false);
+      const data = await response.json();
+      if (data.success) {
+        toast.success(`New section "${newSectionName}" added!`);
+        setNewSectionName("");
+        setIsAddSectionOpen(false);
 
-      // Update local state
-      setSections((prevSections: Section[]) => [...prevSections, newSection]);
+        // Update local state with the returned section
+        const newSection = {
+          ...data.section,
+          items: [],
+        };
+        setSections((prevSections: Section[]) => [...prevSections, newSection]);
+      } else {
+        toast.error(data.error || "Failed to create section");
+      }
     } catch (error) {
       console.error("Error creating section:", error);
       toast.error("Failed to create section");
@@ -1123,26 +1144,38 @@ export default function BestPracticesPage() {
     }
 
     try {
-      // Simulate API call
-      const newItem = {
-        _id: Date.now().toString(),
-        name: newItemName,
-        description: newItemContent,
-      };
-
-      toast.success(`New item "${newItemName}" added!`);
-      setNewItemName("");
-      setNewItemContent("");
-      setIsAddItemOpen(false);
-
-      // Update local state
-      setSections((prevSections: Section[]) =>
-        prevSections.map((section) =>
-          section._id === addItemSection?._id
-            ? { ...section, items: [...section.items, newItem] }
-            : section
-        )
+      const response = await fetch(
+        `/api/best-practices/sections/${addItemSection?._id}/items`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: newItemName,
+            description: newItemContent,
+          }),
+        }
       );
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success(`New item "${newItemName}" added!`);
+        setNewItemName("");
+        setNewItemContent("");
+        setIsAddItemOpen(false);
+
+        // Update local state with the returned item
+        setSections((prevSections: Section[]) =>
+          prevSections.map((section) =>
+            section._id === addItemSection?._id
+              ? { ...section, items: [...section.items, data.item] }
+              : section
+          )
+        );
+      } else {
+        toast.error(data.error || "Failed to create item");
+      }
     } catch (error) {
       console.error("Error creating item:", error);
       toast.error("Failed to create item");
