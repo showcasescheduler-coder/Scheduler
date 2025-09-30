@@ -51,6 +51,7 @@ interface ScreenSchedule {
   name: string;
   capacity: number;
   features: string[];
+  strategy?: string;
   schedule: DaySchedule;
 }
 

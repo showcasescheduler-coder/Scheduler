@@ -168,17 +168,17 @@ IMPORTANT: Return ONLY the JSON schedule, no explanations or questions. Generate
     });
 
     let responseText = '';
-    let stopReason = '';
 
     // Stream the response
     for await (const chunk of stream) {
       if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
         responseText += chunk.delta.text;
       }
-      if (chunk.type === 'message_stop') {
-        stopReason = stream.finalMessage?.stop_reason || '';
-      }
     }
+
+    // Get the final message after streaming completes
+    const finalMessage = await stream.finalMessage();
+    const stopReason = finalMessage.stop_reason || '';
 
     const endTime = Date.now();
     const responseTime = (endTime - startTime) / 1000; // Convert to seconds
